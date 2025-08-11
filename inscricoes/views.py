@@ -47,6 +47,7 @@ from .models import (
     Participante,
     PoliticaPrivacidade,
     Contato,
+    PreferenciasComunicacao
 )
 from .forms import (
     ContatoForm,
@@ -816,20 +817,46 @@ def formulario_saude(request, inscricao_id):
     if request.method == 'POST':
         form_saude = DadosSaudeForm(request.POST, request.FILES, instance=base_inscricao)
 
-        if form_saude.is_valid():
-            # Salva todos os campos, inclusive a foto
-            form_saude.save()
+        # Lê a decisão do modal (hidden no template)
+        consent_ok = (request.POST.get('consentimento_envio') == 'sim')
+        if not consent_ok:
+            form_saude.add_error(None, "Você precisa aceitar a Política de Privacidade para enviar a inscrição.")
 
-            # Se enviou foto, atualiza o Participante
+        if form_saude.is_valid():
+            # Salva todos os campos, inclusive a foto anexada ao form/base_inscricao
+            obj = form_saude.save()
+
+            # Se enviou foto no form, sincroniza no Participante
             foto = form_saude.cleaned_data.get('foto')
             if foto:
                 participante.foto = foto
                 participante.save(update_fields=['foto'])
 
-            # Marca inscrição como enviada
-            inscricao.inscricao_enviada = True
-            inscricao.save(update_fields=['inscricao_enviada'])
+            # Marca opt-in de marketing se aceitou no modal
+            if consent_ok:
+                prefs, _ = PreferenciasComunicacao.objects.get_or_create(participante=participante)
+                if not prefs.whatsapp_marketing_opt_in:
+                    ip = request.META.get('REMOTE_ADDR')
+                    ua = request.META.get('HTTP_USER_AGENT')
+                    prova = f"IP={ip} | UA={ua} | ts={timezone.now().isoformat()}"
+                    # usa o método helper do modelo (se você criou) ou seta os campos manualmente:
+                    try:
+                        prefs.marcar_optin_marketing(fonte='form', prova=prova, versao='v1')
+                    except AttributeError:
+                        # fallback caso não tenha o método marcar_optin_marketing
+                        prefs.whatsapp_marketing_opt_in = True
+                        prefs.whatsapp_optin_data = timezone.now()
+                        prefs.whatsapp_optin_fonte = 'form'
+                        prefs.whatsapp_optin_prova = prova
+                        prefs.politica_versao = 'v1'
+                        prefs.save()
 
+            # Marca inscrição como enviada (dispara e-mails/WhatsApp se seu modelo tratar no save)
+            if not inscricao.inscricao_enviada:
+                inscricao.inscricao_enviada = True
+                inscricao.save(update_fields=['inscricao_enviada'])
+
+            messages.success(request, "Dados de saúde enviados com sucesso.")
             return redirect('inscricoes:ver_inscricao', pk=inscricao.id)
         else:
             # Para debug, imprime erros no console
@@ -2147,3 +2174,22 @@ def financeiro_geral_export(request):
         w.writerow([r["inscricao__paroquia__nome"], r["qtd"], f"{bruto:.2f}", f"{taxa:.2f}", f"{liq:.2f}"])
 
     return resp
+
+@csrf_exempt
+def whatsapp_webhook(request):
+    verify_token = os.getenv("WEBHOOK_VERIFY_TOKEN", "troque-isto")
+
+    if request.method == "GET":
+        mode = request.GET.get("hub.mode")
+        token = request.GET.get("hub.verify_token")
+        challenge = request.GET.get("hub.challenge")
+        if mode == "subscribe" and token == verify_token:
+            return HttpResponse(challenge, status=200)
+        return HttpResponse(status=403)
+
+    if request.method == "POST":
+        data = json.loads(request.body.decode("utf-8"))
+        # aqui você pode tratar mensagens e status (entregue/lido/falha)
+        return JsonResponse({"ok": True})
+
+    return HttpResponse(status=405)

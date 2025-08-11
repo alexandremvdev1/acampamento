@@ -3,12 +3,14 @@ from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
+from inscricoes.views import whatsapp_webhook
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Suas URLs do app 'inscricoes'
     path('', include('inscricoes.urls', namespace='inscricoes')),
+    
 
     # Substitui o login padrão para usar seu template personalizado
     path('accounts/login/', auth_views.LoginView.as_view(template_name='inscricoes/login.html'), name='login'),
@@ -22,7 +24,9 @@ urlpatterns = [
     path('accounts/password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('accounts/reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('accounts/reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    path("webhooks/whatsapp/", whatsapp_webhook, name="whatsapp_webhook"),
 ]
+
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

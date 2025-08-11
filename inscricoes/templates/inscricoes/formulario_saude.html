@@ -307,6 +307,9 @@
     {% csrf_token %}
     {{ form.non_field_errors }}
 
+    <!-- hidden para armazenar a escolha do usuário -->
+    <input type="hidden" name="consentimento_envio" id="consentimento_envio" value="nao">
+
     <div class="form-group">
         <label for="{{ form.foto.id_for_label }}">Foto (Mostre seu melhor ângulo! 😉)</label>
         {{ form.foto.errors }}
@@ -429,7 +432,8 @@
         {{ form.informacoes_extras }}
     </div>
 
-    <button type="submit">Enviar</button>
+    <!-- Botão que abre o modal de confirmação -->
+    <button type="button" id="btnAbrirConfirmacao">Enviar</button>
 </form>
 
 <p class="politica-link">
@@ -451,13 +455,28 @@
 
 <!-- Modal WhatsApp -->
 <div id="modalWhatsApp" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('modalWhatsApp')">&times;</span>
-        <h3>Fale conosco pelo WhatsApp</h3>
-        <p>Estamos prontos para ajudar você!</p>
-        <a href="https://wa.me/5511999999999" target="_blank" class="btn-whatsapp">Abrir WhatsApp</a>
-    </div>
+  <div class="modal-content text-center">  <!-- ← ADICIONE text-center -->
+    <span class="close" onclick="closeModal('modalWhatsApp')">&times;</span>
+    <h3>Fale conosco pelo WhatsApp</h3>
+    <p>Estamos prontos para ajudar você!</p>
+    <a href="https://wa.me/5511999999999" target="_blank" class="btn-whatsapp">Abrir WhatsApp</a>
+  </div>
 </div>
+
+<!-- Modal Confirmar Envio -->
+<div id="modalConfirmEnvio" class="modal">
+  <div class="modal-content text-center">  <!-- ← ADICIONE text-center -->
+    <span class="close" onclick="closeModal('modalConfirmEnvio')">&times;</span>
+    <h3>Confirmar envio da inscrição</h3>
+    <p>Você confirma que leu e aceita a Política de Privacidade e autoriza o envio desta inscrição?</p>
+
+    <div class="d-flex gap-2 mt-3 justify-content-center"> <!-- ← centraliza botões -->
+      <button type="button" class="btn btn-secondary" id="btnNegarEnvio">Não</button>
+      <button type="button" class="btn btn-primary" id="btnConfirmarEnvio">Aceito e Enviar</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- Caixinha flutuante WhatsApp -->
 <div id="whatsapp-flutuante" title="Fale conosco pelo WhatsApp" onclick="openModal('modalWhatsApp')">🙋🏼‍♂️</div>
@@ -477,6 +496,11 @@
             m.style.display = 'none';
             document.body.classList.remove('modal-open');
         }
+
+        // Expor para uso em onclick do HTML
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+
         document.querySelectorAll('[data-open-modal]').forEach(btn =>
             btn.addEventListener('click', () => openModal(btn.dataset.openModal))
         );
@@ -534,6 +558,49 @@
                     clearIncomplete: true
                 }).mask(altura);
             }
+        }
+
+        // ------- Confirmação de envio -------
+        const form = document.querySelector('form');
+        const btnAbrir = document.getElementById('btnAbrirConfirmacao');
+        const btnConfirmar = document.getElementById('btnConfirmarEnvio');
+        const btnNegar = document.getElementById('btnNegarEnvio');
+        const consentInput = document.getElementById('consentimento_envio');
+
+        let envioConfirmado = false;
+
+        // Ao clicar em "Enviar", abre o modal
+        if (btnAbrir) {
+            btnAbrir.addEventListener('click', () => openModal('modalConfirmEnvio'));
+        }
+
+        // Enter/submissão direta também abre o modal (se ainda não confirmado)
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                if (!envioConfirmado) {
+                    e.preventDefault();
+                    openModal('modalConfirmEnvio');
+                }
+            });
+        }
+
+        // Botão "Aceito e enviar"
+        if (btnConfirmar) {
+            btnConfirmar.addEventListener('click', () => {
+                envioConfirmado = true;
+                if (consentInput) consentInput.value = 'sim';
+                closeModal('modalConfirmEnvio');
+                form.submit();
+            });
+        }
+
+        // Botão "Não"
+        if (btnNegar) {
+            btnNegar.addEventListener('click', () => {
+                envioConfirmado = false;
+                if (consentInput) consentInput.value = 'nao';
+                closeModal('modalConfirmEnvio');
+            });
         }
     });
 </script>

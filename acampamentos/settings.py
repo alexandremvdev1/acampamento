@@ -183,6 +183,22 @@ else:
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
     DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or 'no-reply@eismeaqui.app.br'
 
+USE_WHATSAPP = True
+
+# Versão da Graph API (use a que aparece no seu app da Meta)
+WHATSAPP_API_VERSION = "v20.0"
+
+# IDs e Token (DADOS SENSÍVEIS – deixe assim só no DEV)
+WHATSAPP_PHONE_NUMBER_ID = "792121183974197"      # Identificação do número de telefone
+WHATSAPP_WABA_ID         = "1810959279459831"     # Identificação da conta do WhatsApp Business
+WHATSAPP_TOKEN = (
+    "EAASTcC655rUBPL1mS7bk9bBXds6SZBLRZAVFQ6Qgy613TUZB5hIL2CYAfrCMGsHI1NduM2YO3pNx5fph2QbeUgRpjwBwdis"
+    "TZAB8OLAZCwsOCRlYhV0ZCO5QrBIrjGwDMSZBePaEgjB3tA4XHMSM8qVGQUrXckWfgoAxGqSIwu2D4HMOZC6jZBUWn2LpXD"
+    "Hp3WFy3nClnUKXK9rnL4mdyigZBOWQdrCkuvwkxZBJtSG4w6HePZALoKUr2SD0Fd4Y4nXfpLlp"
+)
+
+# (Opcional) token de verificação do webhook em DEV — defina um qualquer se for usar webhook local
+WEBHOOK_VERIFY_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN", "dev-verify-token")
 # -----------------------------------------------------------------------------
 # Logging
 # -----------------------------------------------------------------------------

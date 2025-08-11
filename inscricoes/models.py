@@ -135,6 +135,19 @@ class EventoAcampamento(models.Model):
         else:
             return "Inscrições Encerradas"
 
+# --- IMPORTS (garanta estes no topo do models.py) ---
+from django.conf import settings
+from django.contrib.sites.models import Site
+from django.core.mail import EmailMultiAlternatives
+from django.urls import reverse
+from django.utils import timezone
+# tenta importar o cliente do WhatsApp (não quebra se não existir em dev)
+try:
+    from integracoes.whatsapp import send_text, send_template, normalizar_e164_br
+except Exception:
+    send_text = send_template = normalizar_e164_br = None
+
+
 class Inscricao(models.Model):
     participante = models.ForeignKey('Participante', on_delete=models.CASCADE)
     evento       = models.ForeignKey('EventoAcampamento', on_delete=models.CASCADE)
@@ -234,20 +247,24 @@ class Inscricao(models.Model):
         local = getattr(ev, "local", None) or getattr(ev, "local_evento", None) or "Local a definir"
         return data_str, local
 
+    def _telefone_e164(self) -> str | None:
+        """Normaliza telefone do participante para formato E.164 (+55...)."""
+        try:
+            tel = getattr(self.participante, "telefone", None)
+            return normalizar_e164_br(tel) if (normalizar_e164_br and tel) else None
+        except Exception:
+            return None
+
     # ---------------- E-mails ----------------
     def enviar_email_selecao(self):
         """
         1) Seleção Confirmada – “Você foi selecionado”
-        Assunto: 🎉 Parabéns! Você foi selecionado para participar do evento
-        (agora com botão para o Portal do Participante)
         """
         if not self.participante.email:
             return
-
         nome_app = self._site_name()
         data_evento, local_evento = self._evento_data_local()
-        portal_url = self.portal_participante_url  # botão principal
-        # opcional: link direto da inscrição (fallback)
+        portal_url = self.portal_participante_url
         link_inscricao = self.inscricao_url
 
         assunto = "🎉 Parabéns! Você foi selecionado para participar do evento"
@@ -265,18 +282,15 @@ class Inscricao(models.Model):
             "Nos vemos no evento!\n"
             f"Abraços,\nEquipe {nome_app}"
         )
-
         html = f"""
         <html><body style="font-family:Arial,sans-serif;color:#0f172a">
           <p>Olá <strong>{self.participante.nome}</strong>,</p>
           <p>Temos uma ótima notícia: você foi selecionado(a) para participar do
              <strong>{self.evento.nome}</strong>!</p>
           <p>Estamos muito felizes em tê-lo(a) conosco nesta experiência especial.</p>
-
           <p><strong>Detalhes do evento:</strong><br>
           📅 Data: {data_evento}<br>
           📍 Local: {local_evento}</p>
-
           <div style="margin:22px 0;">
             <a href="{portal_url}"
                style="display:inline-block;background:#0ea5e9;color:#fff;
@@ -285,19 +299,14 @@ class Inscricao(models.Model):
               Abrir Portal do Participante
             </a>
           </div>
-
           <p style="font-size:13px;color:#475569">
             Dica: se preferir, acesse sua inscrição diretamente:
             <a href="{link_inscricao}" style="color:#0ea5e9;text-decoration:none">{link_inscricao}</a>
           </p>
-
           <p>Nos vemos no evento!<br/>Abraços,<br/>Equipe {nome_app}</p>
         </body></html>
         """
-
-        msg = EmailMultiAlternatives(
-            assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email]
-        )
+        msg = EmailMultiAlternatives(assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email])
         msg.attach_alternative(html, "text/html")
         try:
             msg.send()
@@ -305,16 +314,11 @@ class Inscricao(models.Model):
             pass
 
     def enviar_email_pagamento_confirmado(self):
-        """
-        2) Pagamento Confirmado
-        Assunto: ✅ Pagamento confirmado – {{nome_evento}}
-        """
+        """2) Pagamento Confirmado"""
         if not self.participante.email:
             return
-
         nome_app = self._site_name()
         data_evento, local_evento = self._evento_data_local()
-
         assunto = f"✅ Pagamento confirmado – {self.evento.nome}"
         texto = (
             f"Olá {self.participante.nome},\n\n"
@@ -327,27 +331,21 @@ class Inscricao(models.Model):
             "Agora é só se preparar e aguardar o grande dia!\n\n"
             f"Até breve,\nEquipe {nome_app}"
         )
-
         html = f"""
         <html><body style="font-family:Arial,sans-serif;color:#0f172a">
           <p>Olá <strong>{self.participante.nome}</strong>,</p>
           <p>Recebemos a confirmação do seu pagamento para o
              <strong>{self.evento.nome}</strong>.</p>
           <p>Sua inscrição agora está totalmente garantida.</p>
-
           <p><strong>Resumo da inscrição:</strong><br>
           👤 Participante: {self.participante.nome}<br>
           📅 Data: {data_evento}<br>
           📍 Local: {local_evento}</p>
-
           <p>Agora é só se preparar e aguardar o grande dia!</p>
-          <p>Até breve,<br/>Equipe {nome_app}</p>
+          <p>Até breve,<br/>Equipe {self._site_name()}</p>
         </body></html>
         """
-
-        msg = EmailMultiAlternatives(
-            assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email]
-        )
+        msg = EmailMultiAlternatives(assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email])
         msg.attach_alternative(html, "text/html")
         try:
             msg.send()
@@ -355,17 +353,11 @@ class Inscricao(models.Model):
             pass
 
     def enviar_email_recebida(self):
-        """
-        3) Inscrição Enviada
-        Assunto: 📩 Inscrição recebida – {{nome_evento}}
-        (+ aviso do sorteio e e-mail caso seja selecionado)
-        """
+        """3) Inscrição Enviada"""
         if not self.participante.email:
             return
-
         nome_app = self._site_name()
         data_envio = timezone.localtime(self.data_inscricao).strftime("%d/%m/%Y %H:%M")
-
         assunto = f"📩 Inscrição recebida – {self.evento.nome}"
         texto = (
             f"Olá {self.participante.nome},\n\n"
@@ -378,31 +370,111 @@ class Inscricao(models.Model):
             "Fique de olho no seu e-mail para os próximos passos.\n\n"
             f"Atenciosamente,\nEquipe {nome_app}"
         )
-
         html = f"""
         <html><body style="font-family:Arial,sans-serif;color:#0f172a">
           <p>Olá <strong>{self.participante.nome}</strong>,</p>
           <p>Recebemos sua inscrição para o <strong>{self.evento.nome}</strong>.</p>
           <p>Nossa equipe vai analisar e, em breve, será realizado o sorteio dos participantes.
              Você receberá um e-mail caso seja selecionado(a).</p>
-
           <p><strong>Resumo do envio:</strong><br>
           📅 Data do envio: {data_envio}<br>
           📍 Evento: {self.evento.nome}</p>
-
           <p>Fique de olho no seu e-mail para os próximos passos.</p>
           <p>Atenciosamente,<br/>Equipe {nome_app}</p>
         </body></html>
         """
-
-        msg = EmailMultiAlternatives(
-            assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email]
-        )
+        msg = EmailMultiAlternatives(assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email])
         msg.attach_alternative(html, "text/html")
         try:
             msg.send()
         except Exception:
             pass
+
+    # ---------------- WhatsApp ----------------
+    def _whatsapp_disponivel(self) -> bool:
+        """Verifica toggle global e cliente importado."""
+        return bool(getattr(settings, "USE_WHATSAPP", False) and send_template and send_text)
+
+    def enviar_whatsapp_selecao(self):
+        """Mensagem: você foi selecionado(a). Usa template e fallback de texto."""
+        if not self._whatsapp_disponivel():
+            return
+        to = self._telefone_e164()
+        if not to:
+            return
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": self.participante.nome},
+                {"type": "text", "text": self.evento.nome},
+                {"type": "text", "text": self.portal_participante_url},
+            ],
+        }]
+        try:
+            send_template(to, "selecionado_confirmar_pagamento", components=components)
+        except Exception:
+            msg = (
+                f"Olá {self.participante.nome}! Você foi selecionado(a) para o {self.evento.nome} 🎉\n"
+                f"Acesse o Portal do Participante: {self.portal_participante_url}"
+            )
+            try:
+                send_text(to, msg)
+            except Exception:
+                pass
+
+    def enviar_whatsapp_pagamento_confirmado(self):
+        """Mensagem: pagamento confirmado."""
+        if not self._whatsapp_disponivel():
+            return
+        to = self._telefone_e164()
+        if not to:
+            return
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": self.participante.nome},
+                {"type": "text", "text": self.evento.nome},
+            ],
+        }]
+        try:
+            send_template(to, "pagamento_confirmado", components=components)
+        except Exception:
+            msg = (
+                f"✅ Pagamento confirmado, {self.participante.nome}!\n"
+                f"Sua inscrição para {self.evento.nome} está garantida. Nos vemos lá!"
+            )
+            try:
+                send_text(to, msg)
+            except Exception:
+                pass
+
+    def enviar_whatsapp_recebida(self):
+        """Mensagem: inscrição recebida."""
+        if not self._whatsapp_disponivel():
+            return
+        to = self._telefone_e164()
+        if not to:
+            return
+        data_envio = timezone.localtime(self.data_inscricao).strftime("%d/%m/%Y %H:%M")
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": self.participante.nome},
+                {"type": "text", "text": self.evento.nome},
+                {"type": "text", "text": data_envio},
+            ],
+        }]
+        try:
+            send_template(to, "inscricao_recebida", components=components)
+        except Exception:
+            msg = (
+                f"📩 Oi {self.participante.nome}! Recebemos sua inscrição para {self.evento.nome}.\n"
+                f"Data do envio: {data_envio}. Avisaremos se for selecionado(a)."
+            )
+            try:
+                send_text(to, msg)
+            except Exception:
+                pass
 
     # ---------------- Disparos automáticos ----------------
     def save(self, *args, **kwargs):
@@ -428,10 +500,16 @@ class Inscricao(models.Model):
         # Dispara após salvar (sem travar o fluxo em caso de erro)
         if enviar_selecao:
             self.enviar_email_selecao()
+            self.enviar_whatsapp_selecao()
+
         if enviar_pagto_ok:
             self.enviar_email_pagamento_confirmado()
+            self.enviar_whatsapp_pagamento_confirmado()
+
         if enviar_recebida:
             self.enviar_email_recebida()
+            self.enviar_whatsapp_recebida()
+
 
 
 class Pagamento(models.Model):
@@ -852,3 +930,47 @@ class MercadoPagoConfig(models.Model):
 
     def __str__(self):
         return f"MP Config para {self.paroquia.nome}"
+    
+class PreferenciasComunicacao(models.Model):
+    FONTE_CHOICES = [
+        ('form', 'Formulário/Portal'),
+        ('admin', 'Admin'),
+        ('import', 'Importação'),
+    ]
+
+    participante = models.OneToOneField(
+        'Participante', on_delete=models.CASCADE, related_name='prefs'
+    )
+    # Opt-in específico para mensagens de MARKETING no WhatsApp
+    whatsapp_marketing_opt_in = models.BooleanField(
+        default=False,
+        verbose_name="Aceita marketing no WhatsApp"
+    )
+    whatsapp_optin_data = models.DateTimeField(null=True, blank=True)
+    whatsapp_optin_fonte = models.CharField(max_length=20, choices=FONTE_CHOICES, default='admin')
+    whatsapp_optin_prova = models.TextField(
+        blank=True, null=True,
+        help_text="Como foi coletado (ex.: checkbox marcado, IP, carimbo de data/hora, etc.)"
+    )
+    politica_versao = models.CharField(max_length=20, blank=True, null=True)
+
+    def __str__(self):
+        return f"Preferências de {self.participante.nome}"
+
+    def marcar_optin_marketing(self, fonte='admin', prova=None, versao=None):
+        self.whatsapp_marketing_opt_in = True
+        self.whatsapp_optin_data = timezone.now()
+        self.whatsapp_optin_fonte = fonte
+        if prova:
+            self.whatsapp_optin_prova = prova
+        if versao:
+            self.politica_versao = versao
+        self.save()
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=Participante)
+def criar_prefs(sender, instance, created, **kwargs):
+    if created:
+        PreferenciasComunicacao.objects.create(participante=instance)
