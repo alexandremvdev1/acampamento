@@ -66,6 +66,7 @@ from .forms import (
     InscricaoServosForm,
     EventoForm,
     ConjugeForm,
+    MercadoPagoConfigForm
 )
 
 User = get_user_model()
@@ -212,29 +213,51 @@ def admin_geral_delete_usuario(request, pk):
 def admin_paroquia_painel(request, paroquia_id=None):
     user = request.user
 
-    # Se for admin paroquial
-    if user.is_admin_paroquia():
-        if not user.paroquia:
-            messages.error(request, "⚠️ Sua conta não está vinculada a uma paróquia.")
-            return redirect('logout')
-        paroquia = user.paroquia
+    # --- Detecta papeis com fallback ---
+    # is_admin_paroquia: usa método se existir; senão checa tipo_usuario
+    if hasattr(user, "is_admin_paroquia") and callable(user.is_admin_paroquia):
+        is_admin_paroquia = user.is_admin_paroquia()
+    else:
+        is_admin_paroquia = getattr(user, "tipo_usuario", "") == "admin_paroquia"
 
-    # Se for admin geral, acessando com ID explícito
-    elif user.is_admin_geral():
+    # is_admin_geral: usa método se existir; senão checa superuser/tipo_usuario
+    if hasattr(user, "is_admin_geral") and callable(user.is_admin_geral):
+        is_admin_geral = user.is_admin_geral()
+    else:
+        is_admin_geral = bool(getattr(user, "is_superuser", False)) or (
+            getattr(user, "tipo_usuario", "") == "admin_geral"
+        )
+
+    # --- Seleção da paróquia conforme o papel ---
+    if is_admin_paroquia:
+        paroquia = getattr(user, "paroquia", None)
+        if not paroquia:
+            messages.error(request, "⚠️ Sua conta não está vinculada a uma paróquia.")
+            return redirect('inscricoes:logout')
+    elif is_admin_geral:
         if not paroquia_id:
             messages.error(request, "⚠️ Paróquia não especificada.")
             return redirect('inscricoes:admin_geral_list_paroquias')
         paroquia = get_object_or_404(Paroquia, id=paroquia_id)
-
     else:
         messages.error(request, "⚠️ Você não tem permissão para acessar este painel.")
-        return redirect('logout')
+        return redirect('inscricoes:logout')
 
-    eventos = EventoAcampamento.objects.filter(paroquia=paroquia)
+    # --- Eventos da paróquia (mais recentes primeiro) ---
+    if hasattr(EventoAcampamento, "created_at"):
+        eventos = (EventoAcampamento.objects
+                   .filter(paroquia=paroquia)
+                   .order_by('-data_inicio', '-created_at'))
+    else:
+        eventos = (EventoAcampamento.objects
+                   .filter(paroquia=paroquia)
+                   .order_by('-data_inicio'))
 
     return render(request, 'inscricoes/admin_paroquia_painel.html', {
         'paroquia': paroquia,
         'eventos': eventos,
+        'is_admin_paroquia': is_admin_paroquia,  # <- use no template
+        'is_admin_geral': is_admin_geral,        # <- se precisar
     })
 
 @login_required

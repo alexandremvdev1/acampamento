@@ -40,11 +40,29 @@
             margin-bottom: 20px;
         }
 
+        /* bloco do título (nome + logo + boas-vindas) */
+        .title-area { display: flex; flex-direction: column; gap: 4px; }
+        .title-row { display: flex; align-items: center; gap: 12px; }
+
         h1 {
             margin: 0;
             font-size: 2em;
             color: var(--secondary-color);
-            flex-grow: 1;
+        }
+
+        .paroquia-logo {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+        }
+
+        .welcome {
+            font-size: 0.95em;
+            color: var(--light-text);
+            font-weight: 600;
         }
 
         form button {
@@ -59,20 +77,21 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        form button:hover {
-            background: #c0392b;
-        }
+        form button:hover { background: #c0392b; }
 
         .section-buttons {
             margin: 25px 0;
-            text-align: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-start;
+            align-items: center;
         }
 
-        a.btn {
+        a.btn, a.btna, a.btns {
             display: inline-block;
             padding: 12px 20px;
             margin: 5px 10px;
-            background: var(--success-color);
             color: white;
             text-decoration: none;
             border-radius: 8px;
@@ -80,45 +99,13 @@
             box-shadow: 0 3px 6px rgba(41, 128, 185, 0.2);
             transition: background-color 0.3s ease, transform 0.2s ease;
         }
+        a.btn  { background: var(--success-color); }
+        a.btna { background: var(--accent-color);  }
+        a.btns { background: var(--primary-color); }
 
-        a.btna {
-            display: inline-block;
-            padding: 12px 20px;
-            margin: 5px 10px;
-            background: var(--accent-color);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            box-shadow: 0 3px 6px rgba(41, 128, 185, 0.2);
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-
-        a.btns {
-            display: inline-block;
-            padding: 12px 20px;
-            margin: 5px 10px;
-            background: var(--primary-color);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            box-shadow: 0 3px 6px rgba(41, 128, 185, 0.2);
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-
-        a.btn:hover {
-            background: #27ae60;
-            transform: translateY(-2px);
-        }
-
-        a.btna:hover {
-            background: #e67e22;
-        }
-
-        a.btns:hover {
-            background: #2980b9;
-        }
+        a.btn:hover  { background: #27ae60; transform: translateY(-2px); }
+        a.btna:hover { background: #e67e22; }
+        a.btns:hover { background: #2980b9; }
 
         .cards-container {
             display: grid;
@@ -138,91 +125,22 @@
             border: 1px solid var(--dark-bg);
         }
 
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
-        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 6px 15px rgba(0,0,0,.15); }
+        .card-header { font-weight: 700; font-size: 1.2em; margin-bottom: 8px; color: var(--secondary-color); }
+        .card-info { font-size: 0.95em; color: var(--light-text); margin-bottom: 15px; line-height: 1.4; }
+        .card-link { font-weight: 600; color: var(--primary-color); word-break: break-word; font-size: 0.9em; margin-bottom: 15px; }
+        .card-link a { color: inherit; text-decoration: none; transition: color .3s ease; }
+        .card-link a:hover { text-decoration: underline; color: var(--accent-color); }
 
-        .card-header {
-            font-weight: 700;
-            font-size: 1.2em;
-            margin-bottom: 8px;
-            color: var(--secondary-color);
-        }
-
-        .card-info {
-            font-size: 0.95em;
-            color: var(--light-text);
-            margin-bottom: 15px;
-            line-height: 1.4;
-        }
-
-        .card-link {
-            font-weight: 600;
-            color: var(--primary-color);
-            word-break: break-word;
-            font-size: 0.9em;
-            margin-bottom: 15px;
-        }
-
-        .card-link a {
-            color: inherit;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        .card-link a:hover {
-            text-decoration: underline;
-            color: var(--accent-color);
-        }
-
-        .card-actions {
-            margin-top: auto;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .card-actions a {
-            flex: 1 1 auto;
-            text-align: center;
-            padding: 10px 16px;
-            font-size: 0.9em;
-            border-radius: 8px;
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            box-shadow: 0 3px 6px rgba(41, 128, 185, 0.2);
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-
-        .card-actions a:hover {
-            transform: translateY(-2px);
-        }
-
-        .edit-btn {
-            background-color: var(--primary-color);
-        }
-
-        .edit-btn:hover {
-            background-color: #2980b9;
-        }
-
-        .delete-btn {
-            background-color: var(--danger-color);
-        }
-
-        .delete-btn:hover {
-            background-color: #c0392b;
-        }
-
-        .view-btn {
-            background-color: var(--success-color);
-        }
-
-        .view-btn:hover {
-            background-color: #27ae60;
-        }
+        .card-actions { margin-top: auto; display: flex; flex-wrap: wrap; gap: 10px; }
+        .card-actions a { flex: 1 1 auto; text-align: center; padding: 10px 16px; font-size: 0.9em; border-radius: 8px; color: white; text-decoration: none; font-weight: 600; box-shadow: 0 3px 6px rgba(41,128,185,.2); transition: background-color .3s ease, transform .2s ease; }
+        .card-actions a:hover { transform: translateY(-2px); }
+        .edit-btn { background-color: var(--primary-color); }
+        .edit-btn:hover { background-color: #2980b9; }
+        .delete-btn { background-color: var(--danger-color); }
+        .delete-btn:hover { background-color: #c0392b; }
+        .view-btn { background-color: var(--success-color); }
+        .view-btn:hover { background-color: #27ae60; }
 
         .back-button {
             display: inline-block;
@@ -235,83 +153,77 @@
             transition: background-color 0.3s ease;
             margin-bottom: 20px;
         }
-
-        .back-button:hover {
-            background-color: #555;
-        }
+        .back-button:hover { background-color: #555; }
 
         @media (max-width: 768px) {
-            h1 {
-                font-size: 1.7em;
-            }
-
-            .section-buttons {
-                margin: 20px 0;
-            }
-
-            a.btn {
-                padding: 10px 16px;
-                font-size: 0.9em;
-            }
-
-            .cards-container {
-                grid-template-columns: 1fr;
-            }
+            h1 { font-size: 1.7em; }
+            .section-buttons { margin: 20px 0; }
+            a.btn { padding: 10px 16px; font-size: 0.9em; }
+            .cards-container { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>{{ paroquia.nome }}</h1>
+        <div class="title-area">
+            <div class="title-row">
+                {% if paroquia.logo %}
+                  <img class="paroquia-logo" src="{{ paroquia.logo.url }}" alt="Logo da {{ paroquia.nome }}">
+                {% endif %}
+                <h1>{{ paroquia.nome }}</h1>
+            </div>
+            <div class="welcome">
+                Bem-vindo(a), {{ user.get_full_name|default:user.username }}!
+            </div>
+        </div>
+
         <form method="POST" action="{% url 'inscricoes:logout' %}">
             {% csrf_token %}
             <button type="submit">Sair</button>
         </form>
     </header>
 
-    {% if user.is_superuser %}
+    {% if is_admin_paroquia %}
         <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="back-button">Voltar para Lista de Paróquias</a>
     {% endif %}
-
     <div class="section-buttons">
         <a href="{% url 'inscricoes:evento_novo' %}" class="btn">➕ Novo Evento</a>
-        <a href="{% url 'inscricoes:eventos_listar' %}" class="btna">📋 Meus Eventos</a>
-        <a href="{% url 'inscricoes:inscricoes_listar' %}" class="btns">📝 Inscrições ({{ total_inscricoes }})</a>
-        <!-- Botão Mercado Pago -->
-        <a href="{% url 'inscricoes:mp_config' %}" class="btn">💳 Mercado Pago</a>
+        <a href="{% url 'inscricoes:mp_config' %}" class="btn">💳 Mercado Pago Config</a>
     </div>
-<div class="card" style="margin-top:16px;">
-  <div class="card-header">Link público do Portal do Participante</div>
-  <div class="card-info">
-    Envie este link para que o participante acesse com CPF e efetue o pagamento:
-  </div>
 
-  <div class="card-link" id="portal-link">
-    <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" target="_blank">
-      {{ request.build_absolute_uri|slice:"://"|yesno:""|default:"" }}{% url 'inscricoes:minhas_inscricoes_por_cpf' %}
-    </a>
-  </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="card-header">Link público do Portal do Participante</div>
+      <div class="card-info">
+        Envie este link para que o participante acesse com CPF e efetue o pagamento:
+      </div>
 
-  <div class="card-actions">
-    <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" class="view-btn" target="_blank">🔗 Abrir portal</a>
-    <a href="#" class="edit-btn" onclick="copyPortalLink(event)">📋 Copiar link</a>
-  </div>
-</div>
+      <div class="card-link" id="portal-link">
+        <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" target="_blank">
+          {{ request.scheme }}://{{ request.get_host }}{% url 'inscricoes:minhas_inscricoes_por_cpf' %}
+        </a>
+      </div>
 
-<script>
-  function copyPortalLink(e){
-    e.preventDefault();
-    const a = document.querySelector('#portal-link a');
-    if(!a) return;
-    const url = a.href;
-    navigator.clipboard.writeText(url).then(()=>{
-      const btn = e.currentTarget;
-      const old = btn.textContent;
-      btn.textContent = '✅ Copiado!';
-      setTimeout(()=> btn.textContent = old, 1800);
-    });
-  }
-</script>
+      <div class="card-actions">
+        <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" class="view-btn" target="_blank">🔗 Abrir portal</a>
+        <a href="#" class="edit-btn" onclick="copyPortalLink(event)">📋 Copiar link</a>
+      </div>
+    </div>
+
+    <script>
+      function copyPortalLink(e){
+        e.preventDefault();
+        const a = document.querySelector('#portal-link a');
+        if(!a) return;
+        const url = a.href;
+        navigator.clipboard.writeText(url).then(()=>{
+          const btn = e.currentTarget;
+          const old = btn.textContent;
+          btn.textContent = '✅ Copiado!';
+          setTimeout(()=> btn.textContent = old, 1800);
+        });
+      }
+    </script>
+
     <h2>Eventos Recentes</h2>
 
     {% if eventos %}
