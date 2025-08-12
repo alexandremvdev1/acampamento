@@ -316,3 +316,16 @@ class MercadoPagoConfigAdmin(admin.ModelAdmin):
     list_display = ('paroquia', 'public_key', 'sandbox_mode')
     list_filter  = ('sandbox_mode',)
     search_fields = ('paroquia__nome',)
+
+from .models import PoliticaReembolso
+
+@admin.register(PoliticaReembolso)
+class PoliticaReembolsoAdmin(admin.ModelAdmin):
+    list_display = (
+        'evento', 'ativo', 'permite_reembolso',
+        'prazo_solicitacao_dias', 'taxa_administrativa_percent',
+        'contato_email', 'contato_whatsapp',
+        'data_atualizacao',
+    )
+    list_filter = ('ativo', 'permite_reembolso',)
+    search_fields = ('evento__nome', 'contato_email', 'contato_whatsapp')

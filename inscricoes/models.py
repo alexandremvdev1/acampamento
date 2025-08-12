@@ -10,6 +10,9 @@ from django.urls import reverse
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
+from decimal import Decimal
+from django.core.validators import MinValueValidator, MaxValueValidator
+
 from cloudinary.models import CloudinaryField
 
 
@@ -1047,3 +1050,55 @@ from django.dispatch import receiver
 def criar_prefs(sender, instance, created, **kwargs):
     if created:
         PreferenciasComunicacao.objects.create(participante=instance)
+
+# --- Politica de Reembolso ---
+
+class PoliticaReembolso(models.Model):
+    evento = models.OneToOneField(
+        'EventoAcampamento',
+        on_delete=models.CASCADE,
+        related_name='politica_reembolso',
+        help_text="Cada evento pode ter (no máximo) uma política de reembolso."
+    )
+    ativo = models.BooleanField(default=True)
+    permite_reembolso = models.BooleanField(
+        default=True,
+        help_text="Se desmarcado, o evento não aceitará solicitações de reembolso."
+    )
+
+    # Regras simples
+    prazo_solicitacao_dias = models.PositiveIntegerField(
+        default=7,
+        help_text="Quantos dias ANTES do início do evento o participante pode solicitar reembolso."
+    )
+    taxa_administrativa_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00')), MaxValueValidator(Decimal('100.00'))],
+        help_text="Percentual descontado no reembolso (0 a 100)."
+    )
+
+    # Texto livre para detalhar a regra
+    descricao = models.TextField(
+        blank=True,
+        help_text=(
+            "Texto exibido ao participante com os critérios de reembolso. "
+            "Ex.: Reembolso integral até 7 dias antes; após isso, 70%."
+        )
+    )
+
+    # Contatos (opcionais)
+    contato_email = models.EmailField(blank=True, null=True)
+    contato_whatsapp = models.CharField(
+        max_length=20, blank=True, null=True,
+        help_text="WhatsApp em E.164 (ex.: +5563920013103)."
+    )
+
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Política de Reembolso"
+        verbose_name_plural = "Políticas de Reembolso"
+
+    def __str__(self):
+        return f"Política de Reembolso – {self.evento.nome}"

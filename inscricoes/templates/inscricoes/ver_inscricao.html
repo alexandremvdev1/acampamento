@@ -1,344 +1,252 @@
 {% load static %}
 <html lang="pt-br">
-
 <head>
-    <meta charset="UTF-8" />
-    <title>Inscrição Concluída - {{ evento.nome }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-        /* Reset simples */
-        * {
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <title>Inscrição Concluída - {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* Reset simples */
+    * { box-sizing: border-box; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-                Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-            max-width: 480px;
-            margin: 20px auto;
-            padding: 15px;
-            background-color: #dadada;
-            color: #333;
-        }
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Open Sans","Helvetica Neue",sans-serif;
+      max-width:480px;margin:20px auto;padding:15px;background-color:#dadada;color:#333;
+    }
 
-        header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+    header{text-align:center;margin-bottom:20px;}
+    header img{max-width:100%;height:auto;border-radius:8px;margin-bottom:12px;box-shadow:0 4px 6px rgba(0,0,0,.1);}
 
-        header img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
+    .mensagem{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,.1);margin-bottom:25px;text-align:center;}
+    .mensagem p{font-size:1.1rem;margin:12px 0;color:#444;line-height:1.4;}
 
-        .mensagem {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            margin-bottom: 25px;
-            text-align: center;
-        }
+    .imagem-personalizada{width:100%;max-height:1300px;object-fit:contain;margin:15px 0;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);}
 
-        .mensagem p {
-            font-size: 1.1rem;
-            margin: 12px 0;
-            color: #444;
-            line-height: 1.4;
-        }
+    .btn-pagar{flex:1 1 45%;min-width:140px;text-align:center;padding:12px 10px;border-radius:6px;text-decoration:none;font-weight:700;color:#fff;transition:opacity .2s;}
+    .btn-pagar:hover{opacity:.9}
+    .btn-pagar-pix{background:#009443}
+    .btn-pagar-cartao{background:#007bff}
 
-        .imagem-personalizada {
-            width: 100%;
-            max-height: 1300px;
-            object-fit: contain;
-            margin: 15px 0;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
+    .pagamento-opcoes{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
 
-        .btn-pagar {
-            display: inline-block;
-            background: #009443;
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: bold;
-            margin: 16px auto;
-        }
+    .info-valor{font-size:.9rem;color:#555;margin-bottom:25px;background:#fff;padding:15px 20px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);}
 
-        .btn-pagar:hover {
-            opacity: 0.9;
-        }
+    /* Link que abre o modal */
+    .link-modal{
+      color:#0d6efd;text-decoration:underline;cursor:pointer;font-weight:600;
+    }
+    .link-modal:hover{opacity:.85}
 
-        .info-valor {
-            font-size: 0.9rem;
-            color: #555;
-            margin-bottom: 25px;
-            background: #fff;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-        }
+    /* Modal genérico */
+    .modal{
+      display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;
+      background:rgba(0,0,0,.5);
+    }
+    .modal-content{
+      background:#fff;border-radius:12px;max-width:520px;margin:10% auto;padding:18px 18px 22px;position:relative;
+      box-shadow:0 10px 30px rgba(0,0,0,.2);
+    }
+    .modal-close{
+      position:absolute;right:10px;top:6px;font-size:26px;line-height:1;color:#999;cursor:pointer;border:0;background:transparent;
+    }
+    .modal-close:hover{color:#000}
+    .modal-content h3{margin:0 0 10px;text-align:center;color:#222}
+    .modal-content .muted{color:#64748b;font-size:.9rem}
+    .modal-content .pill{
+      display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:4px 10px;font-size:.8rem;font-weight:700
+    }
+    .modal-actions{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+    .btn-outline{
+      display:inline-block;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;text-decoration:none;color:#111827;font-weight:600
+    }
+    .btn-outline:hover{background:#f9fafb}
 
-        .linha-do-tempo {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 30px;
-        }
+    .linha-do-tempo{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin-bottom:30px;}
+    .linha-do-tempo h2{margin-bottom:18px;font-size:1.3rem;color:#222;text-align:center;}
+    .timeline-step{display:flex;align-items:center;margin-bottom:15px;font-size:1rem;color:#666;}
+    .timeline-step:last-child{margin-bottom:0;}
+    .timeline-step::before{
+      content:attr(data-step);display:inline-flex;justify-content:center;align-items:center;width:28px;height:28px;margin-right:15px;
+      border-radius:50%;border:2px solid #999;color:#999;font-weight:700;background:transparent;
+    }
+    .timeline-step.active{color:#2e7d32;font-weight:700;}
+    .timeline-step.active::before{border-color:#2e7d32;background:#2e7d32;color:#fff;}
 
-        .linha-do-tempo h2 {
-            margin-bottom: 18px;
-            font-size: 1.3rem;
-            color: #222;
-            text-align: center;
-        }
+    .btn-ajuda{display:block;width:100%;max-width:320px;margin:0 auto 12px;color:#fff;padding:14px;font-size:1.1rem;font-weight:700;border:0;border-radius:8px;text-align:center;text-decoration:none;}
+    .btn-organizacao{background:#25D366}
+    .btn-organizacao:hover{background:#128C7E}
 
-        .timeline-step {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            font-size: 1rem;
-            color: #666;
-        }
+    .btn-pequeno{display:inline-block;width:48%;margin:0 auto 12px;color:#fff;padding:8px;font-size:.6rem;font-weight:700;border:0;border-radius:8px;text-align:center;text-decoration:none;}
+    .btn-suporte-whatsapp{background:#128C7E}
+    .btn-suporte-whatsapp:hover{background:#075E54}
+    .btn-suporte-email{background:#007bff}
+    .btn-suporte-email:hover{background:#0056b3}
 
-        .timeline-step:last-child {
-            margin-bottom: 0;
-        }
+    .contatos{text-align:center;margin-top:20px;}
 
-        .timeline-step::before {
-            content: attr(data-step);
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            width: 28px;
-            height: 28px;
-            margin-right: 15px;
-            border-radius: 50%;
-            border: 2px solid #999;
-            color: #999;
-            font-weight: 700;
-            background-color: transparent;
-        }
-
-        .timeline-step.active {
-            color: #2e7d32;
-            font-weight: 700;
-        }
-
-        .timeline-step.active::before {
-            border-color: #2e7d32;
-            background-color: #2e7d32;
-            color: white;
-        }
-
-        .btn-ajuda {
-            display: block;
-            width: 100%;
-            max-width: 320px;
-            margin: 0 auto 12px auto;
-            color: white;
-            padding: 14px;
-            font-size: 1.1rem;
-            font-weight: 700;
-            border: none;
-            border-radius: 8px;
-            text-align: center;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .btn-organizacao {
-            background-color: #25D366;
-            /* Cor do WhatsApp */
-        }
-
-        .btn-organizacao:hover {
-            background-color: #128C7E;
-        }
-
-        .btn-pequeno {
-            display: inline-block;
-            width: 48%;
-            /* Ajuste para ocupar metade da largura */
-            margin: 0 auto 12px auto;
-            color: white;
-            padding: 8px;
-            /* Reduzindo o padding */
-            font-size: 0.6rem;
-            /* Reduzindo a fonte */
-            font-weight: 700;
-            border: none;
-            border-radius: 8px;
-            text-align: center;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .btn-suporte-whatsapp {
-            background-color: #128C7E;
-            /* Cor do WhatsApp mais escura */
-        }
-
-        .btn-suporte-whatsapp:hover {
-            background-color: #075E54;
-        }
-
-        .btn-suporte-email {
-            background-color: #007bff;
-            /* Cor padrão do botão de ajuda */
-        }
-
-        .btn-suporte-email:hover {
-            background-color: #0056b3;
-        }
-
-        .contatos {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .btn-pagar {
-            flex: 1 1 45%; /* Ocupa quase metade, com gap */
-            min-width: 140px;
-            text-align: center;
-            padding: 12px 10px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: bold;
-            color: #fff;
-            transition: opacity 0.2s ease;
-        }
-
-        .btn-pagar:hover {
-            opacity: 0.9;
-        }
-
-        .btn-pagar-pix {
-            background-color: #009443; /* Verde PIX */
-        }
-
-        .btn-pagar-cartao {
-            background-color: #007bff; /* Azul Cartão */
-        }
-
-        .pagamento-opcoes {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-         margin-top: 10px;
-        }
-
-        @media (max-width: 480px) {
-        .btn-pagar {
-            flex: 1 1 calc(50% - 10px); /* Mantém lado a lado no celular */
-            font-size: 0.9rem;
-            padding: 10px;
-        }
-  }
-</style>
-
-    </style>
+    @media (max-width:480px){
+      .btn-pagar{flex:1 1 calc(50% - 10px);font-size:.9rem;padding:10px;}
+      .modal-content{margin:18% 12px;}
+    }
+  </style>
 </head>
-
 <body>
-    <header>
-        {% if evento.banner %}
-        <img src="{{ evento.banner.url }}" alt="Banner do Evento {{ evento.nome }}" />
-        {% endif %}
-    </header>
+  <header>
+    {% if evento.banner %}
+      <img src="{{ evento.banner.url }}" alt="Banner do Evento {{ evento.nome }}" />
+    {% endif %}
+  </header>
 
-    <!-- Mensagem inicial -->
-    <section class="mensagem" role="main" aria-labelledby="titulo-principal">
-        <h1 id="titulo-principal">Parabéns! Sua inscrição foi enviada.</h1>
-        <p>
-            <strong>{{ inscricao.participante.nome }}</strong>, você já é quase um
-            {% if evento.tipo == 'senior' %}campista
-            {% elif evento.tipo == 'juvenil' %}juvenilista
-            {% elif evento.tipo == 'mirim' %}mirinista
-            {% elif evento.tipo == 'servos' %}servo
-            {% else %}campista{% endif %}!
-        </p>
-        <p>Você já concluiu a primeira parte, aguarde e fique em oração pelo seu chamado!</p>
+  <!-- Mensagem inicial -->
+  <section class="mensagem" role="main" aria-labelledby="titulo-principal">
+    <h1 id="titulo-principal">Parabéns! Sua inscrição foi enviada.</h1>
+    <p>
+      <strong>{{ inscricao.participante.nome }}</strong>, você já é quase um
+      {% if evento.tipo == 'senior' %}campista
+      {% elif evento.tipo == 'juvenil' %}juvenilista
+      {% elif evento.tipo == 'mirim' %}mirinista
+      {% elif evento.tipo == 'servos' %}servo
+      {% else %}campista{% endif %}!
+    </p>
+    <p>Você já concluiu a primeira parte, aguarde e fique em oração pelo seu chamado!</p>
 
-        {% if politica.imagem_1 %}
-        <img src="{{ politica.imagem_1.url }}" alt="Imagem representativa" class="imagem-personalizada"
-            loading="lazy" />
-        {% endif %}
-    </section>
+    {% if politica.imagem_1 %}
+      <img src="{{ politica.imagem_1.url }}" alt="Imagem representativa" class="imagem-personalizada" loading="lazy" />
+    {% endif %}
+  </section>
 
-    {% if inscricao.foi_selecionado and not inscricao.pagamento_confirmado %}
-  <div style="text-align:center; margin-bottom:15px;">
-    <p>🎉 Você foi selecionado(a)! Para garantir sua vaga, escolha uma forma de pagamento:</p>
-    <p><strong>Valor: R$ {{ evento.valor_inscricao|floatformat:2 }}</strong></p>
+  {% if inscricao.foi_selecionado and not inscricao.pagamento_confirmado %}
+    <div style="text-align:center; margin-bottom:15px;">
+      <p>🎉 Você foi selecionado(a)! Para garantir sua vaga, escolha uma forma de pagamento:</p>
+      <p><strong>Valor: R$ {{ evento.valor_inscricao|floatformat:2 }}</strong></p>
 
-    <div class="pagamento-opcoes">
-  <a href="{% url 'inscricoes:iniciar_pagamento_pix' inscricao.id %}"
-     class="btn-pagar btn-pagar-pix"
-     aria-label="Pagar com PIX (recomendado)">
-     Pagar com PIX
-  </a>
-
-  <a href="{% url 'inscricoes:aguardando_pagamento' inscricao.id %}"
-     class="btn-pagar btn-pagar-cartao"
-     aria-label="Pagar com Cartão (Mercado Pago)">
-     Pagar com Cartão
-  </a>
-</div>
-
-  </div>
-{% endif %}
-    <!-- Info valor e reembolso -->
-    <section class="info-valor" aria-label="Informações sobre pagamento e reembolso">
-        <p>
-            <strong>Importante:</strong> O valor da inscrição é de R$ {{ evento.valor_inscricao|floatformat:2 }}.
-        </p>
-        <p>
-            Em caso de desistência, consulte nossa política de reembolso no site ou entre em contato conosco.
-        </p>
-    </section>
-
-    <!-- Linha do tempo -->
-    <section class="linha-do-tempo" aria-label="Linha do tempo da inscrição">
-        <h2>Linha do Tempo da Inscrição</h2>
-        {% for passo in passos|slice:":4" %}
-        {% if forloop.counter <= inscricao_status %}
-        <div class="timeline-step active" data-step="{{ forloop.counter }}">
-            {{ forloop.counter }}. {{ passo }}
-        </div>
-        {% else %}
-        <div class="timeline-step" data-step="{{ forloop.counter }}">
-            {{ forloop.counter }}. {{ passo }}
-        </div>
-        {% endif %}
-        {% endfor %}
-    </section>
-
-    <!-- Contatos -->
-    <section class="contatos" aria-label="Contatos">
-        <a href="https://wa.me/{{ inscricao.paroquia.telefone|slice:'3:' }}"
-            class="btn-ajuda btn-organizacao" target="_blank" rel="noopener"
-            aria-label="Abrir WhatsApp para contato com a paróquia">
-            <span role="img" aria-label="WhatsApp"></span> Fale com a Organização
+      <div class="pagamento-opcoes">
+        <a href="{% url 'inscricoes:iniciar_pagamento_pix' inscricao.id %}"
+           class="btn-pagar btn-pagar-pix"
+           aria-label="Pagar com PIX (recomendado)">
+          Pagar com PIX
         </a>
 
-        <div style="display: flex; justify-content: space-between; width: 100%; max-width: 320px; margin: 0 auto;">
-            <a href="https://wa.me/5563920013103" class="btn-pequeno btn-suporte-whatsapp" target="_blank"
-                rel="noopener" aria-label="Abrir WhatsApp para suporte">
-                <span role="img" aria-label="WhatsApp"></span>WhatsApp do Suporte
-            </a>
-            <a href="mailto:alexandremv.dev@gmail.com" class="btn-pequeno btn-suporte-email"
-                aria-label="Enviar email para suporte">
-                <span role="img" aria-label="Email"></span>Email do Suporte
-            </a>
-        </div>
-    </section>
-</body>
+        <a href="{% url 'inscricoes:aguardando_pagamento' inscricao.id %}"
+           class="btn-pagar btn-pagar-cartao"
+           aria-label="Pagar com Cartão (Mercado Pago)">
+          Pagar com Cartão
+        </a>
+      </div>
+    </div>
+  {% endif %}
 
+  <!-- Info valor + link para Política de Reembolso -->
+  <section class="info-valor" aria-label="Informações sobre pagamento e reembolso">
+    <p>
+      <strong>Importante:</strong> O valor da inscrição é de R$ {{ evento.valor_inscricao|floatformat:2 }}.
+    </p>
+    <p>
+      Em caso de desistência, consulte a
+      <span class="link-modal" id="abrirPoliticaReembolso">Política de Reembolso</span>
+      ou entre em contato conosco.
+    </p>
+  </section>
+
+  <!-- Modal: Política de Reembolso -->
+  <div id="modalReembolso" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloModalReembolso">
+    <div class="modal-content">
+      <button class="modal-close" type="button" aria-label="Fechar">&times;</button>
+      <h3 id="tituloModalReembolso">Política de Reembolso</h3>
+
+      {% if evento.politica_reembolso %}
+        {% with pr=evento.politica_reembolso %}
+          {% if not pr.ativo %}
+            <p class="muted">Não há política de reembolso ativa para este evento.</p>
+          {% else %}
+            <p class="muted">
+              Prazo para solicitar: <span class="pill">{{ pr.prazo_solicitacao_dias }} dias antes do início</span><br>
+              Taxa administrativa: <strong>{{ pr.taxa_administrativa_percent }}%</strong>
+            </p>
+
+            {% if pr.descricao %}
+              <div style="margin-top:10px;">
+                {{ pr.descricao|linebreaks }}
+              </div>
+            {% endif %}
+
+            {% if pr.contato_email or pr.contato_whatsapp %}
+              <div class="modal-actions">
+                {% if pr.contato_email %}
+                  <a class="btn-outline" href="mailto:{{ pr.contato_email }}">📧 Enviar e-mail</a>
+                {% endif %}
+                {% if pr.contato_whatsapp %}
+                  <a class="btn-outline" href="https://wa.me/{{ pr.contato_whatsapp|cut:'+' }}" target="_blank" rel="noopener">💬 WhatsApp</a>
+                {% endif %}
+              </div>
+            {% else %}
+              <!-- Fallback para contato da paróquia -->
+              <div class="modal-actions">
+                <a class="btn-outline" href="mailto:{% firstof inscricao.paroquia.email '' %}">📧 E-mail da Paróquia</a>
+                {% if inscricao.paroquia.telefone %}
+                  <a class="btn-outline" href="https://wa.me/{{ inscricao.paroquia.telefone|cut:'+' }}" target="_blank" rel="noopener">💬 WhatsApp da Paróquia</a>
+                {% endif %}
+              </div>
+            {% endif %}
+          {% endif %}
+        {% endwith %}
+      {% else %}
+        <p class="muted" style="text-align:center;">
+          Nenhuma política de reembolso cadastrada para este evento.
+        </p>
+        <div class="modal-actions">
+          <a class="btn-outline" href="mailto:{% firstof inscricao.paroquia.email '' %}">📧 E-mail da Paróquia</a>
+          {% if inscricao.paroquia.telefone %}
+            <a class="btn-outline" href="https://wa.me/{{ inscricao.paroquia.telefone|cut:'+' }}" target="_blank" rel="noopener">💬 WhatsApp da Paróquia</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Linha do tempo -->
+  <section class="linha-do-tempo" aria-label="Linha do tempo da inscrição">
+    <h2>Linha do Tempo da Inscrição</h2>
+    {% for passo in passos|slice:":4" %}
+      {% if forloop.counter <= inscricao_status %}
+        <div class="timeline-step active" data-step="{{ forloop.counter }}">{{ forloop.counter }}. {{ passo }}</div>
+      {% else %}
+        <div class="timeline-step" data-step="{{ forloop.counter }}">{{ forloop.counter }}. {{ passo }}</div>
+      {% endif %}
+    {% endfor %}
+  </section>
+
+  <!-- Contatos -->
+  <section class="contatos" aria-label="Contatos">
+    <a href="https://wa.me/{{ inscricao.paroquia.telefone|cut:'+' }}"
+       class="btn-ajuda btn-organizacao" target="_blank" rel="noopener"
+       aria-label="Abrir WhatsApp para contato com a paróquia">
+       Fale com a Organização
+    </a>
+
+    <div style="display:flex;justify-content:space-between;width:100%;max-width:320px;margin:0 auto;">
+      <a href="https://wa.me/5563920013103" class="btn-pequeno btn-suporte-whatsapp" target="_blank" rel="noopener" aria-label="Abrir WhatsApp para suporte">
+        WhatsApp do Suporte
+      </a>
+      <a href="mailto:alexandremv.dev@gmail.com" class="btn-pequeno btn-suporte-email" aria-label="Enviar email para suporte">
+        Email do Suporte
+      </a>
+    </div>
+  </section>
+
+  <script>
+    (function(){
+      const openBtn = document.getElementById('abrirPoliticaReembolso');
+      const modal   = document.getElementById('modalReembolso');
+      const close   = modal ? modal.querySelector('.modal-close') : null;
+
+      function openModal(){ if(modal){ modal.style.display='block'; document.body.style.overflow='hidden'; } }
+      function closeModal(){ if(modal){ modal.style.display='none'; document.body.style.overflow=''; } }
+
+      if(openBtn){ openBtn.addEventListener('click', function(e){ e.preventDefault(); openModal(); }); }
+      if(close){ close.addEventListener('click', closeModal); }
+      window.addEventListener('click', function(e){ if(e.target === modal){ closeModal(); } });
+      window.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ closeModal(); } });
+    })();
+  </script>
+</body>
 </html>
