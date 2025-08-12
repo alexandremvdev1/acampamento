@@ -255,9 +255,32 @@ class UserAdmin(BaseUserAdmin):
     filter_horizontal = ('groups', 'user_permissions',)
 
 # ----------------------- Diversos -----------------------
+class PoliticaPrivacidadeAdminForm(forms.ModelForm):
+    class Meta:
+        model = PoliticaPrivacidade
+        fields = "__all__"
+        widgets = {
+            "telefone_contato": forms.TextInput(attrs={
+                "placeholder": "+5563920013103",
+                "pattern": r"\+55\d{10,11}",
+                "title": "Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103)",
+                "inputmode": "numeric",
+            })
+        }
+
+    def clean_telefone_contato(self):
+        raw = self.cleaned_data.get("telefone_contato") or ""
+        if not raw:
+            return raw
+        norm = normalizar_e164_br(raw)
+        if not norm or not validar_e164_br(norm):
+            raise forms.ValidationError("Informe um telefone BR válido. Ex.: +5563920013103")
+        return norm
+
 @admin.register(PoliticaPrivacidade)
 class PoliticaPrivacidadeAdmin(admin.ModelAdmin):
-    list_display = ('__str__',)
+    form = PoliticaPrivacidadeAdminForm
+    list_display = ("__str__", "email_contato", "telefone_contato", "estado")
 
 @admin.register(VideoEventoAcampamento)
 class VideoEventoAcampamentoAdmin(admin.ModelAdmin):
