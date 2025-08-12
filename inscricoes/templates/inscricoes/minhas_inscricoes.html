@@ -15,7 +15,7 @@
     .wrap{max-width:920px;margin:32px auto;padding:0 16px}
     .title{margin:0 0 16px;color:var(--text);font-size:24px;text-align:center}
     .logo-topo{text-align:center;margin-bottom:20px;}
-    .logo-topo img{max-width:180px;height:auto;display:inline-block}
+    .logo-topo img{max-width:100px;height:auto;display:inline-block}
 
     .card{background:var(--card);border-radius:16px;box-shadow:0 10px 28px rgba(0,0,0,.06);padding:20px}
     form{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:16px;width:100%}
@@ -73,20 +73,28 @@
     <div class="card">
       {% include "partials/flash_messages.html" %}
 
-      <form method="post" novalidate>
-        {% csrf_token %}
-        <input
-          type="text"
-          name="cpf"
-          inputmode="numeric"
-          placeholder="Digite seu CPF (somente números)"
-          value="{{ cpf_informado|default_if_none:'' }}"
-          maxlength="14"
-          oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-          aria-label="CPF do participante"
-        >
-        <button class="btn btn-primary" type="submit">Buscar</button>
-      </form>
+<form method="post" novalidate>
+  {% csrf_token %}
+
+  <!-- Visível (com máscara) -->
+  <input
+    type="text"
+    id="cpf_mask"
+    inputmode="numeric"
+    pattern="\d*"
+    placeholder="Digite seu CPF"
+    value="{{ cpf_informado|default_if_none:'' }}"
+    maxlength="14"
+    aria-label="CPF do participante"
+    autocomplete="off"
+  >
+
+  <!-- Oculto (somente números) — é este que vai para o servidor -->
+  <input type="hidden" name="cpf" id="cpf">
+
+  <button class="btn btn-primary" type="submit">Buscar</button>
+</form>
+
 
       {% if participante %}
         <div class="header">
@@ -153,5 +161,47 @@
     </footer>
 
   </div>
+<script>
+(function () {
+  const maskInput = document.getElementById('cpf_mask');
+  const hiddenInput = document.getElementById('cpf');
+
+  function formatCPF(value) {
+    const digits = (value || '').replace(/\D/g, '').slice(0, 11);
+    let out = '';
+    if (digits.length > 0) out = digits.slice(0, 3);
+    if (digits.length >= 4) out += '.' + digits.slice(3, 6);
+    if (digits.length >= 7) out += '.' + digits.slice(6, 9);
+    if (digits.length >= 10) out += '-' + digits.slice(9, 11);
+    return { mask: out, digits };
+  }
+
+  function apply(value) {
+    const { mask, digits } = formatCPF(value);
+    maskInput.value = mask;
+    hiddenInput.value = digits;
+  }
+
+  // Digitação
+  maskInput.addEventListener('input', () => apply(maskInput.value));
+
+  // Colar
+  maskInput.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text') || '';
+    apply(text);
+  });
+
+  // Inicializa com o valor vindo do servidor (se houver)
+  apply(maskInput.value);
+
+  // Garante que o oculto esteja sincronizado ao enviar
+  const form = maskInput.closest('form');
+  if (form) {
+    form.addEventListener('submit', () => apply(maskInput.value));
+  }
+})();
+</script>
+
 </body>
 </html>
