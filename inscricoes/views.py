@@ -1272,26 +1272,43 @@ def is_admin_paroquia(user):
 def is_admin_paroquia(user):
     return user.is_authenticated and hasattr(user, 'is_admin_paroquia') and user.is_admin_paroquia()
 
+def _is_admin_paroquia(user):
+    return user.is_authenticated and hasattr(user, "is_admin_paroquia") and user.is_admin_paroquia()
+
 @login_required
-@user_passes_test(is_admin_paroquia)
+@user_passes_test(_is_admin_paroquia)
 def mp_config(request):
-    paroquia = request.user.paroquia
+    paroquia = getattr(request.user, "paroquia", None)
+    if not paroquia:
+        messages.error(request, "Seu usuário não está vinculado a uma paróquia.")
+        return redirect("inscricoes:admin_paroquia_painel")
+
     config, _ = MercadoPagoConfig.objects.get_or_create(paroquia=paroquia)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MercadoPagoConfigForm(request.POST, instance=config)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Configuração do Mercado Pago salva com sucesso!')
-            # Redireciona de volta ao painel da paróquia
-            return redirect('inscricoes:admin_paroquia_painel')
+            obj = form.save(commit=False)
+            obj.paroquia = paroquia  # garante vínculo correto
+            obj.save()
+            messages.success(request, "Configuração do Mercado Pago salva com sucesso!")
+            return redirect("inscricoes:admin_paroquia_painel")
+        else:
+            messages.error(request, "Revise os campos destacados e tente novamente.")
     else:
         form = MercadoPagoConfigForm(instance=config)
 
-    return render(request, 'inscricoes/mp_config.html', {
-        'form': form,
-        'paroquia': paroquia,
-    })
+    politica = PoliticaPrivacidade.objects.first()
+
+    return render(
+        request,
+        "inscricoes/mp_config.html",
+        {
+            "form": form,
+            "paroquia": paroquia,
+            "politica": politica,  # usado para exibir o aviso de suporte
+        },
+    )
 
 # ===== Helpers ===============================================================
 
