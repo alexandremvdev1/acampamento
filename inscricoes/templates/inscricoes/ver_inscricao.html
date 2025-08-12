@@ -42,7 +42,7 @@
       background:rgba(0,0,0,.5);
     }
     .modal-content{
-      background:#fff;border-radius:12px;max-width:520px;margin:10% auto;padding:18px 18px 22px;position:relative;
+      background:#fff;border-radius:12px;max-width:620px;margin:8% auto;padding:18px 18px 22px;position:relative;
       box-shadow:0 10px 30px rgba(0,0,0,.2);
     }
     .modal-close{
@@ -54,6 +54,21 @@
     .modal-content .pill{
       display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:4px 10px;font-size:.8rem;font-weight:700
     }
+
+    /* Área rolável do texto da política: só vertical e texto justificado */
+    .refund-viewport{
+      border:1px solid #eef2f7;border-radius:10px;padding:16px;background:#fff;
+      max-height:60vh;overflow-y:auto;overflow-x:hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y; /* permite apenas gesto vertical */
+    }
+    .refund-text{
+      text-align:justify; /* texto justificado */
+      white-space:pre-wrap;
+      line-height:1.6;
+    }
+
     .modal-actions{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}
     .btn-outline{
       display:inline-block;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;text-decoration:none;color:#111827;font-weight:600
@@ -85,7 +100,7 @@
 
     @media (max-width:480px){
       .btn-pagar{flex:1 1 calc(50% - 10px);font-size:.9rem;padding:10px;}
-      .modal-content{margin:18% 12px;}
+      .modal-content{margin:14% 12px;}
     }
   </style>
 </head>
@@ -147,7 +162,7 @@
     </p>
   </section>
 
-  <!-- Modal: Política de Reembolso -->
+  <!-- Modal: Política de Reembolso (SEM rotação, só scroll vertical e texto justificado) -->
   <div id="modalReembolso" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloModalReembolso">
     <div class="modal-content">
       <button class="modal-close" type="button" aria-label="Fechar">&times;</button>
@@ -158,16 +173,20 @@
           {% if not pr.ativo %}
             <p class="muted">Não há política de reembolso ativa para este evento.</p>
           {% else %}
-            <p class="muted">
+            <p class="muted" style="text-align:center;">
               Prazo para solicitar: <span class="pill">{{ pr.prazo_solicitacao_dias }} dias antes do início</span><br>
               Taxa administrativa: <strong>{{ pr.taxa_administrativa_percent }}%</strong>
             </p>
 
-            {% if pr.descricao %}
-              <div style="margin-top:10px;">
-                {{ pr.descricao|linebreaks }}
+            <div class="refund-viewport">
+              <div class="refund-text">
+                {% if pr.descricao %}
+                  {{ pr.descricao|linebreaks }}
+                {% else %}
+                  <em>Sem texto detalhado de política.</em>
+                {% endif %}
               </div>
-            {% endif %}
+            </div>
 
             {% if pr.contato_email or pr.contato_whatsapp %}
               <div class="modal-actions">
@@ -179,7 +198,6 @@
                 {% endif %}
               </div>
             {% else %}
-              <!-- Fallback para contato da paróquia -->
               <div class="modal-actions">
                 <a class="btn-outline" href="mailto:{% firstof inscricao.paroquia.email '' %}">📧 E-mail da Paróquia</a>
                 {% if inscricao.paroquia.telefone %}
@@ -190,9 +208,13 @@
           {% endif %}
         {% endwith %}
       {% else %}
-        <p class="muted" style="text-align:center;">
-          Nenhuma política de reembolso cadastrada para este evento.
-        </p>
+        <div class="refund-viewport">
+          <div class="refund-text">
+            <p class="muted" style="text-align:center;">
+              Nenhuma política de reembolso cadastrada para este evento.
+            </p>
+          </div>
+        </div>
         <div class="modal-actions">
           <a class="btn-outline" href="mailto:{% firstof inscricao.paroquia.email '' %}">📧 E-mail da Paróquia</a>
           {% if inscricao.paroquia.telefone %}
@@ -234,6 +256,7 @@
   </section>
 
   <script>
+    // Abrir/fechar modal (sem rotação)
     (function(){
       const openBtn = document.getElementById('abrirPoliticaReembolso');
       const modal   = document.getElementById('modalReembolso');
