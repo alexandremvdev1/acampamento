@@ -13,6 +13,11 @@ from django.utils.translation import gettext_lazy as _
 from cloudinary.models import CloudinaryField
 
 
+# inscricoes/models.py
+from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
+from .utils.phones import normalizar_e164_br, validar_e164_br
+
 class Paroquia(models.Model):
     STATUS_CHOICES = [
         ('ativa', 'Ativa'),
@@ -24,12 +29,47 @@ class Paroquia(models.Model):
     estado = models.CharField(max_length=2)
     responsavel = models.CharField(max_length=255)
     email = models.EmailField()
-    telefone = models.CharField(max_length=20)
+
+    telefone = models.CharField(
+        max_length=20,
+        help_text="Telefone no formato E.164 BR: +55DDDNÚMERO (ex.: +5563920013103)",
+        validators=[
+            # valida E.164 BR quando já estiver normalizado
+            RegexValidator(
+                regex=r'^\+55\d{10,11}$',
+                message="Formato inválido. Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103).",
+            )
+        ],
+    )
+
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ativa')
-    logo = CloudinaryField(null=True,blank=True,verbose_name="Logo da Paróquia")
+    logo = CloudinaryField(null=True, blank=True, verbose_name="Logo da Paróquia")
 
     def __str__(self):
         return self.nome
+
+    def clean(self):
+        """
+        Normaliza o telefone digitado em qualquer formato para E.164.
+        Se não conseguir, levanta erro amigável.
+        """
+        super().clean()
+        if self.telefone:
+            norm = normalizar_e164_br(self.telefone)
+            if not norm or not validar_e164_br(norm):
+                raise ValidationError({
+                    'telefone': "Informe um telefone BR válido. Ex.: +5563920013103"
+                })
+            self.telefone = norm  # grava normalizado
+
+    def save(self, *args, **kwargs):
+        # garante normalização também se salvar programaticamente sem passar pelo form/admin
+        if self.telefone:
+            norm = normalizar_e164_br(self.telefone)
+            if norm:
+                self.telefone = norm
+        super().save(*args, **kwargs)
+
 
 
 class PastoralMovimento(models.Model):

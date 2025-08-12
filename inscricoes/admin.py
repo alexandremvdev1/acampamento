@@ -11,11 +11,59 @@ from .models import (
     PreferenciasComunicacao,   # <-- NOVO: prefs para opt-in
 )
 
-# ----------------------- Paróquia -----------------------
+from django import forms
+from django.contrib import admin, messages
+from .models import Paroquia
+from .utils.phones import normalizar_e164_br, validar_e164_br
+
+class ParoquiaAdminForm(forms.ModelForm):
+    class Meta:
+        model = Paroquia
+        fields = "__all__"
+        widgets = {
+            "telefone": forms.TextInput(attrs={
+                "placeholder": "+5563920013103",
+                "pattern": r"\+55\d{10,11}",
+                "title": "Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103)",
+                "inputmode": "numeric",
+            })
+        }
+
+    def clean_telefone(self):
+        raw = self.cleaned_data.get("telefone", "")
+        norm = normalizar_e164_br(raw)
+        if not norm or not validar_e164_br(norm):
+            raise forms.ValidationError(
+                "Informe um telefone BR válido. Ex.: +5563920013103"
+            )
+        return norm
+
 @admin.register(Paroquia)
 class ParoquiaAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'cidade', 'estado', 'responsavel', 'email', 'telefone')
-    search_fields = ('nome', 'cidade', 'responsavel')
+    form = ParoquiaAdminForm
+    list_display = ('nome', 'cidade', 'estado', 'responsavel', 'email', 'telefone', 'status')
+    search_fields = ('nome', 'cidade', 'responsavel', 'email', 'telefone')
+    list_filter = ('estado', 'status')
+
+    actions = ["normalizar_telefones"]
+
+    def normalizar_telefones(self, request, queryset):
+        ok, fail = 0, 0
+        for p in queryset:
+            norm = normalizar_e164_br(p.telefone)
+            if norm and validar_e164_br(norm):
+                if p.telefone != norm:
+                    p.telefone = norm
+                    p.save(update_fields=["telefone"])
+                ok += 1
+            else:
+                fail += 1
+        if ok:
+            messages.success(request, f"Telefones normalizados: {ok}.")
+        if fail:
+            messages.warning(request, f"Registros não normalizados (verificar formato): {fail}.")
+    normalizar_telefones.short_description = "Normalizar telefones selecionados para E.164 (+55)"
+
 
 # ----------------------- Participante -------------------
 class PreferenciasComunicacaoInline(admin.StackedInline):
