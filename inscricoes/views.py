@@ -66,7 +66,8 @@ from .forms import (
     InscricaoServosForm,
     EventoForm,
     ConjugeForm,
-    MercadoPagoConfigForm
+    MercadoPagoConfigForm,
+    PagamentoForm
 )
 
 User = get_user_model()

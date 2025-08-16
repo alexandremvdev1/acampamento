@@ -5,10 +5,12 @@ from .models import InscricaoSenior, InscricaoJuvenil, InscricaoMirim, Inscricao
 from .models import EventoAcampamento
 from .models import PoliticaPrivacidade
 from .models import Inscricao
-from .models import VideoEventoAcampamento  # Certifique-se de importar o modelo Inscricao
+from .models import VideoEventoAcampamento
 from .models import PastoralMovimento
 from .models import Conjuge
 from .models import MercadoPagoConfig
+from django.utils import timezone
+from .models import Pagamento
 
 class MercadoPagoConfigForm(forms.ModelForm):
     class Meta:
@@ -565,3 +567,32 @@ class ConjugeForm(forms.ModelForm):
     class Meta:
         model = Conjuge
         fields = ['nome', 'conjuge_inscrito', 'ja_e_campista']
+
+
+class PagamentoForm(forms.ModelForm):
+    class Meta:
+        model = Pagamento
+        fields = ["valor", "metodo", "status", "data_pagamento", "comprovante"]
+        widgets = {
+            "data_pagamento": forms.DateTimeInput(attrs={"type": "datetime-local"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        # opcional: receber a inscrição para sugerir valor padrão
+        self.inscricao = kwargs.pop("inscricao", None)
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk and self.inscricao:
+            try:
+                self.fields["valor"].initial = self.inscricao.evento.valor_inscricao
+            except Exception:
+                pass
+
+    def clean(self):
+        cleaned = super().clean()
+        status = cleaned.get("status")
+        data_pg = cleaned.get("data_pagamento")
+
+        # se marcar como confirmado e não informar data, preenche com agora
+        if status == Pagamento.StatusPagamento.CONFIRMADO and not data_pg:
+            cleaned["data_pagamento"] = timezone.now()
+        return cleaned
