@@ -42,9 +42,7 @@
       width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
       font-size:14px; background:#fff;
     }
-    .filters .btn{
-      align-self:end;
-    }
+    .filters .btn{ align-self:end; }
 
     details.columns{ max-width:100%; }
     details.columns summary{
@@ -98,19 +96,34 @@
     /* Coluna oculta por toggle */
     .is-hidden{ display:none !important; }
 
-    /* ===== Impressão: SOMENTE DADOS (apenas <tbody> da tabela) ===== */
+    /* Cabeçalho exclusivo para impressão */
+    #printHeader{ display:none; }
+
+    /* ===== Impressão: MOSTRA nome do evento + SOMENTE DADOS da tabela ===== */
     @media print {
       body{ background:#fff; }
+
       /* esconde tudo */
       body *{ visibility:hidden; }
+
+      /* mostra o cabeçalho de impressão */
+      #printHeader, #printHeader *{ visibility:visible; }
+      #printHeader{
+        display:block; position:absolute; left:0; top:0; width:100%;
+        text-align:center; font-weight:700; font-size:14px; padding:8px 0;
+      }
+
       /* mostra só a tabela (e o que está dentro dela) */
       #tRelatorio, #tRelatorio *{ visibility:visible; }
-      /* posiciona no topo/esquerda */
-      #tRelatorio{ position:absolute; left:0; top:0; width:100%; }
+      /* posiciona a tabela abaixo do cabeçalho */
+      #tRelatorio{ position:absolute; left:0; top:36px; width:100%; }
+
       /* oculta cabeçalho e rodapé da tabela */
       #tRelatorio thead, #tRelatorio tfoot{ display:none !important; }
+
       /* compacta linhas pra caber mais por página */
       #tRelatorio td{ padding:6px 8px; font-size:12px; }
+
       /* qualquer coisa marcada como no-print some */
       .no-print{ display:none !important; }
     }
@@ -120,6 +133,9 @@
 <div class="wrap" id="page" data-evento="{{ evento.id }}">
   <h2>Relatório de Inscritos</h2>
   <div class="subtitle">{{ evento.nome }}</div>
+
+  <!-- Cabeçalho que aparece APENAS na impressão -->
+  <div id="printHeader">Relatório de Inscritos — {{ evento.nome }}</div>
 
   <!-- Filtros -->
   <form method="get" class="toolbar filters no-print" id="formFiltros">
@@ -155,7 +171,6 @@
   <details class="columns no-print" id="colunasBox" open>
     <summary>🧩 Escolher colunas</summary>
     <div class="columns-grid" id="colsGrid">
-      <!-- Marque/desmarque o que quiser ver/imprimir -->
       <label><input type="checkbox" class="col-toggle" data-col="col-idx"> #</label>
       <label><input type="checkbox" class="col-toggle" data-col="col-nome"> Nome</label>
       <label><input type="checkbox" class="col-toggle" data-col="col-cidade"> Cidade</label>
@@ -171,6 +186,7 @@
       <button type="button" class="btn" id="btnMarcarTodos">Selecionar tudo</button>
       <button type="button" class="btn" id="btnLimpar">Limpar</button>
       <button type="button" class="btn btn-green" id="btnImprimir"><i class="fa fa-print"></i> Imprimir</button>
+      <button type="button" class="btn" id="btnExcel"><i class="fa fa-file-excel"></i> Baixar Excel (CSV)</button>
     </div>
   </details>
 
@@ -267,11 +283,15 @@
   <!-- Ações gerais -->
   <div class="actions no-print" style="margin-top:12px">
     <a class="btn" href="javascript:history.back()"><i class="fa fa-arrow-left"></i> Voltar</a>
+    <a class="btn" href="{% url 'inscricoes:relatorios_evento' evento.id %}">
+    <i class="fa fa-arrow-left"></i> Voltar para Relatórios
+    </a>
     <button class="btn btn-green" id="btnImprimir2"><i class="fa fa-print"></i> Imprimir</button>
+    <button class="btn" id="btnExcel2"><i class="fa fa-file-excel"></i> Baixar Excel (CSV)</button>
   </div>
 </div>
 
-<!-- ===== JS: controle de colunas + persistência em URL/localStorage ===== -->
+<!-- ===== JS: controle de colunas + persistência + export CSV ===== -->
 <script>
 (function(){
   const table      = document.getElementById('tRelatorio');
@@ -279,41 +299,27 @@
   const eventoId   = document.getElementById('page').dataset.evento || '0';
   const LS_KEY     = 'rel_cols_' + eventoId;
 
-  // lista de colunas existentes no template (classes)
   const allCols = [
     'col-idx','col-nome','col-cidade','col-estado','col-telefone',
     'col-email','col-camisa','col-nasc','col-status','col-selecionado'
   ];
-
-  // defaults (pode ajustar – aqui deixei Nome e Cidade como exemplo)
   const defaultCols = ['col-nome','col-cidade'];
 
-  // util: aplica visibilidade conforme lista ativa
   function applyColumns(active){
     const toHide = allCols.filter(c => !active.includes(c));
     const toShow = active.slice();
-
-    // esconde
-    toHide.forEach(cls => {
-      table.querySelectorAll('.' + cls).forEach(el => el.classList.add('is-hidden'));
-    });
-    // mostra
-    toShow.forEach(cls => {
-      table.querySelectorAll('.' + cls).forEach(el => el.classList.remove('is-hidden'));
-    });
+    toHide.forEach(cls => table.querySelectorAll('.' + cls).forEach(el => el.classList.add('is-hidden')));
+    toShow.forEach(cls => table.querySelectorAll('.' + cls).forEach(el => el.classList.remove('is-hidden')));
   }
 
-  // lê cols do querystring ?cols=a,b,c
   function readColsFromQuery(){
     const p = new URLSearchParams(location.search);
     const raw = p.get('cols');
     if(!raw) return null;
     const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
-    // valida só colunas existentes
     return parts.filter(x => allCols.includes(x));
   }
 
-  // salva cols no querystring (sem recarregar)
   function saveColsToQuery(cols){
     const url = new URL(location.href);
     if(cols.length){ url.searchParams.set('cols', cols.join(',')); }
@@ -321,24 +327,15 @@
     history.replaceState(null, '', url.toString());
   }
 
-  // inicializa com prioridade: querystring > localStorage > default
   const fromQuery = readColsFromQuery();
   const fromLS    = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
   const initial   = (fromQuery && fromQuery.length) ? fromQuery
                     : (Array.isArray(fromLS) && fromLS.length ? fromLS : defaultCols);
 
-  // marca checkboxes conforme initial
-  checkboxes.forEach(chk => {
-    chk.checked = initial.includes(chk.dataset.col);
-  });
-
-  // aplica nas colunas
+  checkboxes.forEach(chk => { chk.checked = initial.includes(chk.dataset.col); });
   applyColumns(initial);
 
-  // ao mudar uma checkbox
-  function currentSelection(){
-    return checkboxes.filter(c => c.checked).map(c => c.dataset.col);
-  }
+  function currentSelection(){ return checkboxes.filter(c => c.checked).map(c => c.dataset.col); }
   checkboxes.forEach(chk => {
     chk.addEventListener('change', () => {
       const cols = currentSelection();
@@ -348,26 +345,78 @@
     });
   });
 
-  // selecionar tudo / limpar
   document.getElementById('btnMarcarTodos').addEventListener('click', () => {
     checkboxes.forEach(c => c.checked = true);
-    const cols = currentSelection();
-    applyColumns(cols);
-    localStorage.setItem(LS_KEY, JSON.stringify(cols));
-    saveColsToQuery(cols);
+    const cols = currentSelection(); applyColumns(cols);
+    localStorage.setItem(LS_KEY, JSON.stringify(cols)); saveColsToQuery(cols);
   });
   document.getElementById('btnLimpar').addEventListener('click', () => {
     checkboxes.forEach(c => c.checked = false);
-    const cols = currentSelection();
-    applyColumns(cols);
-    localStorage.setItem(LS_KEY, JSON.stringify(cols));
-    saveColsToQuery(cols);
+    const cols = currentSelection(); applyColumns(cols);
+    localStorage.setItem(LS_KEY, JSON.stringify(cols)); saveColsToQuery(cols);
   });
 
-  // imprimir
   const doPrint = () => window.print();
   document.getElementById('btnImprimir').addEventListener('click', doPrint);
   document.getElementById('btnImprimir2').addEventListener('click', doPrint);
+
+  // ===== Exportar Excel (CSV) — somente colunas visíveis =====
+  function exportVisibleTableToCSV(filename){
+    const ths = Array.from(table.querySelectorAll('thead th'));
+    const visibleIndices = ths
+      .map((th, idx) => ({ idx, hidden: th.classList.contains('is-hidden'), label: th.textContent.trim() }))
+      .filter(x => !x.hidden);
+
+    // monta as linhas
+    const rows = [];
+
+    // linha de título
+    rows.push(['Relatório de Inscritos — {{ evento.nome|escapejs }}']);
+
+    // cabeçalho
+    rows.push(visibleIndices.map(x => x.label));
+
+    // corpo
+    const trs = Array.from(table.querySelectorAll('tbody tr'));
+    trs.forEach(tr => {
+      const tds = Array.from(tr.children);
+      const line = visibleIndices.map(x => (tds[x.idx]?.textContent || '').trim());
+      rows.push(line);
+    });
+
+    // CSV com BOM para Excel (UTF-8)
+    const BOM = "\uFEFF";
+    const csv = rows.map(line =>
+      line.map(v => {
+        // força aspas se tiver separador, aspas ou quebra de linha
+        const needsQuotes = /[",;\n]/.test(v);
+        let out = String(v).replace(/"/g,'""');
+        return needsQuotes ? `"${out}"` : out;
+      }).join(';')           // usa ; (Excel PT-BR costuma separar por ;)
+    ).join('\n');
+
+    const blob = new Blob([BOM + csv], {type:'text/csv;charset=utf-8;'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function suggestedFilename(){
+    const today = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const y = today.getFullYear();
+    const m = pad(today.getMonth()+1);
+    const d = pad(today.getDate());
+    return `relatorio_inscritos_evento_${eventoId}_${y}-${m}-${d}.csv`;
+  }
+
+  const doExcel = () => exportVisibleTableToCSV(suggestedFilename());
+  document.getElementById('btnExcel').addEventListener('click', doExcel);
+  document.getElementById('btnExcel2').addEventListener('click', doExcel);
+
 })();
 </script>
 
