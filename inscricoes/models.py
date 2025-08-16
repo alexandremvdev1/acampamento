@@ -1,26 +1,40 @@
 import uuid
 from datetime import date
+from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.sites.models import Site
-from django.core.mail import send_mail, EmailMultiAlternatives
+from django.core.exceptions import ValidationError
+from django.core.mail import EmailMultiAlternatives
+from django.core.validators import RegexValidator, MinValueValidator, MaxValueValidator
 from django.db import models
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
-from decimal import Decimal
-from django.core.validators import MinValueValidator, MaxValueValidator
-
 from cloudinary.models import CloudinaryField
 
-
-# inscricoes/models.py
-from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
+# utils de telefone do próprio app
 from .utils.phones import normalizar_e164_br, validar_e164_br
 
+# tenta importar o cliente do WhatsApp (sem quebrar em dev)
+try:
+    from integracoes.whatsapp import (
+        send_text,            # texto livre (janela 24h)
+        send_template,        # envio cru de template (fallback)
+        enviar_inscricao_recebida,
+        enviar_selecionado_info,
+        enviar_pagamento_recebido,
+    )
+except Exception:
+    send_text = send_template = enviar_inscricao_recebida = enviar_selecionado_info = enviar_pagamento_recebido = None
+
+
+# ---------------------------------------------------------------------
+# Paróquia
+# ---------------------------------------------------------------------
 class Paroquia(models.Model):
     STATUS_CHOICES = [
         ('ativa', 'Ativa'),
@@ -37,7 +51,6 @@ class Paroquia(models.Model):
         max_length=20,
         help_text="Telefone no formato E.164 BR: +55DDDNÚMERO (ex.: +5563920013103)",
         validators=[
-            # valida E.164 BR quando já estiver normalizado
             RegexValidator(
                 regex=r'^\+55\d{10,11}$',
                 message="Formato inválido. Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103).",
@@ -52,27 +65,21 @@ class Paroquia(models.Model):
         return self.nome
 
     def clean(self):
-        """
-        Normaliza o telefone digitado em qualquer formato para E.164.
-        Se não conseguir, levanta erro amigável.
-        """
+        """Normaliza o telefone digitado para E.164; se falhar, erro amigável."""
         super().clean()
         if self.telefone:
             norm = normalizar_e164_br(self.telefone)
             if not norm or not validar_e164_br(norm):
-                raise ValidationError({
-                    'telefone': "Informe um telefone BR válido. Ex.: +5563920013103"
-                })
-            self.telefone = norm  # grava normalizado
+                raise ValidationError({'telefone': "Informe um telefone BR válido. Ex.: +5563920013103"})
+            self.telefone = norm
 
     def save(self, *args, **kwargs):
-        # garante normalização também se salvar programaticamente sem passar pelo form/admin
+        # garante normalização também em saves diretos
         if self.telefone:
             norm = normalizar_e164_br(self.telefone)
             if norm:
                 self.telefone = norm
         super().save(*args, **kwargs)
-
 
 
 class PastoralMovimento(models.Model):
@@ -82,6 +89,9 @@ class PastoralMovimento(models.Model):
         return self.nome
 
 
+# ---------------------------------------------------------------------
+# Participante
+# ---------------------------------------------------------------------
 class Participante(models.Model):
     nome      = models.CharField(max_length=150)
     cpf       = models.CharField(max_length=14, unique=True)
@@ -96,14 +106,12 @@ class Participante(models.Model):
     cidade    = models.CharField("Cidade", max_length=100)
     estado    = models.CharField(
         "Estado", max_length=2,
-        choices=[
-            ('AC','AC'),('AL','AL'),('AP','AP'),('AM','AM'),('BA','BA'),
-            ('CE','CE'),('DF','DF'),('ES','ES'),('GO','GO'),('MA','MA'),
-            ('MT','MT'),('MS','MS'),('MG','MG'),('PA','PA'),('PB','PB'),
-            ('PR','PR'),('PE','PE'),('PI','PI'),('RJ','RJ'),('RN','RN'),
-            ('RS','RS'),('RO','RO'),('RR','RR'),('SC','SC'),('SP','SP'),
-            ('SE','SE'),('TO','TO')
-        ]
+        choices=[('AC','AC'),('AL','AL'),('AP','AP'),('AM','AM'),('BA','BA'),
+                 ('CE','CE'),('DF','DF'),('ES','ES'),('GO','GO'),('MA','MA'),
+                 ('MT','MT'),('MS','MS'),('MG','MG'),('PA','PA'),('PB','PB'),
+                 ('PR','PR'),('PE','PE'),('PI','PI'),('RJ','RJ'),('RN','RN'),
+                 ('RS','RS'),('RO','RO'),('RR','RR'),('SC','SC'),('SP','SP'),
+                 ('SE','SE'),('TO','TO')]
     )
 
     # Token único para QR Code
@@ -115,7 +123,6 @@ class Participante(models.Model):
     )
 
     def save(self, *args, **kwargs):
-        # Garante que novos registros sempre tenham qr_token
         if not self.qr_token:
             self.qr_token = uuid.uuid4()
         super().save(*args, **kwargs)
@@ -124,6 +131,9 @@ class Participante(models.Model):
         return f"{self.nome} ({self.cidade} - {self.estado})"
 
 
+# ---------------------------------------------------------------------
+# Evento
+# ---------------------------------------------------------------------
 class EventoAcampamento(models.Model):
     TIPO_ACAMPAMENTO = [
         ('senior', 'Acampamento Sênior'),
@@ -148,11 +158,7 @@ class EventoAcampamento(models.Model):
     slug = models.SlugField(unique=True, blank=True)
     paroquia = models.ForeignKey("Paroquia", on_delete=models.CASCADE, related_name="eventos")
 
-    banner = CloudinaryField(
-    null=True,
-    blank=True,
-    verbose_name="Banner do Evento"
-    )
+    banner = CloudinaryField(null=True, blank=True, verbose_name="Banner do Evento")
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -165,7 +171,6 @@ class EventoAcampamento(models.Model):
 
     @property
     def link_inscricao(self):
-        # Gera a URL nomeada para a inscrição inicial com o slug do evento
         return reverse('inscricoes:inscricao_inicial', kwargs={'slug': self.slug})
 
     @property
@@ -175,22 +180,12 @@ class EventoAcampamento(models.Model):
             return "Inscrições Abertas"
         elif hoje < self.inicio_inscricoes:
             return "Inscrições ainda não iniciadas"
-        else:
-            return "Inscrições Encerradas"
-
-# --- IMPORTS (garanta estes no topo do models.py) ---
-from django.conf import settings
-from django.contrib.sites.models import Site
-from django.core.mail import EmailMultiAlternatives
-from django.urls import reverse
-from django.utils import timezone
-# tenta importar o cliente do WhatsApp (não quebra se não existir em dev)
-try:
-    from integracoes.whatsapp import send_text, send_template, normalizar_e164_br
-except Exception:
-    send_text = send_template = normalizar_e164_br = None
+        return "Inscrições Encerradas"
 
 
+# ---------------------------------------------------------------------
+# Inscrição
+# ---------------------------------------------------------------------
 class Inscricao(models.Model):
     participante = models.ForeignKey('Participante', on_delete=models.CASCADE)
     evento       = models.ForeignKey('EventoAcampamento', on_delete=models.CASCADE)
@@ -229,10 +224,7 @@ class Inscricao(models.Model):
     # ---------------- Helpers ----------------
     @property
     def inscricao_url(self) -> str:
-        """
-        URL pública para ver a inscrição específica (com botões de pagamento).
-        Requer settings.SITE_DOMAIN (ex.: 'https://eismeaqui.app.br') ou Sites Framework.
-        """
+        """URL pública específica da inscrição."""
         relative = reverse('inscricoes:ver_inscricao', args=[self.id])
         base = getattr(settings, "SITE_DOMAIN", "").rstrip("/")
         if not base:
@@ -245,11 +237,11 @@ class Inscricao(models.Model):
 
     @property
     def portal_participante_url(self) -> str:
-        """
-        URL do Portal do Participante (tela de CPF).
-        Ajuste o nome da rota caso seja diferente de 'inscricoes:portal_participante'.
-        """
-        relative = reverse('inscricoes:portal_participante')
+        """URL do Portal do Participante (tela de CPF) com fallback de rota."""
+        try:
+            relative = reverse('inscricoes:minhas_inscricoes_por_cpf')
+        except Exception:
+            relative = reverse('inscricoes:portal_participante')
         base = getattr(settings, "SITE_DOMAIN", "").rstrip("/")
         if not base:
             try:
@@ -269,11 +261,7 @@ class Inscricao(models.Model):
         return site_name
 
     def _evento_data_local(self):
-        """
-        Extrai data e local do evento com fallbacks.
-        - data: tenta evento.data_evento, senão evento.data_inicio
-        - local: tenta evento.local, senão evento.local_evento
-        """
+        """Extrai data e local do evento com fallbacks."""
         ev = self.evento
         data = getattr(ev, "data_evento", None) or getattr(ev, "data_inicio", None)
         if data:
@@ -291,18 +279,16 @@ class Inscricao(models.Model):
         return data_str, local
 
     def _telefone_e164(self) -> str | None:
-        """Normaliza telefone do participante para formato E.164 (+55...)."""
+        """Normaliza telefone do participante para E.164 (+55...)."""
         try:
             tel = getattr(self.participante, "telefone", None)
-            return normalizar_e164_br(tel) if (normalizar_e164_br and tel) else None
+            return normalizar_e164_br(tel) if tel else None
         except Exception:
             return None
 
     # ---------------- E-mails ----------------
     def enviar_email_selecao(self):
-        """
-        1) Seleção Confirmada – “Você foi selecionado”
-        """
+        """1) Seleção Confirmada – “Você foi selecionado”"""
         if not self.participante.email:
             return
         nome_app = self._site_name()
@@ -436,29 +422,52 @@ class Inscricao(models.Model):
     # ---------------- WhatsApp ----------------
     def _whatsapp_disponivel(self) -> bool:
         """Verifica toggle global e cliente importado."""
-        return bool(getattr(settings, "USE_WHATSAPP", False) and send_template and send_text)
+        return bool(getattr(settings, "USE_WHATSAPP", False) and (enviar_inscricao_recebida or send_template))
 
     def enviar_whatsapp_selecao(self):
-        """Mensagem: você foi selecionado(a). Usa template e fallback de texto."""
+        """Mensagem: você foi selecionado(a). Usa wrappers aprovados; fallback se necessário."""
         if not self._whatsapp_disponivel():
             return
         to = self._telefone_e164()
         if not to:
             return
-        components = [{
-            "type": "body",
-            "parameters": [
-                {"type": "text", "text": self.participante.nome},
-                {"type": "text", "text": self.evento.nome},
-                {"type": "text", "text": self.portal_participante_url},
-            ],
-        }]
-        try:
-            send_template(to, "selecionado_confirmar_pagamento", components=components)
-        except Exception:
+
+        # 1) Tentar wrapper (se estiver atualizado)
+        if enviar_selecionado_info:
+            try:
+                # Alguns templates exigem 3 variáveis no BODY (nome, evento, link).
+                # O wrapper pode não incluir o link; se falhar, caímos no fallback abaixo.
+                enviar_selecionado_info(
+                    telefone_br=to,
+                    nome=self.participante.nome,
+                    evento=self.evento.nome,
+                    url_param=None,
+                )
+                return
+            except Exception:
+                pass
+
+        # 2) Fallback: dispara diretamente o template aprovado v2 com 3 variáveis no BODY
+        if send_template:
+            try:
+                components = [{
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": self.participante.nome},
+                        {"type": "text", "text": self.evento.nome},
+                        {"type": "text", "text": self.portal_participante_url},
+                    ],
+                }]
+                send_template(to, "selecao_pagamento_util_v2", components=components)
+                return
+            except Exception:
+                pass
+
+        # 3) Último fallback: texto livre
+        if send_text:
             msg = (
-                f"Olá {self.participante.nome}! Você foi selecionado(a) para o {self.evento.nome} 🎉\n"
-                f"Acesse o Portal do Participante: {self.portal_participante_url}"
+                f"🎉 Olá {self.participante.nome}! Você foi selecionado(a) para o {self.evento.nome}.\n"
+                f"Finalize o pagamento no Portal do Participante: {self.portal_participante_url}"
             )
             try:
                 send_text(to, msg)
@@ -466,22 +475,36 @@ class Inscricao(models.Model):
                 pass
 
     def enviar_whatsapp_pagamento_confirmado(self):
-        """Mensagem: pagamento confirmado."""
+        """Mensagem: pagamento confirmado (template v2 com 2 variáveis)."""
         if not self._whatsapp_disponivel():
             return
         to = self._telefone_e164()
         if not to:
             return
-        components = [{
-            "type": "body",
-            "parameters": [
-                {"type": "text", "text": self.participante.nome},
-                {"type": "text", "text": self.evento.nome},
-            ],
-        }]
         try:
-            send_template(to, "pagamento_confirmado", components=components)
+            if enviar_pagamento_recebido:
+                enviar_pagamento_recebido(to, self.participante.nome, self.evento.nome)
+                return
         except Exception:
+            pass
+
+        # Fallback direto ao template v2
+        if send_template:
+            try:
+                components = [{
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": self.participante.nome},
+                        {"type": "text", "text": self.evento.nome},
+                    ],
+                }]
+                send_template(to, "pagamento_confirmado_util_v2", components=components)
+                return
+            except Exception:
+                pass
+
+        # Último fallback texto
+        if send_text:
             msg = (
                 f"✅ Pagamento confirmado, {self.participante.nome}!\n"
                 f"Sua inscrição para {self.evento.nome} está garantida. Nos vemos lá!"
@@ -492,24 +515,38 @@ class Inscricao(models.Model):
                 pass
 
     def enviar_whatsapp_recebida(self):
-        """Mensagem: inscrição recebida."""
+        """Mensagem: inscrição recebida (template v2 com 3 variáveis)."""
         if not self._whatsapp_disponivel():
             return
         to = self._telefone_e164()
         if not to:
             return
         data_envio = timezone.localtime(self.data_inscricao).strftime("%d/%m/%Y %H:%M")
-        components = [{
-            "type": "body",
-            "parameters": [
-                {"type": "text", "text": self.participante.nome},
-                {"type": "text", "text": self.evento.nome},
-                {"type": "text", "text": data_envio},
-            ],
-        }]
         try:
-            send_template(to, "inscricao_recebida", components=components)
+            if enviar_inscricao_recebida:
+                enviar_inscricao_recebida(to, self.participante.nome, self.evento.nome, data_envio)
+                return
         except Exception:
+            pass
+
+        # Fallback direto ao template v2
+        if send_template:
+            try:
+                components = [{
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": self.participante.nome},
+                        {"type": "text", "text": self.evento.nome},
+                        {"type": "text", "text": data_envio},
+                    ],
+                }]
+                send_template(to, "inscricao_recebida_v2", components=components)
+                return
+            except Exception:
+                pass
+
+        # Último fallback em texto
+        if send_text:
             msg = (
                 f"📩 Oi {self.participante.nome}! Recebemos sua inscrição para {self.evento.nome}.\n"
                 f"Data do envio: {data_envio}. Avisaremos se for selecionado(a)."
@@ -554,7 +591,9 @@ class Inscricao(models.Model):
             self.enviar_whatsapp_recebida()
 
 
-
+# ---------------------------------------------------------------------
+# Pagamento
+# ---------------------------------------------------------------------
 class Pagamento(models.Model):
     class MetodoPagamento(models.TextChoices):
         PIX = 'pix', _('Pix')
@@ -568,17 +607,9 @@ class Pagamento(models.Model):
         CANCELADO = 'cancelado', _('Cancelado')
 
     inscricao = models.OneToOneField(Inscricao, on_delete=models.CASCADE)
-    metodo = models.CharField(
-        max_length=20,
-        choices=MetodoPagamento.choices,
-        default=MetodoPagamento.PIX
-    )
+    metodo = models.CharField(max_length=20, choices=MetodoPagamento.choices, default=MetodoPagamento.PIX)
     valor = models.DecimalField(max_digits=8, decimal_places=2)
-    status = models.CharField(
-        max_length=20,
-        choices=StatusPagamento.choices,
-        default=StatusPagamento.PENDENTE
-    )
+    status = models.CharField(max_length=20, choices=StatusPagamento.choices, default=StatusPagamento.PENDENTE)
     data_pagamento = models.DateTimeField(null=True, blank=True)
     transacao_id = models.CharField(max_length=100, blank=True)
 
@@ -593,27 +624,19 @@ class Pagamento(models.Model):
         return f"Pagamento de {self.inscricao}"
 
 
+# ---------------------------------------------------------------------
+# Bases de inscrição por tipo
+# ---------------------------------------------------------------------
 class BaseInscricao(models.Model):
     """Campos comuns às Inscrições (Sênior, Juvenil, Mirim, Servos)."""
-    inscricao = models.OneToOneField(
-        'Inscricao', on_delete=models.CASCADE, verbose_name="Inscrição"
-    )
+    inscricao = models.OneToOneField('Inscricao', on_delete=models.CASCADE, verbose_name="Inscrição")
     data_nascimento = models.DateField(verbose_name="Data de Nascimento")
     altura = models.FloatField(blank=True, null=True, verbose_name="Altura (m)")
     peso = models.FloatField(blank=True, null=True, verbose_name="Peso (kg)")
 
-    SIM_NAO_CHOICES = [
-        ('sim', 'Sim'),
-        ('nao', 'Não'),
-    ]
+    SIM_NAO_CHOICES = [('sim', 'Sim'), ('nao', 'Não')]
 
-    batizado = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="É batizado?"
-    )
+    batizado = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="É batizado?")
 
     ESTADO_CIVIL_CHOICES = [
         ('solteiro', 'Solteiro(a)'),
@@ -622,189 +645,46 @@ class BaseInscricao(models.Model):
         ('viuvo', 'Viúvo(a)'),
         ('uniao_estavel', 'União Estável'),
     ]
-    estado_civil = models.CharField(
-        max_length=20,
-        choices=ESTADO_CIVIL_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Estado Civil"
-    )
+    estado_civil = models.CharField(max_length=20, choices=ESTADO_CIVIL_CHOICES, blank=True, null=True, verbose_name="Estado Civil")
 
-    casado_na_igreja = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Casado na Igreja?"
-    )
+    casado_na_igreja = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Casado na Igreja?")
 
-    nome_conjuge = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        verbose_name="Nome do Cônjuge"
-    )
-    conjuge_inscrito = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Cônjuge Inscrito?"
-    )
+    nome_conjuge = models.CharField(max_length=200, blank=True, null=True, verbose_name="Nome do Cônjuge")
+    conjuge_inscrito = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Cônjuge Inscrito?")
 
-    paroquia = models.ForeignKey(
-        'Paroquia',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Paróquia"
-    )
+    paroquia = models.ForeignKey('Paroquia', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Paróquia")
 
-    pastoral_movimento = models.ForeignKey(
-        'PastoralMovimento',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Pastoral/Movimento"
-    )
-    outra_pastoral_movimento = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        verbose_name="Outra Pastoral/Movimento"
-    )
+    pastoral_movimento = models.ForeignKey('PastoralMovimento', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Pastoral/Movimento")
+    outra_pastoral_movimento = models.CharField(max_length=200, blank=True, null=True, verbose_name="Outra Pastoral/Movimento")
 
-    dizimista = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Dizimista?"
-    )
-    crismado = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Crismado?"
-    )
+    dizimista = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Dizimista?")
+    crismado = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Crismado?")
 
-    TAMANHO_CAMISA_CHOICES = [
-        ('PP', 'PP'), ('P', 'P'), ('M', 'M'),
-        ('G', 'G'), ('GG', 'GG'), ('XG', 'XG'), ('XGG', 'XGG'),
-    ]
-    tamanho_camisa = models.CharField(
-        max_length=5,
-        choices=TAMANHO_CAMISA_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Tamanho da Camisa"
-    )
+    TAMANHO_CAMISA_CHOICES = [('PP', 'PP'), ('P', 'P'), ('M', 'M'), ('G', 'G'), ('GG', 'GG'), ('XG', 'XG'), ('XGG', 'XGG')]
+    tamanho_camisa = models.CharField(max_length=5, choices=TAMANHO_CAMISA_CHOICES, blank=True, null=True, verbose_name="Tamanho da Camisa")
 
-    problema_saude = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Possui algum problema de saúde?"
-    )
-    qual_problema_saude = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Qual problema de saúde?"
-    )
+    problema_saude = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui algum problema de saúde?")
+    qual_problema_saude = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual problema de saúde?")
 
-    medicamento_controlado = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Usa algum medicamento controlado?"
-    )
-    qual_medicamento_controlado = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Qual medicamento controlado?"
-    )
+    medicamento_controlado = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Usa algum medicamento controlado?")
+    qual_medicamento_controlado = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual medicamento controlado?")
+    protocolo_administracao = models.CharField(max_length=255, blank=True, null=True, verbose_name="Protocolo de administração")
 
-    protocolo_administracao = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Protocolo de administração"
-    )
+    mobilidade_reduzida = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui limitações físicas ou mobilidade reduzida?")
+    qual_mobilidade_reduzida = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual limitação/mobilidade reduzida?")
 
-    mobilidade_reduzida = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Possui limitações físicas ou mobilidade reduzida?"
-    )
-    qual_mobilidade_reduzida = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Qual limitação/mobilidade reduzida?"
-    )
+    # Alergias
+    alergia_alimento = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui alergia a algum alimento?")
+    qual_alergia_alimento = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual alimento causa alergia?")
+    alergia_medicamento = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui alergia a algum medicamento?")
+    qual_alergia_medicamento = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual medicamento causa alergia?")
 
-    # ─── NOVOS CAMPOS DE ALERGIA ─────────────────────────────────────────────
-    alergia_alimento = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Possui alergia a algum alimento?"
-    )
-    qual_alergia_alimento = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Qual alimento causa alergia?"
-    )
+    TIPO_SANGUINEO_CHOICES = [('A+', 'A+'), ('A-', 'A-'), ('B+', 'B+'), ('B-', 'B-'),
+                              ('AB+', 'AB+'), ('AB-', 'AB-'), ('O+', 'O+'), ('O-', 'O-'), ('NS', 'Não sei')]
+    tipo_sanguineo = models.CharField(max_length=3, choices=TIPO_SANGUINEO_CHOICES, blank=True, null=True, verbose_name="Tipo Sanguíneo")
 
-    alergia_medicamento = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Possui alergia a algum medicamento?"
-    )
-    qual_alergia_medicamento = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        verbose_name="Qual medicamento causa alergia?"
-    )
-    # ──────────────────────────────────────────────────────────────────────
-
-    TIPO_SANGUINEO_CHOICES = [
-        ('A+', 'A+'), ('A-', 'A-'), ('B+', 'B+'),
-        ('B-', 'B-'), ('AB+', 'AB+'), ('AB-', 'AB-'),
-        ('O+', 'O+'), ('O-', 'O-'), ('NS', 'Não sei'),
-    ]
-    tipo_sanguineo = models.CharField(
-        max_length=3,
-        choices=TIPO_SANGUINEO_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Tipo Sanguíneo"
-    )
-
-    indicado_por = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        verbose_name="Indicado Por"
-    )
-
-    informacoes_extras = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name="Informações extras"
-    )
+    indicado_por = models.CharField(max_length=200, blank=True, null=True, verbose_name="Indicado Por")
+    informacoes_extras = models.TextField(blank=True, null=True, verbose_name="Informações extras")
 
     class Meta:
         abstract = True
@@ -814,17 +694,21 @@ class InscricaoSenior(BaseInscricao):
     def __str__(self):
         return f"Inscrição Senior de {self.inscricao.participante.nome}"
 
+
 class InscricaoJuvenil(BaseInscricao):
     def __str__(self):
         return f"Inscrição Juvenil de {self.inscricao.participante.nome}"
+
 
 class InscricaoMirim(BaseInscricao):
     def __str__(self):
         return f"Inscrição Mirim de {self.inscricao.participante.nome}"
 
+
 class InscricaoServos(BaseInscricao):
     def __str__(self):
         return f"Inscrição Servos de {self.inscricao.participante.nome}"
+
 
 class Contato(models.Model):
     ESCOLHAS_GRAU_PARENTESCO = [
@@ -846,7 +730,9 @@ class Contato(models.Model):
         return f"Contato de {self.inscricao.participante.nome}: {self.nome}"
 
 
-
+# ---------------------------------------------------------------------
+# Usuário
+# ---------------------------------------------------------------------
 TIPOS_USUARIO = [
     ('admin_geral', 'Administrador Geral'),
     ('admin_paroquia', 'Administrador da Paróquia'),
@@ -858,7 +744,7 @@ class User(AbstractUser):
 
     groups = models.ManyToManyField(
         Group,
-        related_name='custom_user_set',  # evita conflito com user_set padrão
+        related_name='custom_user_set',
         blank=True,
         help_text='The groups this user belongs to.',
         verbose_name='groups',
@@ -867,7 +753,7 @@ class User(AbstractUser):
 
     user_permissions = models.ManyToManyField(
         Permission,
-        related_name='custom_user_set',  # evita conflito
+        related_name='custom_user_set',
         blank=True,
         help_text='Specific permissions for this user.',
         verbose_name='user permissions',
@@ -877,9 +763,13 @@ class User(AbstractUser):
     def is_admin_geral(self):
         return self.tipo_usuario == 'admin_geral'
 
-    def is_admin_paroquia(self):  # Remova models.Model dos parênteses
+    def is_admin_paroquia(self):
         return self.tipo_usuario == 'admin_paroquia'
 
+
+# ---------------------------------------------------------------------
+# Política de Privacidade
+# ---------------------------------------------------------------------
 class PoliticaPrivacidade(models.Model):
     texto = models.TextField("Texto da Política de Privacidade")
     logo = CloudinaryField(verbose_name="Logo", null=True, blank=True)
@@ -887,7 +777,7 @@ class PoliticaPrivacidade(models.Model):
     imagem_1 = CloudinaryField(verbose_name="Imagem 1 (opcional)", null=True, blank=True)
     imagem_2 = CloudinaryField(verbose_name="Imagem 2 (opcional)", null=True, blank=True)
 
-    # Novos campos para dados do dono do sistema
+    # Dados do dono do sistema
     cpf_cnpj = models.CharField("CPF/CNPJ", max_length=18, blank=True, null=True)
     email_contato = models.EmailField("E-mail de Contato", blank=True, null=True)
 
@@ -918,95 +808,78 @@ class PoliticaPrivacidade(models.Model):
         if self.telefone_contato:
             norm = normalizar_e164_br(self.telefone_contato)
             if not norm or not validar_e164_br(norm):
-                raise ValidationError({
-                    'telefone_contato': "Informe um telefone BR válido. Ex.: +5563920013103"
-                })
-            self.telefone_contato = norm  # guarda já normalizado
+                raise ValidationError({'telefone_contato': "Informe um telefone BR válido. Ex.: +5563920013103"})
+            self.telefone_contato = norm
 
     def save(self, *args, **kwargs):
-        # garante normalização mesmo se salvar programaticamente
         if self.telefone_contato:
             norm = normalizar_e164_br(self.telefone_contato)
             if norm:
                 self.telefone_contato = norm
         super().save(*args, **kwargs)
 
-    
+
+# ---------------------------------------------------------------------
+# Vídeo do Evento (Cloudinary)
+# ---------------------------------------------------------------------
 class VideoEventoAcampamento(models.Model):
     evento = models.OneToOneField('EventoAcampamento', on_delete=models.CASCADE, related_name='video')
     titulo = models.CharField(max_length=255)
-    arquivo = CloudinaryField(resource_type='video',verbose_name="Vídeo do Evento",null=True,blank=True)
+    arquivo = CloudinaryField(resource_type='video', verbose_name="Vídeo do Evento", null=True, blank=True)
 
     def __str__(self):
         return f"Vídeo de {self.evento.nome}"
 
     def get_url(self):
-        return f"{settings.MEDIA_URL}{self.arquivo.name}"
-    
-class Conjuge(models.Model):
-    SIM_NAO_CHOICES = [
-        ('sim', 'Sim'),
-        ('nao', 'Não'),
-    ]
+        try:
+            return self.arquivo.url
+        except Exception:
+            return ""
 
-    inscricao = models.OneToOneField(
-        Inscricao,
-        on_delete=models.CASCADE,
-        related_name='conjuge'
-    )
-    nome = models.CharField(
-        max_length=200,
-        blank=True,  # permite valor vazio quando não aplicável
-        null=True,
-        verbose_name="Nome do Cônjuge"
-    )
-    conjuge_inscrito = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        default='nao',
-        verbose_name="Cônjuge Inscrito?"
-    )
-    ja_e_campista = models.CharField(
-        max_length=3,
-        choices=SIM_NAO_CHOICES,
-        default='nao',
-        verbose_name="Já é Campista?"
-    )
+
+# ---------------------------------------------------------------------
+# Cônjuge
+# ---------------------------------------------------------------------
+class Conjuge(models.Model):
+    SIM_NAO_CHOICES = [('sim', 'Sim'), ('nao', 'Não')]
+
+    inscricao = models.OneToOneField(Inscricao, on_delete=models.CASCADE, related_name='conjuge')
+    nome = models.CharField(max_length=200, blank=True, null=True, verbose_name="Nome do Cônjuge")
+    conjuge_inscrito = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, default='nao', verbose_name="Cônjuge Inscrito?")
+    ja_e_campista = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, default='nao', verbose_name="Já é Campista?")
 
     def __str__(self):
         nome = self.nome or '—'
         return f"Cônjuge de {self.inscricao.participante.nome}: {nome}"
 
 
+# ---------------------------------------------------------------------
+# Template de Crachá
+# ---------------------------------------------------------------------
 class CrachaTemplate(models.Model):
     nome = models.CharField("Nome do Template", max_length=100)
-    imagem_fundo = CloudinaryField(verbose_name="Imagem de Fundo",null=True,blank=True)
+    imagem_fundo = CloudinaryField(verbose_name="Imagem de Fundo", null=True, blank=True)
 
     def __str__(self):
         return self.nome
-    
+
+
+# ---------------------------------------------------------------------
+# Mercado Pago Config
+# ---------------------------------------------------------------------
 class MercadoPagoConfig(models.Model):
-    paroquia = models.OneToOneField(
-        Paroquia,
-        on_delete=models.CASCADE,
-        related_name="mp_config"
-    )
-    access_token = models.CharField(
-        "Access Token", max_length=255,
-        help_text="Token de acesso gerado no painel do Mercado Pago"
-    )
-    public_key = models.CharField(
-        "Public Key", max_length=255,
-        help_text="Public Key do Mercado Pago"
-    )
-    sandbox_mode = models.BooleanField(
-        "Sandbox", default=True,
-        help_text="Use modo sandbox para testes"
-    )
+    paroquia = models.OneToOneField(Paroquia, on_delete=models.CASCADE, related_name="mp_config")
+    access_token = models.CharField("Access Token", max_length=255, help_text="Token de acesso gerado no painel do Mercado Pago")
+    public_key = models.CharField("Public Key", max_length=255, help_text="Public Key do Mercado Pago")
+    sandbox_mode = models.BooleanField("Sandbox", default=True, help_text="Use modo sandbox para testes")
 
     def __str__(self):
         return f"MP Config para {self.paroquia.nome}"
-    
+
+
+# ---------------------------------------------------------------------
+# Preferências de Comunicação
+# ---------------------------------------------------------------------
 class PreferenciasComunicacao(models.Model):
     FONTE_CHOICES = [
         ('form', 'Formulário/Portal'),
@@ -1014,20 +887,11 @@ class PreferenciasComunicacao(models.Model):
         ('import', 'Importação'),
     ]
 
-    participante = models.OneToOneField(
-        'Participante', on_delete=models.CASCADE, related_name='prefs'
-    )
-    # Opt-in específico para mensagens de MARKETING no WhatsApp
-    whatsapp_marketing_opt_in = models.BooleanField(
-        default=False,
-        verbose_name="Aceita marketing no WhatsApp"
-    )
+    participante = models.OneToOneField('Participante', on_delete=models.CASCADE, related_name='prefs')
+    whatsapp_marketing_opt_in = models.BooleanField(default=False, verbose_name="Aceita marketing no WhatsApp")
     whatsapp_optin_data = models.DateTimeField(null=True, blank=True)
     whatsapp_optin_fonte = models.CharField(max_length=20, choices=FONTE_CHOICES, default='admin')
-    whatsapp_optin_prova = models.TextField(
-        blank=True, null=True,
-        help_text="Como foi coletado (ex.: checkbox marcado, IP, carimbo de data/hora, etc.)"
-    )
+    whatsapp_optin_prova = models.TextField(blank=True, null=True, help_text="Como foi coletado (ex.: checkbox, IP, data/hora)")
     politica_versao = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
@@ -1043,6 +907,7 @@ class PreferenciasComunicacao(models.Model):
             self.politica_versao = versao
         self.save()
 
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -1051,11 +916,13 @@ def criar_prefs(sender, instance, created, **kwargs):
     if created:
         PreferenciasComunicacao.objects.create(participante=instance)
 
-# --- Politica de Reembolso ---
 
+# ---------------------------------------------------------------------
+# Política de Reembolso
+# ---------------------------------------------------------------------
 class PoliticaReembolso(models.Model):
     evento = models.OneToOneField(
-        'EventoAcampamento',
+        EventoAcampamento,
         on_delete=models.CASCADE,
         related_name='politica_reembolso',
         help_text="Cada evento pode ter (no máximo) uma política de reembolso."
@@ -1066,10 +933,9 @@ class PoliticaReembolso(models.Model):
         help_text="Se desmarcado, o evento não aceitará solicitações de reembolso."
     )
 
-    # Regras simples
     prazo_solicitacao_dias = models.PositiveIntegerField(
         default=7,
-        help_text="Quantos dias ANTES do início do evento o participante pode solicitar reembolso."
+        help_text="Dias ANTES do início do evento para solicitar reembolso."
     )
     taxa_administrativa_percent = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal('0.00'),
@@ -1077,20 +943,17 @@ class PoliticaReembolso(models.Model):
         help_text="Percentual descontado no reembolso (0 a 100)."
     )
 
-    # Texto livre para detalhar a regra
     descricao = models.TextField(
         blank=True,
-        help_text=(
-            "Texto exibido ao participante com os critérios de reembolso. "
-            "Ex.: Reembolso integral até 7 dias antes; após isso, 70%."
-        )
+        help_text="Detalhe as regras (ex.: Integral até 7 dias antes; após isso, 70%)."
     )
 
-    # Contatos (opcionais)
     contato_email = models.EmailField(blank=True, null=True)
     contato_whatsapp = models.CharField(
         max_length=20, blank=True, null=True,
-        help_text="WhatsApp em E.164 (ex.: +5563920013103)."
+        help_text="WhatsApp em E.164 (ex.: +5563920013103).",
+        validators=[RegexValidator(regex=r'^\+55\d{10,11}$',
+                                   message="Use +55 seguido de 10 ou 11 dígitos.")]
     )
 
     data_criacao = models.DateTimeField(auto_now_add=True)
@@ -1102,3 +965,18 @@ class PoliticaReembolso(models.Model):
 
     def __str__(self):
         return f"Política de Reembolso – {self.evento.nome}"
+
+    def clean(self):
+        super().clean()
+        if self.contato_whatsapp:
+            norm = normalizar_e164_br(self.contato_whatsapp)
+            if not norm or not validar_e164_br(norm):
+                raise ValidationError({'contato_whatsapp': "Informe um telefone BR válido. Ex.: +5563920013103"})
+            self.contato_whatsapp = norm
+
+    def save(self, *args, **kwargs):
+        if self.contato_whatsapp:
+            norm = normalizar_e164_br(self.contato_whatsapp)
+            if norm:
+                self.contato_whatsapp = norm
+        super().save(*args, **kwargs)
