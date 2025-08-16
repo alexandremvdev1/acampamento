@@ -6,30 +6,126 @@
 <title>Todas as Fichas – {{ evento.nome|default:"não informado" }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
-  /* Forçar 1 ficha por página A4 */
-  @page { size: A4 portrait; margin: 6mm; }
-  :root{--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--bg:#ffffff}
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);font-size:12px;line-height:1.2}
+  /* ===== Configuração de página ===== */
+  @page { size: A4 portrait; margin: 8mm; }
+  html, body { margin: 0; }
+  :root{
+    --ink:#0f172a;         /* texto */
+    --muted:#6b7280;       /* texto secundário */
+    --line:#e5e7eb;        /* linhas / bordas */
+    --bg:#ffffff;          /* fundo */
+    --accent:#0b6efd;      /* detalhe */
+    --chip-yes:#0ea5e9;
+    --chip-no:#9ca3af;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font: 12px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+  }
 
-  .sheet{max-width:210mm;margin:0 auto;padding:6mm;position:relative;page-break-after: always;}
-  .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;border-bottom:1px solid var(--line);padding-bottom:4px}
-  .t-left{min-width:0}
-  .t-title{font-weight:700;margin:0;font-size:14px;line-height:1}
-  .t-sub{margin:3px 0 0 0;color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120mm}
-  .media{display:flex;align-items:center;gap:6px}
-  .photo{width:58px;height:58px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:#f3f4f6}
-  .qr{width:72px;height:72px;border:1px dashed var(--line);border-radius:4px;padding:2px;background:#fff}
+  /* ===== Folha / Seções ===== */
+  .sheet{
+    max-width:210mm;
+    margin:0 auto;
+    padding:10mm 8mm 8mm;
+    position:relative;
+    page-break-after: always;
+    page-break-inside: avoid;
+    border:1px solid var(--line);
+    border-radius: 8px;
+  }
+  .hr{
+    height:1px; background:var(--line); margin:8px 0 10px;
+  }
+  .sec{
+    margin:10px 0 12px;
+  }
+  .sec h3{
+    margin:0 0 6px 0;
+    font-size:10px;
+    letter-spacing:.3px;
+    color:#111;
+    text-transform: uppercase;
+  }
 
-  .grid{display:grid;grid-template-columns:repeat(18,1fr);grid-auto-flow:dense;gap:4px}
-  .sec{margin-bottom:6px}
-  .sec h3{margin:0 0 4px 0;font-size:11px;color:#111}
-  .f{display:flex;flex-direction:column;min-width:0}
-  .f label{font-size:9px;color:var(--muted);margin-bottom:1px;line-height:1}
-  .v{border:1px solid var(--line);border-radius:4px;padding:4px 6px;min-height:22px;display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#fff}
-  .v-wrap{white-space:normal;word-break:break-word}
+  /* ===== Cabeçalho ===== */
+  .top{
+    display:grid;
+    grid-template-columns: 1fr auto;
+    gap:12px;
+    align-items:center;
+  }
+  .t-left .eyebrow{
+    font-size:10px;
+    color:var(--muted);
+    margin:0 0 2px 0;
+  }
+  .t-title{
+    margin:0;
+    font-weight:800;
+    font-size:16px;
+    line-height:1.1;
+    letter-spacing:.2px;
+  }
+  .t-sub{
+    margin:4px 0 0 0;
+    color:var(--muted);
+    font-size:9px;
+    max-width:120mm;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
 
+  .media{
+    display:flex; align-items:center; gap:10px;
+  }
+  .photo{
+    width:58px; height:58px; border-radius:8px;
+    object-fit:cover; border:1px solid var(--line); background:#f8fafc;
+  }
+  .photo.-empty{
+    display:grid; place-items:center; color:#9ca3af; font-size:10px;
+  }
+  .qr-wrap{
+    display:grid; grid-template-rows: auto 1fr; justify-items:center; gap:4px;
+  }
+  .qr{
+    width:76px; height:76px; border:1px solid var(--line); border-radius:6px; padding:2px; background:#fff;
+  }
+  .qr-caption{
+    font-size:9px; color:var(--muted);
+  }
+
+  /* ===== Grid de campos ===== */
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(18, 1fr);
+    gap:6px 6px;
+  }
+  .f{ display:flex; flex-direction:column; min-width:0; }
+  .f label{
+    font-size:9px; color:var(--muted);
+    margin-bottom:2px; line-height:1; letter-spacing:.2px;
+  }
+  .v{
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:6px 8px;
+    min-height:24px;
+    display:flex; align-items:center;
+    background:#fff;
+    overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  }
+  .v-wrap{
+    white-space:normal; word-break:break-word; overflow:visible;
+  }
+
+  /* Larguras responsivas de colunas */
   .span-18{grid-column:span 18}.span-16{grid-column:span 16}.span-12{grid-column:span 12}
   .span-10{grid-column:span 10}.span-9{grid-column:span 9}
   .span-8{grid-column:span 8}.span-7{grid-column:span 7}
@@ -37,21 +133,60 @@
   .span-4{grid-column:span 4}.span-3{grid-column:span 3}
   .span-2{grid-column:span 2}.span-1{grid-column:span 1}
 
-  .footer{margin-top:6px;text-align:center;font-size:9px;color:var(--muted)}
-  .footer img{display:block;margin:0 auto 4px auto;max-height:16px}
+  /* Chips simples para “Sim/Não” (opcional, sem alterar conteúdo) */
+  .v-chip{ display:inline-block; padding:2px 6px; border:1px solid var(--line); border-radius:999px; font-size:10px; }
+  .is-yes{ border-color:var(--chip-yes); }
+  .is-no { border-color:var(--chip-no);  }
 
-  .btn-print{background:#2563eb;color:#fff;border:none;padding:6px 10px;font-size:11px;border-radius:4px;cursor:pointer}
-  .toolbar{display:flex;justify-content:center;gap:8px;padding:8px}
+  /* Rodapé */
+  .footer{
+    margin-top:10px; text-align:center; font-size:9px; color:var(--muted);
+  }
+  .footer img{ display:block; margin:0 auto 5px; max-height:16px; }
 
+  /* Toolbar (não imprime) */
+  .toolbar{ display:flex; justify-content:center; gap:8px; padding:10px; }
+  .btn-print{
+    background:var(--accent); color:#fff; border:none;
+    padding:7px 12px; font-size:11px; border-radius:6px; cursor:pointer;
+  }
+
+  /* Ajustes para impressão */
   @media print{
-    body{font-size:10px}
-    .t-title{font-size:12px}
-    .t-sub{font-size:9px;max-width:140mm}
-    .photo{width:50px;height:50px}
-    .qr{width:64px;height:64px}
-    .toolbar{display:none!important}
+    body{ font-size:10.5px }
+    .toolbar{ display:none!important }
+    .t-title{ font-size:14px }
+    .t-sub{ font-size:9px; max-width:140mm }
+    .photo{ width:50px; height:50px }
+    .qr{ width:68px; height:68px }
   }
 </style>
+<style>
+  /* ===== Fonte + line-height mais compactos ===== */
+  body{ font-size:10px; line-height:1.22 }
+
+  /* Cabeçalho */
+  .t-left .eyebrow{ font-size:9px }
+  .t-title{ font-size:13px }
+  .t-sub{ font-size:9px }
+
+  /* Títulos de seção e labels */
+  .sec h3{ font-size:10px }
+  .f label{ font-size:8px }
+
+  /* (opcional) texto dentro das caixinhas de valor; comente se não quiser */
+  .v{ font-size:10px }
+
+  /* ===== Versões para impressão ===== */
+  @media print{
+    body{ font-size:8.6px; line-height:1.2 }   /* antes 10.5px */
+    .t-title{ font-size:11.2px }               /* antes 14px */
+    .t-sub{ font-size:8px }                    /* antes 9px */
+    .sec h3{ font-size:9px }
+    .f label{ font-size:7.2px }
+  }
+</style>
+
 </head>
 <body>
 
@@ -66,18 +201,26 @@
   <!-- Cabeçalho -->
   <div class="top">
     <div class="t-left">
-      <h1 class="t-title">FICHA DE INSCRIÇÃO</h1>
-      <div class="t-sub">{{ inscricao.evento.nome|default:"não informado" }}</div>
+      <div class="eyebrow">Ficha de inscrição</div>
+      <h1 class="t-title">{{ evento.nome|default:"não informado" }}</h1>
+      <div class="t-sub">
+        Inscrição Nº {{ inscricao.id }} • Participante: {{ inscricao.participante.nome|default:"não informado" }}
+      </div>
     </div>
     <div class="media">
       {% if inscricao.participante.foto %}
         <img class="photo" src="{{ inscricao.participante.foto.url }}" alt="Foto do participante">
       {% else %}
-        <div class="photo" style="display:grid;place-items:center;font-size:9px;color:#9ca3af">sem foto</div>
+        <div class="photo -empty">sem foto</div>
       {% endif %}
-      <img class="qr" src="{% url 'inscricoes:qr_code_png' inscricao.participante.qr_token %}" alt="QR participante">
+      <div class="qr-wrap">
+        <img class="qr" src="{% url 'inscricoes:qr_code_png' inscricao.participante.qr_token %}" alt="QR participante">
+        <div class="qr-caption">Check-in</div>
+      </div>
     </div>
   </div>
+
+  <div class="hr"></div>
 
   <!-- Participante -->
   <div class="sec">
@@ -88,11 +231,11 @@
       <div class="f span-3"><label>CPF</label><div class="v">{{ inscricao.participante.cpf|default:"não informado" }}</div></div>
 
       <div class="f span-4"><label>Telefone</label><div class="v">{{ inscricao.participante.telefone|default:"não informado" }}</div></div>
-      <div class="f span-8"><label>E-mail</label><div class="v">{{ inscricao.participante.email|default:"não informado" }}</div></div>
+      <div class="f span-8"><label>E-mail</label><div class="v v-wrap">{{ inscricao.participante.email|default:"não informado" }}</div></div>
       <div class="f span-3"><label>CEP</label><div class="v">{{ inscricao.participante.CEP|default:"não informado" }}</div></div>
       <div class="f span-3"><label>Nº</label><div class="v">{{ inscricao.participante.numero|default:"não informado" }}</div></div>
 
-      <div class="f span-8"><label>Endereço</label><div class="v">{{ inscricao.participante.endereco|default:"não informado" }}</div></div>
+      <div class="f span-8"><label>Endereço</label><div class="v v-wrap">{{ inscricao.participante.endereco|default:"não informado" }}</div></div>
       <div class="f span-4"><label>Bairro</label><div class="v">{{ inscricao.participante.bairro|default:"não informado" }}</div></div>
       <div class="f span-6"><label>Cidade</label><div class="v">{{ inscricao.participante.cidade|default:"não informado" }}</div></div>
       <div class="f span-2"><label>UF</label><div class="v">{{ inscricao.participante.estado|default:"não informado" }}</div></div>
@@ -109,19 +252,19 @@
       <div class="f span-4"><label>Estado civil</label><div class="v">{{ base.get_estado_civil_display|default:"não informado" }}</div></div>
       <div class="f span-4"><label>Casado na Igreja?</label><div class="v">{{ base.get_casado_na_igreja_display|default:"não informado" }}</div></div>
 
-      <div class="f span-6"><label>Paróquia</label><div class="v">{{ base.paroquia|default:"não informado" }}</div></div>
-      <div class="f span-6"><label>Pastoral/Movimento</label><div class="v">{{ base.pastoral_movimento|default:"não informado" }}</div></div>
-      <div class="f span-6"><label>Outra Pastoral/Movimento</label><div class="v">{{ base.outra_pastoral_movimento|default:"não informado" }}</div></div>
+      <div class="f span-6"><label>Paróquia</label><div class="v v-wrap">{{ base.paroquia|default:"não informado" }}</div></div>
+      <div class="f span-6"><label>Pastoral/Movimento</label><div class="v v-wrap">{{ base.pastoral_movimento|default:"não informado" }}</div></div>
+      <div class="f span-6"><label>Outra Pastoral/Movimento</label><div class="v v-wrap">{{ base.outra_pastoral_movimento|default:"não informado" }}</div></div>
 
       <div class="f span-2"><label>Dizimista?</label><div class="v">{{ base.get_dizimista_display|default:"não informado" }}</div></div>
       <div class="f span-2"><label>Crismado?</label><div class="v">{{ base.get_crismado_display|default:"não informado" }}</div></div>
       <div class="f span-2"><label>Camisa</label><div class="v">{{ base.tamanho_camisa|default:"não informado" }}</div></div>
 
-      <div class="f span-12"><label>Indicado por</label><div class="v">{{ base.indicado_por|default:"não informado" }}</div></div>
+      <div class="f span-12"><label>Indicado por</label><div class="v v-wrap">{{ base.indicado_por|default:"não informado" }}</div></div>
     </div>
   </div>
 
-  <!-- Saúde (inclui Pressão/Diabetes aqui) -->
+  <!-- Saúde -->
   <div class="sec">
     <h3>Saúde</h3>
     <div class="grid">
@@ -154,11 +297,11 @@
     <h3>Cônjuge</h3>
     <div class="grid">
       {% if inscricao.conjuge %}
-        <div class="f span-10"><label>Nome</label><div class="v">{{ inscricao.conjuge.nome|default:"não informado" }}</div></div>
+        <div class="f span-10"><label>Nome</label><div class="v v-wrap">{{ inscricao.conjuge.nome|default:"não informado" }}</div></div>
         <div class="f span-4"><label>Inscrito?</label><div class="v">{{ inscricao.conjuge.get_conjuge_inscrito_display|default:"não informado" }}</div></div>
         <div class="f span-4"><label>Já é campista?</label><div class="v">{{ inscricao.conjuge.get_ja_e_campista_display|default:"não informado" }}</div></div>
       {% else %}
-        <div class="f span-10"><label>Nome</label><div class="v">{{ base.nome_conjuge|default:"não informado" }}</div></div>
+        <div class="f span-10"><label>Nome</label><div class="v v-wrap">{{ base.nome_conjuge|default:"não informado" }}</div></div>
         <div class="f span-4"><label>Inscrito?</label><div class="v">{{ base.get_conjuge_inscrito_display|default:"não informado" }}</div></div>
         <div class="f span-4"><label><!-- vazio --></label><div class="v" style="border:none;background:transparent;min-height:0;padding:0"></div></div>
       {% endif %}
@@ -170,7 +313,7 @@
   <div class="sec">
     <h3>Paróquia (Inscrição)</h3>
     <div class="grid">
-      <div class="f span-10"><label>Paróquia</label><div class="v">{{ inscricao.paroquia.nome|default:"não informado" }}</div></div>
+      <div class="f span-10"><label>Paróquia</label><div class="v v-wrap">{{ inscricao.paroquia.nome|default:"não informado" }}</div></div>
       <div class="f span-6"><label>Cidade</label><div class="v">{{ inscricao.paroquia.cidade|default:"não informado" }}</div></div>
       <div class="f span-2"><label>UF</label><div class="v">{{ inscricao.paroquia.estado|default:"não informado" }}</div></div>
     </div>
@@ -180,12 +323,12 @@
   <div class="sec">
     <h3>Responsáveis</h3>
     <div class="grid">
-      <div class="f span-10"><label>Resp. 1 — Nome</label><div class="v">{{ inscricao.responsavel_1_nome|default:"não informado" }}</div></div>
+      <div class="f span-10"><label>Resp. 1 — Nome</label><div class="v v-wrap">{{ inscricao.responsavel_1_nome|default:"não informado" }}</div></div>
       <div class="f span-4"><label>Telefone</label><div class="v">{{ inscricao.responsavel_1_telefone|default:"não informado" }}</div></div>
       <div class="f span-3"><label>Grau</label><div class="v">{{ inscricao.responsavel_1_grau_parentesco|default:"não informado" }}</div></div>
       <div class="f span-1"><label>Camp.</label><div class="v">{% if inscricao.responsavel_1_ja_e_campista %}Sim{% else %}Não{% endif %}</div></div>
 
-      <div class="f span-10"><label>Resp. 2 — Nome</label><div class="v">{{ inscricao.responsavel_2_nome|default:"não informado" }}</div></div>
+      <div class="f span-10"><label>Resp. 2 — Nome</label><div class="v v-wrap">{{ inscricao.responsavel_2_nome|default:"não informado" }}</div></div>
       <div class="f span-4"><label>Telefone</label><div class="v">{{ inscricao.responsavel_2_telefone|default:"não informado" }}</div></div>
       <div class="f span-3"><label>Grau</label><div class="v">{{ inscricao.responsavel_2_grau_parentesco|default:"não informado" }}</div></div>
       <div class="f span-1"><label>Camp.</label><div class="v">{% if inscricao.responsavel_2_ja_e_campista %}Sim{% else %}Não{% endif %}</div></div>
@@ -196,7 +339,7 @@
   <div class="sec">
     <h3>Contato de emergência</h3>
     <div class="grid">
-      <div class="f span-10"><label>Nome</label><div class="v">{{ inscricao.contato_emergencia_nome|default:"não informado" }}</div></div>
+      <div class="f span-10"><label>Nome</label><div class="v v-wrap">{{ inscricao.contato_emergencia_nome|default:"não informado" }}</div></div>
       <div class="f span-4"><label>Telefone</label><div class="v">{{ inscricao.contato_emergencia_telefone|default:"não informado" }}</div></div>
       <div class="f span-3"><label>Grau</label><div class="v">{{ inscricao.contato_emergencia_grau_parentesco|default:"não informado" }}</div></div>
       <div class="f span-1"><label>Camp.</label><div class="v">{% if inscricao.contato_emergencia_ja_e_campista %}Sim{% else %}Não{% endif %}</div></div>
@@ -205,8 +348,7 @@
 
   <!-- Rodapé -->
   <div class="footer">
-    <img src="{% static 'img/logo.png' %}" alt="Logo do sistema">
-    Desenvolvido por Alexandre Martins Vieira
+    Sistema Desenvolvido por amv 2025
   </div>
 </div>
 {% endwith %}
