@@ -72,6 +72,64 @@ from .forms import (
 
 User = get_user_model()
 
+# --- PROGRESSO DA INSCRIÇÃO (ordem: endereço -> personalizado -> contato -> saúde) ---
+
+from django.urls import reverse
+
+def _tem_endereco_completo(p: Participante) -> bool:
+    return all([
+        bool(getattr(p, "CEP", "")),
+        bool(getattr(p, "endereco", "")),
+        bool(getattr(p, "numero", "")),
+        bool(getattr(p, "bairro", "")),
+        bool(getattr(p, "cidade", "")),
+        bool(getattr(p, "estado", "")),
+    ])
+
+def _tem_personalizado(insc: Inscricao) -> bool:
+    rel_por_tipo = {
+        "senior":  "inscricaosenior",
+        "juvenil": "inscricaojuvenil",
+        "mirim":   "inscricaomirim",
+        "servos":  "inscricaoservos",
+    }
+    rel = rel_por_tipo.get(insc.evento.tipo.lower())
+    return bool(rel and getattr(insc, rel, None))
+
+def _tem_contato(insc: Inscricao) -> bool:
+    return bool(
+        getattr(insc, "contato_emergencia_nome", "") and
+        getattr(insc, "contato_emergencia_telefone", "")
+    )
+
+def _proxima_etapa_forms(insc: Inscricao) -> dict | None:
+    p = insc.participante
+    ev = insc.evento
+
+    # 0) Endereço (fica dentro de 'inscricao_inicial', retomamos via querystring)
+    if not _tem_endereco_completo(p):
+        retomar_url = reverse("inscricoes:inscricao_inicial", args=[ev.slug])
+        retomar_url += f"?retomar=1&pid={p.id}"
+        return {"step": "endereco", "next_url": retomar_url}
+
+    # 1) Form personalizado (por tipo de evento)
+    if not _tem_personalizado(insc):
+        return {"step": "personalizado", "next_url": reverse("inscricoes:formulario_personalizado", args=[insc.id])}
+
+    # 2) Contato
+    if not _tem_contato(insc):
+        return {"step": "contato", "next_url": reverse("inscricoes:formulario_contato", args=[insc.id])}
+
+    # 3) Saúde (marca envio ao salvar)
+    if not insc.inscricao_enviada:
+        return {"step": "saude", "next_url": reverse("inscricoes:formulario_saude", args=[insc.id])}
+
+    # 4) Depois do envio: se selecionado e não pago → pagamento; senão → status
+    if insc.foi_selecionado and not insc.pagamento_confirmado:
+        return {"step": "pagamento", "next_url": reverse("inscricoes:aguardando_pagamento", args=[insc.id])}
+
+    return {"step": "status", "next_url": reverse("inscricoes:ver_inscricao", args=[insc.id])}
+
 
 @login_required
 def home_redirect(request):
@@ -580,15 +638,26 @@ def inscricao_inicial(request, slug):
     politica = PoliticaPrivacidade.objects.first()
     hoje = dj_tz.localdate()
 
-    # —> Se hoje estiver fora do período de inscrições, exibe template de encerradas
+    # Fora do período?
     if hoje < evento.inicio_inscricoes or hoje > evento.fim_inscricoes:
         return render(request, 'inscricoes/inscricao_encerrada.html', {
             'evento': evento,
             'politica': politica
         })
 
+    # --- Retomar endereço sem depender de sessão antiga ---
+    if request.GET.get("retomar") == "1" and request.GET.get("pid"):
+        try:
+            participante_id = int(request.GET["pid"])
+            participante = Participante.objects.get(id=participante_id)
+            # Garante que exista inscrição desse participante neste evento
+            Inscricao.objects.get(participante=participante, evento=evento)
+            request.session["participante_id"] = participante.id
+        except (ValueError, Participante.DoesNotExist, Inscricao.DoesNotExist):
+            pass
+
+    # Se já preencheu o formulário inicial (etapa Endereço)
     if 'participante_id' in request.session:
-        # Usuário já preencheu o formulário inicial
         endereco_form = ParticipanteEnderecoForm(request.POST or None)
         if request.method == 'POST' and endereco_form.is_valid():
             participante = Participante.objects.get(id=request.session['participante_id'])
@@ -611,100 +680,103 @@ def inscricao_inicial(request, slug):
             'politica': politica
         })
 
-    else:
-        # Exibir o formulário inicial
-        inicial_form = ParticipanteInicialForm(request.POST or None)
-        if request.method == 'POST' and inicial_form.is_valid():
-            cpf = ''.join(filter(str.isdigit, inicial_form.cleaned_data['cpf']))
-            participante, created = Participante.objects.get_or_create(
-                cpf=cpf,
-                defaults={
-                    'nome': inicial_form.cleaned_data['nome'],
-                    'email': inicial_form.cleaned_data['email'],
-                    'telefone': inicial_form.cleaned_data['telefone']
-                }
-            )
-            if not created:
-                participante.nome     = inicial_form.cleaned_data['nome']
-                participante.email    = inicial_form.cleaned_data['email']
-                participante.telefone = inicial_form.cleaned_data['telefone']
-                participante.save()
+    # Exibir o formulário inicial (CPF + Nome + Telefone + Email)
+    inicial_form = ParticipanteInicialForm(request.POST or None)
+    if request.method == 'POST' and inicial_form.is_valid():
+        cpf = ''.join(filter(str.isdigit, inicial_form.cleaned_data['cpf']))
+        participante, created = Participante.objects.get_or_create(
+            cpf=cpf,
+            defaults={
+                'nome': inicial_form.cleaned_data['nome'],
+                'email': inicial_form.cleaned_data['email'],
+                'telefone': inicial_form.cleaned_data['telefone']
+            }
+        )
+        if not created:
+            participante.nome     = inicial_form.cleaned_data['nome']
+            participante.email    = inicial_form.cleaned_data['email']
+            participante.telefone = inicial_form.cleaned_data['telefone']
+            participante.save()
 
-            request.session['participante_id'] = participante.id
+        request.session['participante_id'] = participante.id
 
-            inscricao_existente = Inscricao.objects.filter(
+        inscricao_existente = Inscricao.objects.filter(
+            participante=participante,
+            evento=evento
+        ).first()
+
+        # Se já existe inscrição, decidir próxima etapa
+        if inscricao_existente:
+            prog = _proxima_etapa_forms(inscricao_existente)
+            if prog and prog.get("next_url"):
+                return redirect(prog["next_url"])
+            return redirect('inscricoes:ver_inscricao', pk=inscricao_existente.id)
+
+        # Cria inscrição
+        try:
+            inscricao = Inscricao.objects.create(
                 participante=participante,
-                evento=evento
-            ).first()
+                evento=evento,
+                paroquia=evento.paroquia
+            )
+        except IntegrityError:
+            inscricao = Inscricao.objects.get(participante=participante, evento=evento)
+            prog = _proxima_etapa_forms(inscricao)
+            if prog and prog.get("next_url"):
+                return redirect(prog["next_url"])
+            return redirect('inscricoes:ver_inscricao', pk=inscricao.id)
 
-            if inscricao_existente:
-                form_map = {
-                    'senior':  'inscricaosenior',
-                    'juvenil': 'inscricaojuvenil',
-                    'mirim':   'inscricaomirim',
-                    'servos':  'inscricaoservos',
-                }
-                rel_name = form_map.get(evento.tipo.lower())
-                if rel_name and getattr(inscricao_existente, rel_name, None):
-                    return redirect('inscricoes:ver_inscricao', pk=inscricao_existente.id)
-                return redirect('inscricoes:formulario_personalizado', inscricao_id=inscricao_existente.id)
+        # Depois de criar, segue para preencher endereço
+        return redirect('inscricoes:inscricao_inicial', slug=evento.slug)
 
-            try:
-                inscricao = Inscricao.objects.create(
-                    participante=participante,
-                    evento=evento,
-                    paroquia=evento.paroquia
-                )
-            except IntegrityError:
-                inscricao = Inscricao.objects.get(participante=participante, evento=evento)
-                return redirect('inscricoes:ver_inscricao', pk=inscricao.id)
+    return render(request, 'inscricoes/inscricao_inicial.html', {
+        'form': inicial_form,
+        'evento': evento,
+        'politica': politica
+    })
 
-            return redirect('inscricoes:inscricao_inicial', slug=evento.slug)
-
-        return render(request, 'inscricoes/inscricao_inicial.html', {
-            'form': inicial_form,
-            'evento': evento,
-            'politica': politica
-        })
-    
-    
 def buscar_participante_ajax(request):
-    cpf = request.GET.get('cpf', '').replace('.', '').replace('-', '')
+    cpf = (request.GET.get('cpf') or '').replace('.', '').replace('-', '')
     evento_id = request.GET.get('evento_id')
-    print(f"[AJAX] CPF recebido no servidor: {cpf}, evento_id: {evento_id}")
 
     try:
         participante = Participante.objects.get(cpf=cpf)
-
-        # só considera inscrição se for neste mesmo evento
-        inscricao = None
-        if evento_id:
-            inscricao = Inscricao.objects.filter(
-                participante=participante,
-                evento_id=evento_id
-            ).first()
-
-        if inscricao:
-            return JsonResponse({
-                'ja_inscrito': True,
-                'inscricao_id': inscricao.id
-            })
-
-        # participa mas não neste evento, devolve dados para auto-preenchimento
-        return JsonResponse({
-            'ja_inscrito': False,
-            'nome': participante.nome,
-            'email': participante.email,
-            'telefone': participante.telefone
-        })
-
     except Participante.DoesNotExist:
         return JsonResponse({'ja_inscrito': False})
 
-    except Exception as e:
-        traceback.print_exc()
-        return JsonResponse({'error': 'Erro interno: ' + str(e)}, status=500)
-    
+    # Tenta achar a inscrição deste evento
+    inscricao = None
+    if evento_id:
+        inscricao = Inscricao.objects.filter(participante=participante, evento_id=evento_id).first()
+
+    # Se NÃO tem inscrição neste evento → devolve dados p/ autopreencher
+    if not inscricao:
+        return JsonResponse({
+            'ja_inscrito': False,          # compat com front antigo
+            'existe_participante': True,
+            'status': 'sem_inscricao',
+            'nome': participante.nome or '',
+            'email': participante.email or '',
+            'telefone': participante.telefone or '',
+        })
+
+    # Já existe inscrição — calcular próxima etapa
+    prog = _proxima_etapa_forms(inscricao)
+    payload = {
+        'ja_inscrito': inscricao.inscricao_enviada,  # compat: só "True" quando já enviada
+        'existe_participante': True,
+        'inscricao_id': inscricao.id,
+        'view_url': reverse('inscricoes:ver_inscricao', args=[inscricao.id]),
+        'status': 'concluida' if inscricao.pagamento_confirmado else (
+            'enviada' if inscricao.inscricao_enviada else 'em_andamento'
+        ),
+        'progresso': prog,  # {'step': ..., 'next_url': ...}
+        'nome': participante.nome or '',
+        'email': participante.email or '',
+        'telefone': participante.telefone or '',
+    }
+    return JsonResponse(payload)
+
 
 def formulario_personalizado(request, inscricao_id):
     # Obtém a inscrição, evento e política de privacidade
