@@ -299,9 +299,12 @@
     }
 
     // ——— Normalizadores (preservando caret) ———
-    const toTitle = (s) => s.replace(/\s+/g,' ').trim().split(' ')
-      .map(p => p ? p.charAt(0).toUpperCase()+p.slice(1).toLowerCase() : '')
-      .join(' ');
+    // Substitua sua função toTitle por esta:
+        const toTitle = (s) => (s || '')
+        .replace(/\s+/g, ' ')                // normaliza múltiplos espaços no meio
+        .split(' ')
+        .map(p => p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : '')
+        .join(' ');
 
     function normalizeOnInput(el, formatter){
       el.addEventListener('input', () => {
