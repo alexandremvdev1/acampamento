@@ -2,43 +2,186 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>Confirmar exclusão</title>
+  <title>Confirmar exclusão – {{ obj.participante.nome }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
-    :root{ --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#64748b; --danger:#dc2626; --line:#e5e7eb; }
-    *{ box-sizing: border-box }
-    body{ margin:0; background:var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    .wrap{ max-width:560px; margin:38px auto; padding:0 16px; }
-    .card{ background:var(--card); border-radius:14px; padding:22px; box-shadow:0 10px 28px rgba(0,0,0,.06); }
-    h1{ margin:0 0 8px; font-size:20px; color:var(--text); }
-    p{ margin:0; color:var(--muted); }
-    .box{ background:#f3f4f6; border:1px solid var(--line); border-radius:10px; padding:12px; margin:14px 0 0 }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:18px }
-    .btn{ appearance:none; border:1px solid var(--line); background:#fff; color:#111827; padding:12px 14px; border-radius:10px; font-weight:700; cursor:pointer; text-decoration:none; display:inline-block; flex:1 1 180px; text-align:center }
-    .btn-danger{ background:var(--danger); color:#fff; border-color:transparent }
-    .btn:hover{ filter:brightness(.98) }
+    :root{
+      --page:#f6f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --danger:#dc2626; --danger-2:#b91c1c; --accent:#2563eb;
+      --shadow:0 10px 32px rgba(16,24,40,.08); --radius:16px;
+      --chip:#fee2e2;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0c1116; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --danger:#ef4444; --danger-2:#b91c1c; --chip:rgba(239,68,68,.12);
+        --shadow:0 18px 48px rgba(0,0,0,.55);
+      }
+    }
+
+    *{ box-sizing:border-box }
+    html,body{ margin:0 }
+    body{
+      font-family:'Nunito Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(239,68,68,.10), transparent 60%),
+        radial-gradient(900px 500px at 110% -20%, rgba(37,99,235,.08), transparent 60%),
+        var(--page);
+      line-height:1.6;
+      padding:20px;
+    }
+    .wrap{ max-width:720px; margin:0 auto }
+
+    /* HERO */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(16px,3vw,26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(70% 100% at 80% -10%, rgba(239,68,68,.45), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow); border:1px solid rgba(255,255,255,.18); margin-bottom:14px;
+      display:grid; gap:10px;
+    }
+    .hero-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.15rem,3vw,1.6rem) }
+    .hero-sub{ margin:2px 0 0; opacity:.92 }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px;
+      font-weight:800; text-decoration:none; color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12); transition:transform .12s ease, background .2s ease; cursor:pointer;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+
+    /* CARD */
+    .card{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(16px,2vw,20px);
+    }
+    .card h2{ margin:0 0 8px; font-size:1.05rem; color:var(--muted); font-weight:800; display:flex; gap:8px; align-items:center }
+
+    /* INFO BOX */
+    .box{
+      border:1px dashed var(--line); border-radius:12px; padding:12px; background:linear-gradient(0deg, rgba(148,163,184,.08), rgba(148,163,184,.08));
+      display:grid; gap:8px; margin-top:8px;
+    }
+    .kv{ display:grid; grid-template-columns: 1fr 1fr; gap:10px }
+    .tag{
+      display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:var(--chip); color:var(--danger); font-weight:800; width:max-content
+    }
+
+    /* ALERTA */
+    .alert{
+      margin-top:12px; display:flex; gap:10px; align-items:flex-start;
+      background: linear-gradient(180deg, rgba(239,68,68,.10), transparent);
+      border:1px solid rgba(239,68,68,.35); color:var(--danger);
+      padding:10px 12px; border-radius:12px; font-weight:700;
+    }
+
+    /* FORM / AÇÕES */
+    form{ margin-top:12px }
+    .confirm{
+      display:flex; gap:10px; align-items:flex-start; background:transparent; border:1px solid var(--line);
+      border-radius:12px; padding:12px; margin-top:10px;
+    }
+    .confirm input[type="checkbox"]{ margin-top:2px; transform: translateY(2px) }
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px }
+    .btn{
+      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      padding:12px 16px; border-radius:12px; font-weight:800; text-decoration:none;
+      transition: transform .12s ease, filter .2s ease;
+    }
+    .btn:hover{ transform:translateY(-1px) }
+    .btn-ghost{ background:transparent; color:var(--ink); border:1px solid var(--line) }
+    .btn-danger{
+      color:#fff; background:linear-gradient(135deg, var(--danger), var(--danger-2));
+      border:1px solid rgba(0,0,0,.05);
+    }
+    .btn:disabled{
+      opacity:.6; cursor:not-allowed; transform:none !important;
+    }
+
+    footer{ text-align:center; margin:16px auto 6px; color:var(--muted); font-size:.95rem }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="card">
-      <h1>Excluir inscrição?</h1>
-      <p>Esta ação é permanente e não poderá ser desfeita.</p>
+    <!-- HERO -->
+    <header class="hero" role="banner">
+      <div class="hero-row">
+        <div>
+          <h1 class="hero-title"><i class="fa-solid fa-triangle-exclamation"></i> Confirmar exclusão</h1>
+          <p class="hero-sub">Esta ação é permanente e não poderá ser desfeita.</p>
+        </div>
+        <div>
+          <a class="pill" href="{% url 'inscricoes:evento_participantes' obj.evento.id %}">
+            <i class="fa-solid fa-arrow-left"></i> Voltar
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- CARD -->
+    <section class="card" aria-labelledby="infoTitle">
+      <h2 id="infoTitle"><i class="fa-solid fa-circle-info"></i> Detalhes da inscrição</h2>
 
       {% if obj %}
       <div class="box">
-        <div><strong>Participante:</strong> {{ obj.participante.nome }}</div>
-        <div><strong>Evento:</strong> {{ obj.evento.nome }}</div>
-        <div><strong>ID:</strong> {{ obj.id }}</div>
+        <div class="kv">
+          <div><strong>Participante</strong><br>{{ obj.participante.nome }}</div>
+          <div><strong>Evento</strong><br>{{ obj.evento.nome }}</div>
+          <div><strong>ID</strong><br>#{{ obj.id }}</div>
+          <div><span class="tag"><i class="fa-solid fa-bomb"></i> Exclusão permanente</span></div>
+        </div>
       </div>
       {% endif %}
 
-      <form method="post" class="row">
+      <div class="alert" role="alert">
+        <i class="fa-solid fa-skull-crossbones"></i>
+        <div>
+          Ao excluir, todos os dados vinculados a esta inscrição poderão ser removidos e não será possível restaurá-los.
+        </div>
+      </div>
+
+      <form method="post">
         {% csrf_token %}
-        <a class="btn" href="{% url 'inscricoes:evento_participantes' obj.evento.id %}">Cancelar</a>
-        <button class="btn btn-danger" type="submit">Sim, excluir</button>
+        <div class="confirm">
+          <input type="checkbox" id="ack" />
+          <label for="ack">
+            Confirmo que desejo <strong>excluir permanentemente</strong> esta inscrição e compreendo que esta ação não pode ser desfeita.
+          </label>
+        </div>
+
+        <div class="actions">
+          <a class="btn btn-ghost" href="{% url 'inscricoes:evento_participantes' obj.evento.id %}">
+            <i class="fa-solid fa-circle-xmark"></i> Cancelar
+          </a>
+          <button class="btn btn-danger" type="submit" id="btnDelete" disabled>
+            <i class="fa-solid fa-trash"></i> Sim, excluir
+          </button>
+        </div>
       </form>
-    </div>
+    </section>
+
+    <footer>&copy; {{ current_year|default:"" }} – Ação crítica: revise antes de confirmar</footer>
   </div>
+
+  <script>
+    // Habilita o botão "Excluir" apenas após confirmação
+    (function(){
+      const ack = document.getElementById('ack');
+      const btn = document.getElementById('btnDelete');
+      if(ack && btn){
+        ack.addEventListener('change', () => { btn.disabled = !ack.checked; });
+      }
+    })();
+  </script>
 </body>
 </html>

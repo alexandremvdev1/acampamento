@@ -1,237 +1,265 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Paróquias - Admin Geral</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        /* Cores */
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #2c3e50;
-            --light-bg: #f9f9f9;
-            --text-color: #333;
-            --border-color: #ddd;
-            --white: #fff;
-            --nova-paroquia-color: #1abc9c; /* Verde-azulado */
-            --view-button-color: #27ae60; /* Verde para o botão "Ver" */
-        }
+  <meta charset="UTF-8" />
+  <title>Paróquias — Admin Geral</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* ========= Tokens (mesmo set das outras páginas) ========= */
+    :root{
+      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
+      --focus:0 0 0 3px rgba(37,99,235,.25);
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--light-bg);
-            color: var(--text-color);
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+      --pill-back:#4b5563; --pill-accent:#0ea5e9; --pill-green:#22c55e;
+      --row-hover:rgba(37,99,235,.06);
+      --thead:#2563eb; --thead-ink:#fff;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow:0 10px 40px rgba(0,0,0,.45);
+        --pill-back:#6b7280; --pill-accent:#0284c7; --pill-green:#16a34a;
+        --row-hover:rgba(59,130,246,.08);
+        --thead:#1d4ed8; --thead-ink:#e5e7eb;
+      }
+    }
 
-        .container {
-            max-width: 1200px;
-            margin: 30px auto;
-            padding: 20px;
-            background-color: var(--white);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border-radius: 10px;
-            flex: 1; /* Ocupa o espaço restante */
-        }
+    *{ box-sizing:border-box }
+    html,body{ margin:0; padding:0 }
+    body{
+      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.35;
+    }
+    .container{ max-width:1100px; margin:20px auto 32px; padding:0 16px }
 
-        h1 {
-            color: var(--secondary-color);
-            text-align: center;
-            margin-bottom: 20px;
-            font-weight: 600;
-            font-size: 2.5em;
-        }
+    /* ========= HERO ========= */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(18px,4vw,26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.18);
+      margin-bottom:18px;
+    }
+    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px }
+    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.1rem,3vw,1.8rem); letter-spacing:.3px }
+    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
 
-        /* Botões */
-        .btn {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: var(--primary-color);
-            color: var(--white);
-            text-decoration: none;
-            border-radius: 6px;
-            transition: background-color 0.3s ease;
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
-            font-size: 1em;
-        }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
+      color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12);
+      transition: transform .12s ease, background .2s ease;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
+    .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
+    .pill.-accent{ background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
+    .pill.-green{ background: linear-gradient(135deg, #34d399, var(--pill-green)) }
 
-        .btn:hover {
-            background-color: #207ac2;
-        }
+    /* ========= Painéis ========= */
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(14px,2vw,18px); margin-bottom:16px;
+    }
+    .panel h2{
+      margin:0 0 12px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
+      display:flex; align-items:center; gap:8px;
+    }
 
-        .button-container {
-            display: flex;
-            gap: 10px; /* Espaçamento entre os botões */
-            margin-bottom: 20px;
-        }
+    /* ========= Filtros ========= */
+    .filters{
+      display:grid; grid-template-columns: 1fr 180px auto; gap:8px; align-items:center;
+    }
+    @media (max-width:720px){ .filters{ grid-template-columns: 1fr 1fr } .filters .actions{ grid-column:1/-1 } }
+    input[type="search"], select{
+      border:1px solid var(--line); background:var(--panel); color:var(--ink);
+      border-radius:12px; padding:10px 12px; font-size:.96rem; width:100%;
+    }
+    input[type="search"]::placeholder{ color:var(--muted) }
+    .actions{ display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap }
+    .actions a, .actions button{ border:none; cursor:pointer }
 
-        .btn-back {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    /* ========= Tabela ========= */
+    .table-wrap{ overflow:auto; border:1px solid var(--line); border-radius:14px }
+    table{ width:100%; border-collapse:separate; border-spacing:0; min-width:800px; background:var(--panel) }
+    thead th{
+      position:sticky; top:0; z-index:1; text-align:left; font-weight:700; color:var(--thead-ink);
+      background:var(--thead); padding:12px 14px; letter-spacing:.02em;
+    }
+    tbody td{ padding:12px 14px; border-top:1px solid var(--line) }
+    tbody tr:hover{ background:var(--row-hover) }
+    .actions-col{ white-space:nowrap; text-align:center }
+    .btn-view{
+      display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; color:#fff; text-decoration:none;
+      background: linear-gradient(135deg, #34d399, #22c55e);
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .count{ color:var(--muted); font-size:.92rem }
 
-        /* Botão Nova Paróquia */
-        .btn-nova-paroquia {
-            background-color: var(--nova-paroquia-color);
-        }
-
-        .btn-nova-paroquia:hover {
-            background-color: #16a085;
-        }
-
-        /* Botão Ver */
-        .btn-ver {
-            background-color: var(--view-button-color);
-            color: var(--white);
-            padding: 8px 16px;
-            border-radius: 4px;
-            text-decoration: none;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-ver:hover {
-            background-color: #218c51;
-        }
-
-        /* Tabela */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 25px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            border-radius: 8px;
-            overflow: hidden; /* Esconde as bordas arredondadas */
-        }
-
-        th, td {
-            border: 1px solid var(--border-color);
-            padding: 12px 15px;
-            text-align: left;
-        }
-
-        th {
-            background-color: var(--primary-color);
-            color: var(--white);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        tbody tr:nth-child(even) {
-            background-color: var(--light-bg);
-        }
-
-        tbody tr:hover {
-            background-color: #ecf0f1;
-            transition: background-color 0.2s ease;
-        }
-
-        /* Empty State */
-        .empty-message {
-            text-align: center;
-            padding: 30px;
-            color: var(--secondary-color);
-            font-size: 1.2em;
-            font-style: italic;
-        }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 20px;
-            background-color: var(--secondary-color);
-            color: var(--white);
-            margin-top: 30px;
-            border-radius: 0;
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-                margin: 15px auto;
-            }
-
-            h1 {
-                font-size: 2em;
-            }
-
-            .btn {
-                padding: 10px 20px;
-                font-size: 0.9em;
-            }
-
-            th, td {
-                padding: 10px;
-                font-size: 0.9em;
-            }
-
-            .button-container {
-                flex-direction: column; /* Empilha os botões em telas menores */
-                align-items: flex-start; /* Alinha os botões à esquerda */
-            }
-        }
-
-        /* Estilo para a coluna de botões */
-        .actions-column {
-            text-align: center;
-        }
-    </style>
+    footer{ text-align:center; color:var(--muted); margin:12px 0 0 }
+  </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Paróquias Cadastradas</h1>
-        <div class="button-container">
-            <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="btn btn-back">
-                <i class="fas fa-arrow-left"></i> Voltar para o Dashboard
-            </a>
-            <a href="{% url 'inscricoes:admin_geral_create_paroquia' %}" class="btn btn-nova-paroquia">
-                <i class="fas fa-plus"></i> Nova Paróquia
-            </a>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Cidade</th>
-                    <th>Estado</th>
-                    <th>Responsável</th>
-                    <th>E-mail</th>
-                    <th>Telefone</th>
-                    <th class="actions-column">Ações</th> <!-- Coluna para os botões -->
-                </tr>
-            </thead>
-            <tbody>
-                {% for paroquia in paroquias %}
-                    <tr>
-                        <td>{{ paroquia.nome }}</td>
-                        <td>{{ paroquia.cidade }}</td>
-                        <td>{{ paroquia.estado }}</td>
-                        <td>{{ paroquia.responsavel }}</td>
-                        <td>{{ paroquia.email }}</td>
-                        <td>{{ paroquia.telefone }}</td>
-                        <td class="actions-column">
-                            <a href="{% url 'inscricoes:admin_paroquia_painel' paroquia.id %}" class="btn-ver">Ver</a>
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr><td colspan="7" class="empty-message">Nenhuma paróquia cadastrada.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
 
-    <footer>
-        &copy; {{ current_year }} Admin Geral - Todos os direitos reservados
-    </footer>
+<body>
+  <div class="container">
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-head">
+        <div>
+          <h1 class="hero-title">Paróquias Cadastradas</h1>
+          <p class="hero-sub">Gerencie e acesse rapidamente as paróquias do sistema.</p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="pill -back">
+            <i class="fa-solid fa-arrow-left"></i><span>Dashboard</span>
+          </a>
+          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema">
+            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+          </button>
+          <a href="{% url 'inscricoes:admin_geral_create_paroquia' %}" class="pill -green">
+            <i class="fa-solid fa-plus"></i><span>Nova Paróquia</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- FILTROS -->
+    <section class="panel">
+      <h2><i class="fa-solid fa-filter"></i> Filtros</h2>
+      <div class="filters">
+        <input type="search" id="search" placeholder="Buscar por nome, cidade, responsável..." />
+        <select id="uf">
+          <option value="">UF (todas)</option>
+        </select>
+        <div class="actions">
+          <span class="count" id="count"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABELA -->
+    <section class="panel">
+      <div class="table-wrap">
+        <table id="tblParoquias">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Cidade</th>
+              <th>Estado</th>
+              <th>Responsável</th>
+              <th>E-mail</th>
+              <th>Telefone</th>
+              <th style="text-align:center;">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for paroquia in paroquias %}
+            <tr>
+              <td data-col="nome">{{ paroquia.nome }}</td>
+              <td data-col="cidade">{{ paroquia.cidade }}</td>
+              <td data-col="uf">{{ paroquia.estado }}</td>
+              <td data-col="resp">{{ paroquia.responsavel }}</td>
+              <td data-col="email">{{ paroquia.email }}</td>
+              <td data-col="tel">{{ paroquia.telefone }}</td>
+              <td class="actions-col">
+                <a href="{% url 'inscricoes:admin_paroquia_painel' paroquia.id %}" class="btn-view">
+                  <i class="fa-solid fa-eye"></i> Ver
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align:center; color:var(--muted); padding:18px;">Nenhuma paróquia cadastrada.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>&copy; {{ current_year }} Admin Geral — Todos os direitos reservados</footer>
+  </div>
+
+  <script>
+    // Tema com persistência (mesma key das outras telas)
+    (function themeToggle(){
+      const KEY='relatorios-theme';
+      const btn=document.getElementById('themeToggle');
+      const root=document.documentElement;
+      function apply(theme){
+        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      }
+      apply(localStorage.getItem(KEY) || 'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next); apply(next);
+        btn.setAttribute('aria-label',`Tema: ${next}`);
+      });
+    })();
+
+    // Busca + filtro por UF + contador
+    (function tableFilters(){
+      const $tbl = document.getElementById('tblParoquias');
+      if(!$tbl) return;
+      const $rows = Array.from($tbl.querySelectorAll('tbody tr'));
+      const $search = document.getElementById('search');
+      const $uf = document.getElementById('uf');
+      const $count = document.getElementById('count');
+
+      // Popular UF a partir das linhas
+      const ufs = [...new Set($rows
+        .map(r => (r.querySelector('[data-col="uf"]')?.textContent || '').trim())
+        .filter(Boolean)
+      )].sort();
+      ufs.forEach(uf => {
+        const opt = document.createElement('option');
+        opt.value = uf; opt.textContent = uf; $uf.appendChild(opt);
+      });
+
+      function apply(){
+        const q = ($search.value || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
+        const fuf = $uf.value;
+
+        let shown = 0;
+        $rows.forEach(row=>{
+          const nome = (row.querySelector('[data-col="nome"]')?.textContent || '').toLowerCase();
+          const cidade = (row.querySelector('[data-col="cidade"]')?.textContent || '').toLowerCase();
+          const resp = (row.querySelector('[data-col="resp"]')?.textContent || '').toLowerCase();
+          const uf = (row.querySelector('[data-col="uf"]')?.textContent || '').trim();
+          const text = (nome + ' ' + cidade + ' ' + resp);
+
+          const matchQ = !q || text.normalize('NFD').replace(/\p{Diacritic}/gu,'').includes(q);
+          const matchUF = !fuf || uf === fuf;
+
+          const vis = matchQ && matchUF;
+          row.style.display = vis ? '' : 'none';
+          if(vis) shown++;
+        });
+        $count.textContent = shown + ' de ' + $rows.length + ' paróquias';
+      }
+      $search?.addEventListener('input', apply);
+      $uf?.addEventListener('change', apply);
+      apply();
+    })();
+  </script>
 </body>
 </html>

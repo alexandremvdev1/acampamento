@@ -1,204 +1,223 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Login - Sistema</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-          integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-          crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <title>Login • Sistema</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Fontes / Ícones -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfAmGNh9H2PS9e0m9QF0S/3VQG8H1m2HNp6f5p2l+Z8Y3GfP2vLQdESA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    :root{
+      --bg:#f4f7f9;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --primary:#3498db;
+      --primary-600:#207ac2;
+      --danger:#e11d48;
 
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(to right, #6A82FB, #10f310);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
+      --ok-bg:#d1e7dd; --ok-border:#badbcc; --ok-text:#0f5132;
+      --err-bg:#fde2e7; --err-border:#f5c2c7; --err-text:#842029;
+    }
+    *{ box-sizing:border-box }
+    html,body{ margin:0 }
+    body{
+      min-height:100vh; display:flex; flex-direction:column; gap:16px;
+      align-items:center; justify-content:center; padding:24px;
+      background:var(--bg);
+      font-family:'Roboto',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+      color:var(--text);
+    }
 
-        .login-container {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-            width: 90%;
-            max-width: 380px;
-            text-align: center;
-            transition: transform 0.3s ease-in-out;
-            margin: auto 0;
-        }
+    .card{
+      width:100%; max-width:420px;
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:14px;
+      box-shadow:0 10px 28px rgba(0,0,0,.06);
+      padding:22px;
+      transition:transform .2s ease;
+    }
+    .card:hover{ transform:translateY(-1px) }
 
-        .login-container:hover {
-            transform: scale(1.02);
-        }
+    .logo{
+      max-width:120px; height:auto; display:block; margin:0 auto 8px;
+      border-radius:10px;
+    }
 
-        .logo-login {
-            max-width: 120px;
-            height: auto;
-            margin-bottom: 15px;
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-        }
+    h1{
+      margin:6px 0 14px; text-align:center; font-size:22px; font-weight:700; color:#1f2937;
+    }
 
-        h1 {
-            margin-bottom: 25px;
-            color: #333;
-            font-size: 2.2rem;
-            font-weight: 600;
-        }
+    /* Mensagens */
+    .messages{ list-style:none; margin:0 0 12px; padding:0 }
+    .msg{ border-radius:10px; padding:12px 14px; border:1px solid transparent; font-weight:500; margin-bottom:10px }
+    .error{ background:var(--err-bg); border-color:var(--err-border); color:var(--err-text) }
+    .success{ background:var(--ok-bg); border-color:var(--ok-border); color:var(--ok-text) }
 
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 500;
-            color: #555;
-            text-align: left;
-        }
+    label{ display:block; font-weight:500; color:#374151; margin:10px 0 6px }
 
-        input[type="text"],
-        input[type="password"] {
-            width: 100%;
-            padding: 10px 12px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: border-color 0.3s ease;
-        }
+    .field{
+      position:relative;
+      background:#f9fafb;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:8px 12px;
+      display:flex; align-items:center; gap:8px;
+      transition:border-color .2s, box-shadow .2s, background .2s;
+    }
+    .field:focus-within{ border-color:var(--primary); box-shadow:0 0 0 3px rgba(52,152,219,.15); background:#fff }
+    .field i{ color:#7b8694 }
 
-        input[type="text"]:focus,
-        input[type="password"]:focus {
-            border-color: #6A82FB;
-            outline: none;
-        }
+    .field input{
+      flex:1; min-width:0; border:0; outline:0;
+      background:transparent; font-size:15px; color:var(--text);
+      padding:6px 0;
+    }
 
-        button {
-            width: 100%;
-            background-color: #6A82FB;
-            color: white;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+    .eye{
+      border:none; background:transparent; cursor:pointer;
+      font-size:18px; color:#7b8694; padding:4px 6px; border-radius:8px;
+    }
+    .eye:hover{ background:#eef2f7 }
 
-        button:hover {
-            background-color: #5167d9;
-        }
+    .errorlist{ margin:6px 0 0 0; padding-left:18px; color:var(--err-text); font-size:13px }
 
-        .error-message {
-            color: #e74c3c;
-            margin-bottom: 15px;
-            text-align: center;
-            font-size: 1rem;
-        }
+    .btn{
+      width:100%;
+      appearance:none; border:0; border-radius:10px;
+      padding:12px 16px; font-weight:700; font-size:16px;
+      background:var(--primary); color:#fff; cursor:pointer;
+      box-shadow:0 6px 16px rgba(52,152,219,.25);
+      transition:filter .2s, transform .03s ease-in;
+      margin-top:8px;
+    }
+    .btn:hover{ filter:brightness(.97) }
+    .btn:active{ transform:translateY(1px) }
+    .btn[disabled]{ opacity:.7; cursor:not-allowed }
 
-        .contact-btns-pequenos {
-            display: flex;
-            justify-content: center;
-            width: 100%;
-            max-width: 380px;
-            margin: 15px auto;
-        }
+    .support{
+      display:flex; justify-content:center; gap:10px; flex-wrap:wrap;
+      width:100%; max-width:420px;
+    }
+    .support a{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:10px; color:#fff; text-decoration:none; font-weight:600;
+      box-shadow:0 6px 16px rgba(0,0,0,.08); transition:filter .2s;
+    }
+    .wa{ background:#25d366 }
+    .wa:hover{ filter:brightness(.95) }
+    .mail{ background:#2563eb }
+    .mail:hover{ filter:brightness(.95) }
 
-        .btn-pequeno {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8px 16px;
-            margin: 0 8px;
-            color: white;
-            font-size: 0.9rem;
-            font-weight: 500;
-            border: none;
-            border-radius: 8px;
-            text-decoration: none;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-suporte-whatsapp {
-            background-color: #25d366;
-        }
-
-        .btn-suporte-whatsapp:hover {
-            background-color: #128c7e;
-        }
-
-        .btn-email {
-            background-color: #007bff;
-        }
-
-        .btn-email:hover {
-            background-color: #0056b3;
-        }
-
-        .btn-pequeno i {
-            margin-right: 6px;
-        }
-
-        footer {
-            text-align: center;
-            color: #fff;
-            font-size: 0.8rem;
-            padding: 8px;
-            background-color: rgba(0, 0, 0, 0.2);
-            width: 100%;
-            margin-top: auto;
-        }
-    </style>
+    footer{
+      text-align:center; color:#6b7280; font-size:12px; margin-top:6px;
+    }
+  </style>
 </head>
 <body>
-    <div class="login-container">
-        {% if politica and politica.logo %}
-            <img src="{{ politica.logo.url }}" alt="Logo do Sistema" class="logo-login">
-        {% endif %}
 
+  <div class="card" {% if form.errors %}aria-live="polite"{% endif %}>
+    {% if politica and politica.logo %}
+      <img src="{{ politica.logo.url }}" alt="Logo" class="logo">
+    {% endif %}
 
-        <h1>Login</h1>
+    <h1>Login</h1>
 
-        {% if form.errors %}
-        <div class="error-message">
-            Usuário ou senha inválidos.
-        </div>
-        {% endif %}
+    {% if form.errors %}
+      <div class="msg error"><i class="fa-solid fa-circle-exclamation"></i> Usuário ou senha inválidos.</div>
+    {% endif %}
 
-        <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ next }}">
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li class="msg {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
 
-            <label for="{{ form.username.id_for_label }}">Usuário</label>
-            {{ form.username }}
+    <form method="post" class="login-form" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}"/>
 
-            <label for="{{ form.password.id_for_label }}">Senha</label>
-            {{ form.password }}
+      <label for="{{ form.username.id_for_label }}">Usuário</label>
+      <div class="field">
+        <i class="fa-regular fa-user"></i>
+        {{ form.username }}
+      </div>
+      {% if form.username.errors %}
+        <ul class="errorlist">
+          {% for error in form.username.errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
 
-            <button type="submit">Entrar</button>
-        </form>
-    </div>
+      <label for="{{ form.password.id_for_label }}">Senha</label>
+      <div class="field">
+        <i class="fa-solid fa-key"></i>
+        {{ form.password }}
+        <button type="button" class="eye" data-eye="id_password" aria-label="Mostrar/ocultar senha">👁️</button>
+      </div>
+      {% if form.password.errors %}
+        <ul class="errorlist">
+          {% for error in form.password.errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
 
-    <div class="contact-btns-pequenos">
-        <a href="https://wa.me/5563920013103" class="btn-pequeno btn-suporte-whatsapp" target="_blank"
-            rel="noopener"><i class="fab fa-whatsapp"></i> Suporte Sistema</a>
-        <a href="mailto:alexandremv.dev@gmail.com" class="btn-pequeno btn-email"><i
-                class="fas fa-envelope"></i> Suporte Email</a>
-    </div>
+      <button type="submit" class="btn" id="btnSubmit">Entrar</button>
+    </form>
+  </div>
 
-    <footer>
-        Sistema eismeaqui.app desenvolvido por Alexandre Martins Vieira
-    </footer>
+  <div class="support" aria-label="Canais de suporte">
+    <a href="https://wa.me/5563920013103" class="wa" target="_blank" rel="noopener">
+      <i class="fa-brands fa-whatsapp"></i> Suporte WhatsApp
+    </a>
+    <a href="mailto:alexandremv.dev@gmail.com" class="mail">
+      <i class="fa-solid fa-envelope"></i> Suporte E-mail
+    </a>
+  </div>
+
+  <footer>
+    Sistema eismeaqui.app — desenvolvido por Alexandre Martins Vieira
+  </footer>
+
+  <script>
+    // Acessibilidade / UX: sugere autocomplete apropriado
+    const u = document.getElementById('{{ form.username.id_for_label }}'.replace('id_', 'id_')) || document.getElementById('id_username');
+    const p = document.getElementById('{{ form.password.id_for_label }}'.replace('id_', 'id_')) || document.getElementById('id_password');
+
+    if(u){ u.setAttribute('autocomplete','username'); u.setAttribute('autocapitalize','none'); u.setAttribute('spellcheck','false'); }
+    if(p){ p.setAttribute('autocomplete','current-password'); }
+
+    // Mostrar/ocultar senha
+    document.querySelectorAll('[data-eye]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('data-eye');
+        const input = document.getElementById(id) || document.querySelector('input[name="password"]');
+        if(!input) return;
+        const isPwd = input.type === 'password';
+        input.type = isPwd ? 'text' : 'password';
+        btn.textContent = isPwd ? '🙈' : '👁️';
+        input.focus({preventScroll:true});
+      });
+    });
+
+    // Evitar duplo envio
+    (function(){
+      const form = document.querySelector('.login-form');
+      if(!form) return;
+      form.addEventListener('submit', ()=>{
+        const btn = document.getElementById('btnSubmit');
+        if(btn){ btn.textContent = 'Entrando…'; btn.setAttribute('disabled','disabled'); }
+      });
+    })();
+
+    // Auto foco amigável
+    if(u && !u.value){ u.focus(); } else if(p && !p.value){ p.focus(); }
+  </script>
 </body>
 </html>

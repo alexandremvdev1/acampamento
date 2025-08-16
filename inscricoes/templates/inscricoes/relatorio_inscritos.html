@@ -1,322 +1,380 @@
 {% load custom_filters %}
 {% load static %}
-
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Relatório de Inscritos - {{ evento.nome }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        /* Estilos CSS (movidos para um arquivo style.css para melhor organização) */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 20px;
-            background-color: #f4f6f9;
-            color: #334155;
-        }
+  <meta charset="UTF-8" />
+  <title>Relatório de Inscritos — {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #334155;
-            font-size: 26px;
-            font-weight: 600;
-        }
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --bg:#f8fafc; --card:#fff;
+      --brand:#2563eb; --ok:#16a34a; --warn:#d97706; --danger:#ef4444;
+    }
+    *{ box-sizing:border-box }
+    html,body{ margin:0 }
+    body{
+      font: 14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      color:var(--ink); background:var(--bg);
+    }
 
-        form {
-            margin-bottom: 20px;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    .wrap{ max-width:1100px; margin:18px auto; padding:0 14px }
+    h2{
+      margin: 0 0 10px; text-align:center; font-size: clamp(18px,2.4vw,26px);
+      color:var(--ink); font-weight:700; letter-spacing:.2px;
+    }
+    .subtitle{ text-align:center; margin-top:4px; color:var(--muted) }
 
-        form label {
-            font-size: 16px;
-            color: #334155;
-            margin-right: 10px;
-            font-weight: 500;
-        }
+    .toolbar{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:end; justify-content:center;
+      margin:14px 0;
+    }
+    .filters, .columns, .actions{
+      background:var(--card); border:1px solid var(--line); border-radius:12px;
+      padding:10px 12px; box-shadow:0 8px 20px rgba(0,0,0,.04);
+    }
+    .filters{
+      display:grid; gap:10px; grid-template-columns: repeat(3, minmax(180px,1fr));
+    }
+    .filters label{ display:block; font-size:12px; color:var(--muted); margin-bottom:4px }
+    .filters select{
+      width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
+      font-size:14px; background:#fff;
+    }
+    .filters .btn{
+      align-self:end;
+    }
 
-        select {
-            padding: 10px 14px;
-            font-size: 15px;
-            margin-right: 10px;
-            cursor: pointer;
-            border-radius: 6px;
-            border: 1px solid #cbd5e0;
-            color: #4b5563;
-            background-color: #f9fafb;
-        }
+    details.columns{ max-width:100%; }
+    details.columns summary{
+      cursor:pointer; font-weight:700; color:var(--ink);
+      list-style:none; outline:none;
+    }
+    details.columns summary::-webkit-details-marker{ display:none }
+    .columns-grid{
+      margin-top:8px; display:grid; gap:8px 14px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+    .columns-grid label{
+      display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
+      font-size:14px;
+    }
 
-        button {
-            padding: 10px 16px;
-            font-size: 15px;
-            margin-right: 10px;
-            cursor: pointer;
-            border-radius: 6px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            transition: background-color 0.3s ease;
-        }
+    .actions{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap }
+    .btn{
+      appearance:none; border:1px solid var(--line); background:#fff; color:#111827;
+      padding:10px 14px; border-radius:10px; font-weight:700; cursor:pointer;
+      text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+    }
+    .btn-primary{ background:var(--brand); border-color:transparent; color:#fff }
+    .btn-green{ background:var(--ok); border-color:transparent; color:#fff }
+    .btn:hover{ filter:brightness(.98) }
 
-        button:hover {
-            background-color: #218838;
-        }
+    .table-wrap{
+      background:var(--card); border:1px solid var(--line); border-radius:12px;
+      box-shadow:0 10px 24px rgba(0,0,0,.05); overflow:auto;
+    }
+    table{ width:100%; border-collapse:collapse; min-width:900px }
+    th, td{
+      border-bottom:1px solid var(--line); padding:10px 12px; text-align:left;
+      vertical-align:middle; white-space:nowrap;
+    }
+    th{
+      position:sticky; top:0; background:#f1f5f9; color:#334155; z-index:1; font-weight:700;
+    }
+    tbody tr:nth-child(even){ background:#fafafa }
+    .muted{ color:var(--muted) }
+    .total{ text-align:right; margin:10px 4px 0; color:var(--ink); font-weight:700 }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            border: 1px solid #e0e0e0;
-            background-color: #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
+    .shirts{
+      margin:14px 0 0; display:grid; gap:6px; grid-template-columns: repeat(auto-fit, minmax(120px,1fr));
+    }
+    .chip{
+      background:var(--card); border:1px solid var(--line); border-radius:999px;
+      padding:8px 12px; text-align:center; font-weight:700;
+    }
 
-        th,
-        td {
-            border: 1px solid #e0e0e0;
-            padding: 12px;
-            text-align: left;
-            color: #4b5563;
-            /* Adicionado para evitar quebra de linha */
-            white-space: nowrap;
-        }
+    /* Coluna oculta por toggle */
+    .is-hidden{ display:none !important; }
 
-        th {
-            background-color: #f9fafb;
-            font-weight: 500;
-            color: #334155;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        .total {
-            margin-top: 20px;
-            font-weight: 500;
-            text-align: right;
-            color: #334155;
-            font-size: 16px;
-        }
-
-        @media print {
-
-            form,
-            #btn-imprimir,
-            #btn-voltar {
-                display: none;
-            }
-
-            /* Garante que a tabela ocupe toda a largura da página na impressão */
-            table {
-                width: 100%;
-            }
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            body {
-                margin: 10px;
-            }
-
-            h2 {
-                font-size: 24px;
-            }
-
-            form {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            form label {
-                font-size: 14px;
-                margin-right: 5px;
-                margin-bottom: 5px;
-                text-align: left;
-            }
-
-            select,
-            button {
-                font-size: 14px;
-                padding: 8px 12px;
-                margin-bottom: 10px;
-            }
-
-            table {
-                font-size: 13px;
-            }
-
-            th,
-            td {
-                padding: 8px;
-                white-space: normal; /* Permite quebra de linha em telas menores */
-            }
-
-            .total {
-                font-size: 15px;
-            }
-        }
-
-        /* Estilos para a seção de tamanhos de camisa */
-        .tamanho-camisa {
-            margin-top: 10px; /* Reduz o espaçamento superior */
-            text-align: right; /* Alinha o texto à direita */
-        }
-
-        .tamanho-camisa h3 {
-            font-size: 18px;
-            color: #334155;
-            margin-bottom: 5px; /* Reduz o espaçamento inferior */
-        }
-
-        .tamanho-camisa p {
-            font-size: 16px;
-            color: #4b5563;
-            margin-bottom: 2px; /* Reduz o espaçamento inferior */
-        }
-    </style>
+    /* ===== Impressão: SOMENTE DADOS (apenas <tbody> da tabela) ===== */
+    @media print {
+      body{ background:#fff; }
+      /* esconde tudo */
+      body *{ visibility:hidden; }
+      /* mostra só a tabela (e o que está dentro dela) */
+      #tRelatorio, #tRelatorio *{ visibility:visible; }
+      /* posiciona no topo/esquerda */
+      #tRelatorio{ position:absolute; left:0; top:0; width:100%; }
+      /* oculta cabeçalho e rodapé da tabela */
+      #tRelatorio thead, #tRelatorio tfoot{ display:none !important; }
+      /* compacta linhas pra caber mais por página */
+      #tRelatorio td{ padding:6px 8px; font-size:12px; }
+      /* qualquer coisa marcada como no-print some */
+      .no-print{ display:none !important; }
+    }
+  </style>
 </head>
-
 <body>
+<div class="wrap" id="page" data-evento="{{ evento.id }}">
+  <h2>Relatório de Inscritos</h2>
+  <div class="subtitle">{{ evento.nome }}</div>
 
-    <h2><i class="fas fa-list-alt"></i> Relatório de Inscritos - {{ evento.nome }}</h2>
-
-    <!-- Formulário de Filtro -->
-    <form method="get">
-        <label for="cidade"><i class="fas fa-city"></i> Filtrar por Cidade:</label>
-        <select name="cidade" id="cidade">
-            <option value="">Todas as Cidades</option>
-            {% for c in cidades %}
-            <option value="{{ c }}" {% if cidade_filtro == c %}selected{% endif %}>{{ c }}</option>
-            {% endfor %}
-        </select>
-
-        <label for="status"><i class="fas fa-filter"></i> Filtrar por Status:</label>
-        <select name="status" id="status">
-            <option value="">Todos os Status</option>
-            <option value="concluida" {% if status_filtro == 'concluida' %}selected{% endif %}>Inscrição Concluída
-            </option>
-            <option value="pendente" {% if status_filtro == 'pendente' %}selected{% endif %}>Inscrição Pendente
-            </option>
-        </select>
-
-        <label for="selecionado"><i class="fas fa-check-square"></i> Mostrar Selecionados:</label>
-        <select name="selecionado" id="selecionado">
-            <option value="">Todos</option>
-            <option value="sim" {% if selecionado_filtro == 'sim' %}selected{% endif %}>Apenas Selecionados
-            </option>
-            <option value="nao" {% if selecionado_filtro == 'nao' %}selected{% endif %}>Não Selecionados</option>
-        </select>
-
-        <button type="submit"><i class="fas fa-search"></i> Filtrar</button>
-    </form>
-
-    <!-- Botões -->
-    <div style="text-align: center; margin-bottom: 15px;">
-        <button id="btn-imprimir" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-        <button id="btn-voltar" onclick="history.back()"><i class="fas fa-arrow-left"></i> Voltar</button>
+  <!-- Filtros -->
+  <form method="get" class="toolbar filters no-print" id="formFiltros">
+    <div>
+      <label for="cidade">Filtrar por Cidade</label>
+      <select name="cidade" id="cidade">
+        <option value="">Todas</option>
+        {% for c in cidades %}
+          <option value="{{ c }}" {% if cidade_filtro == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
     </div>
+    <div>
+      <label for="status">Status da Inscrição</label>
+      <select name="status" id="status">
+        <option value="">Todos</option>
+        <option value="concluida" {% if status_filtro == 'concluida' %}selected{% endif %}>Concluída</option>
+        <option value="pendente"  {% if status_filtro == 'pendente'  %}selected{% endif %}>Pendente</option>
+      </select>
+    </div>
+    <div>
+      <label for="selecionado">Selecionado</label>
+      <select name="selecionado" id="selecionado">
+        <option value="">Todos</option>
+        <option value="sim" {% if selecionado_filtro == 'sim' %}selected{% endif %}>Apenas selecionados</option>
+        <option value="nao" {% if selecionado_filtro == 'nao' %}selected{% endif %}>Não selecionados</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" type="submit"><i class="fa fa-filter"></i> Aplicar filtros</button>
+  </form>
 
-    <!-- Tabela de Participantes -->
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Nome</th>
-                <th>Cidade</th>
-                <th>Estado</th>
-                <th>Telefone</th>
-                <th>Email</th>
-                <th>Tamanho da Camisa</th>
-                <th>Data de Nascimento</th>
-                <th>Status</th>
-                <th>Selecionado</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in participantes %}
-            <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ p.nome }}</td>
-                <td>{{ p.cidade }}</td>
-                <td>{{ p.estado }}</td>
-                <td>{{ p.telefone }}</td>
-                <td>{{ p.email }}</td>
+  <!-- Seleção de colunas -->
+  <details class="columns no-print" id="colunasBox" open>
+    <summary>🧩 Escolher colunas</summary>
+    <div class="columns-grid" id="colsGrid">
+      <!-- Marque/desmarque o que quiser ver/imprimir -->
+      <label><input type="checkbox" class="col-toggle" data-col="col-idx"> #</label>
+      <label><input type="checkbox" class="col-toggle" data-col="col-nome"> Nome</label>
+      <label><input type="checkbox" class="col-toggle" data-col="col-cidade"> Cidade</label>
+      <label><input type="checkbox" class="col-toggle" data-col="col-estado"> Estado</label>
+      <label><input type="checkbox" class="col-toggle" data-col="col-telefone"> Telefone</label>
+      <label><input type="checkbox" class="col-toggle" data-col="col-email"> E-mail</label>
+      <label><input type="checkbox" class="col-toggle" data-col="col-camisa"> Tamanho da Camisa</label>
+      <label><input type="checkbox" class="col-toggle" data-col="col-nasc"> Data de Nascimento</label>
+      <label><input type="checkbox" class="col-toggle" data-col="col-status"> Status</label>
+      <label><input type="checkbox" class="col-toggle" data-col="col-selecionado"> Selecionado</label>
+    </div>
+    <div class="actions" style="margin-top:8px">
+      <button type="button" class="btn" id="btnMarcarTodos">Selecionar tudo</button>
+      <button type="button" class="btn" id="btnLimpar">Limpar</button>
+      <button type="button" class="btn btn-green" id="btnImprimir"><i class="fa fa-print"></i> Imprimir</button>
+    </div>
+  </details>
 
-                {% with inscricao=inscricoes_dict|get_item:p.id %}
-                {% if inscricao %}
-                    {% if inscricao.inscricao_concluida %}
-                        {% if inscricao.inscricaosenior %}
-                            <td>{{ inscricao.inscricaosenior.tamanho_camisa }}</td>
-                            <td>{{ inscricao.inscricaosenior.data_nascimento|date:"d/m/Y" }}</td>
-                        {% elif inscricao.inscricaojuvenil %}
-                            <td>{{ inscricao.inscricaojuvenil.tamanho_camisa }}</td>
-                            <td>{{ inscricao.inscricaojuvenil.data_nascimento|date:"d/m/Y" }}</td>
-                        {% elif inscricao.inscricaomirim %}
-                            <td>{{ inscricao.inscricaomirim.tamanho_camisa }}</td>
-                            <td>{{ inscricao.inscricaomirim.data_nascimento|date:"d/m/Y" }}</td>
-                        {% elif inscricao.inscricaoservos %}
-                            <td>{{ inscricao.inscricaoservos.tamanho_camisa }}</td>
-                            <td>{{ inscricao.inscricaoservos.data_nascimento|date:"d/m/Y" }}</td>
-                        {% else %}
-                            <td>-</td>
-                            <td>-</td>
-                        {% endif %}
-                        <td>Concluída</td>
-                    {% else %}
-                        <td>-</td>
-                        <td>-</td>
-                        <td>Pendente</td>
-                    {% endif %}
-                    <td>
-                        {% if inscricao.foi_selecionado %}
-                            Sim
-                        {% else %}
-                            Não
-                        {% endif %}
-                    </td>
+  <!-- Tabela -->
+  <div class="table-wrap">
+    <table id="tRelatorio" aria-label="Tabela de inscritos">
+      <thead>
+        <tr>
+          <th class="col-idx">#</th>
+          <th class="col-nome">Nome</th>
+          <th class="col-cidade">Cidade</th>
+          <th class="col-estado">Estado</th>
+          <th class="col-telefone">Telefone</th>
+          <th class="col-email">E-mail</th>
+          <th class="col-camisa">Tamanho da Camisa</th>
+          <th class="col-nasc">Data de Nascimento</th>
+          <th class="col-status">Status</th>
+          <th class="col-selecionado">Selecionado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in participantes %}
+          <tr>
+            <td class="col-idx">{{ forloop.counter }}</td>
+            <td class="col-nome">{{ p.nome }}</td>
+            <td class="col-cidade">{{ p.cidade }}</td>
+            <td class="col-estado">{{ p.estado }}</td>
+            <td class="col-telefone">{{ p.telefone }}</td>
+            <td class="col-email">{{ p.email }}</td>
+
+            {% with inscricao=inscricoes_dict|get_item:p.id %}
+              {% if inscricao %}
+                {% if inscricao.inscricao_concluida %}
+                  {% if inscricao.inscricaosenior %}
+                    <td class="col-camisa">{{ inscricao.inscricaosenior.tamanho_camisa }}</td>
+                    <td class="col-nasc">{{ inscricao.inscricaosenior.data_nascimento|date:"d/m/Y" }}</td>
+                  {% elif inscricao.inscricaojuvenil %}
+                    <td class="col-camisa">{{ inscricao.inscricaojuvenil.tamanho_camisa }}</td>
+                    <td class="col-nasc">{{ inscricao.inscricaojuvenil.data_nascimento|date:"d/m/Y" }}</td>
+                  {% elif inscricao.inscricaomirim %}
+                    <td class="col-camisa">{{ inscricao.inscricaomirim.tamanho_camisa }}</td>
+                    <td class="col-nasc">{{ inscricao.inscricaomirim.data_nascimento|date:"d/m/Y" }}</td>
+                  {% elif inscricao.inscricaoservos %}
+                    <td class="col-camisa">{{ inscricao.inscricaoservos.tamanho_camisa }}</td>
+                    <td class="col-nasc">{{ inscricao.inscricaoservos.data_nascimento|date:"d/m/Y" }}</td>
+                  {% else %}
+                    <td class="col-camisa">-</td>
+                    <td class="col-nasc">-</td>
+                  {% endif %}
+                  <td class="col-status">Concluída</td>
                 {% else %}
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
+                  <td class="col-camisa">-</td>
+                  <td class="col-nasc">-</td>
+                  <td class="col-status">Pendente</td>
                 {% endif %}
-                {% endwith %}
-
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="10">Nenhum participante encontrado.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
+                <td class="col-selecionado">
+                  {% if inscricao.foi_selecionado %}Sim{% else %}Não{% endif %}
+                </td>
+              {% else %}
+                <td class="col-camisa">-</td>
+                <td class="col-nasc">-</td>
+                <td class="col-status">-</td>
+                <td class="col-selecionado">-</td>
+              {% endif %}
+            {% endwith %}
+          </tr>
+        {% empty %}
+          <tr><td class="muted" colspan="10">Nenhum participante encontrado.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td class="muted" colspan="10">Gerado em {{ now|default:None }}</td>
+        </tr>
+      </tfoot>
     </table>
+  </div>
 
-    <p class="total">
-        Total de participantes encontrados: {{ participantes|length }}
-    </p>
+  <div class="total no-print">
+    Total de participantes encontrados: {{ participantes|length }}
+  </div>
 
-    <!-- Seção de Tamanhos de Camisa -->
-    <div class="tamanho-camisa">
-        <h3>Quantidade de Camisas por Tamanho</h3>
-        <p>PP: {{ quantidades_camisas.pp|default_if_none:0 }}</p>
-        <p>P: {{ quantidades_camisas.p|default_if_none:0 }}</p>
-        <p>M: {{ quantidades_camisas.m|default_if_none:0 }}</p>
-        <p>G: {{ quantidades_camisas.g|default_if_none:0 }}</p>
-        <p>GG: {{ quantidades_camisas.gg|default_if_none:0 }}</p>
-        <p>XG: {{ quantidades_camisas.xg|default_if_none:0 }}</p>
-        <p>XXG: {{ quantidades_camisas.xxg|default_if_none:0 }}</p>
-    </div>
+  <!-- Quantidade de camisas (apenas na tela) -->
+  <div class="shirts no-print" aria-label="Quantidade de camisas por tamanho">
+    <div class="chip">PP: {{ quantidades_camisas.pp|default_if_none:0 }}</div>
+    <div class="chip">P:  {{ quantidades_camisas.p|default_if_none:0 }}</div>
+    <div class="chip">M:  {{ quantidades_camisas.m|default_if_none:0 }}</div>
+    <div class="chip">G:  {{ quantidades_camisas.g|default_if_none:0 }}</div>
+    <div class="chip">GG: {{ quantidades_camisas.gg|default_if_none:0 }}</div>
+    <div class="chip">XG: {{ quantidades_camisas.xg|default_if_none:0 }}</div>
+    <div class="chip">XXG:{{ quantidades_camisas.xxg|default_if_none:0 }}</div>
+  </div>
 
+  <!-- Ações gerais -->
+  <div class="actions no-print" style="margin-top:12px">
+    <a class="btn" href="javascript:history.back()"><i class="fa fa-arrow-left"></i> Voltar</a>
+    <button class="btn btn-green" id="btnImprimir2"><i class="fa fa-print"></i> Imprimir</button>
+  </div>
+</div>
+
+<!-- ===== JS: controle de colunas + persistência em URL/localStorage ===== -->
+<script>
+(function(){
+  const table      = document.getElementById('tRelatorio');
+  const checkboxes = Array.from(document.querySelectorAll('.col-toggle'));
+  const eventoId   = document.getElementById('page').dataset.evento || '0';
+  const LS_KEY     = 'rel_cols_' + eventoId;
+
+  // lista de colunas existentes no template (classes)
+  const allCols = [
+    'col-idx','col-nome','col-cidade','col-estado','col-telefone',
+    'col-email','col-camisa','col-nasc','col-status','col-selecionado'
+  ];
+
+  // defaults (pode ajustar – aqui deixei Nome e Cidade como exemplo)
+  const defaultCols = ['col-nome','col-cidade'];
+
+  // util: aplica visibilidade conforme lista ativa
+  function applyColumns(active){
+    const toHide = allCols.filter(c => !active.includes(c));
+    const toShow = active.slice();
+
+    // esconde
+    toHide.forEach(cls => {
+      table.querySelectorAll('.' + cls).forEach(el => el.classList.add('is-hidden'));
+    });
+    // mostra
+    toShow.forEach(cls => {
+      table.querySelectorAll('.' + cls).forEach(el => el.classList.remove('is-hidden'));
+    });
+  }
+
+  // lê cols do querystring ?cols=a,b,c
+  function readColsFromQuery(){
+    const p = new URLSearchParams(location.search);
+    const raw = p.get('cols');
+    if(!raw) return null;
+    const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+    // valida só colunas existentes
+    return parts.filter(x => allCols.includes(x));
+  }
+
+  // salva cols no querystring (sem recarregar)
+  function saveColsToQuery(cols){
+    const url = new URL(location.href);
+    if(cols.length){ url.searchParams.set('cols', cols.join(',')); }
+    else{ url.searchParams.delete('cols'); }
+    history.replaceState(null, '', url.toString());
+  }
+
+  // inicializa com prioridade: querystring > localStorage > default
+  const fromQuery = readColsFromQuery();
+  const fromLS    = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+  const initial   = (fromQuery && fromQuery.length) ? fromQuery
+                    : (Array.isArray(fromLS) && fromLS.length ? fromLS : defaultCols);
+
+  // marca checkboxes conforme initial
+  checkboxes.forEach(chk => {
+    chk.checked = initial.includes(chk.dataset.col);
+  });
+
+  // aplica nas colunas
+  applyColumns(initial);
+
+  // ao mudar uma checkbox
+  function currentSelection(){
+    return checkboxes.filter(c => c.checked).map(c => c.dataset.col);
+  }
+  checkboxes.forEach(chk => {
+    chk.addEventListener('change', () => {
+      const cols = currentSelection();
+      applyColumns(cols);
+      localStorage.setItem(LS_KEY, JSON.stringify(cols));
+      saveColsToQuery(cols);
+    });
+  });
+
+  // selecionar tudo / limpar
+  document.getElementById('btnMarcarTodos').addEventListener('click', () => {
+    checkboxes.forEach(c => c.checked = true);
+    const cols = currentSelection();
+    applyColumns(cols);
+    localStorage.setItem(LS_KEY, JSON.stringify(cols));
+    saveColsToQuery(cols);
+  });
+  document.getElementById('btnLimpar').addEventListener('click', () => {
+    checkboxes.forEach(c => c.checked = false);
+    const cols = currentSelection();
+    applyColumns(cols);
+    localStorage.setItem(LS_KEY, JSON.stringify(cols));
+    saveColsToQuery(cols);
+  });
+
+  // imprimir
+  const doPrint = () => window.print();
+  document.getElementById('btnImprimir').addEventListener('click', doPrint);
+  document.getElementById('btnImprimir2').addEventListener('click', doPrint);
+})();
+</script>
+
+<!-- Font Awesome (ícones dos botões) -->
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfSLzLQvWQ2zYlH3xZkS2VJKJQGXrCM1/MrZ8Dq03+4T6pG8Y2LRp5kw=="
+      crossorigin="anonymous" referrerpolicy="no-referrer" />
 </body>
-
 </html>

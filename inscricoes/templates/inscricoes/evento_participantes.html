@@ -1,304 +1,350 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Participantes do Evento - {{ evento.nome }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        /* Cores */
-        :root {
-            --primary-color: #4CAF50; /* Verde */
-            --secondary-color: #333;
-            --accent-color: #FFC107; /* Amarelo */
-            --success-color: #4CAF50;
-            --danger-color: #F44336; /* Vermelho */
-            --light-bg: #FAFAFA;
-            --dark-bg: #E0E0E0;
-            --text-color: #333;
-            --light-text: #777;
-            /* cor do botão de voltar e do novo Relatórios */
-            --back-button-color: #777;
-        }
+  <meta charset="UTF-8" />
+  <title>Participantes do Evento — {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-        body {
-            font-family: 'Roboto', sans-serif;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background: var(--light-bg);
-            color: var(--text-color);
-        }
+  <style>
+    /* ========= Tokens (iguais ao estilo anterior) ========= */
+    :root{
+      --page: #f7f8fb;
+      --panel: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e5e7eb;
+      --radius: 14px;
+      --shadow: 0 6px 30px rgba(16, 24, 40, .08);
 
-        h1 {
-            font-size: 2.2em;
-            margin-bottom: 20px;
-            color: var(--secondary-color);
-            text-align: center;
-            font-weight: 500;
-        }
+      --g1: #7c3aed;
+      --g2: #2563eb;
+      --g3: #14b8a6;
 
-        /* Estilos para os botões de relatório e voltar */
-        .top-buttons {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+      --btn-ink: #fff;
+      --btn-back: #4b5563;
+      --btn-report: #0ea5e9;
 
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            text-decoration: none;
-            color: white;
-            font-weight: 500;
-            transition: color 0.3s ease;
-            background: var(--back-button-color);
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
+      --ok: #22c55e;
+      --bad: #ef4444;
+      --warn:#f59e0b;
 
-        .back-link:hover {
-            
-            color: #ffffff;
-            transform: translateY(-2px);
-        }
+      --focus: 0 0 0 3px rgba(37, 99, 235, .25);
+      --row-hover: rgba(37,99,235,.06);
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow: 0 10px 40px rgba(0,0,0,.45);
+        --btn-back:#6b7280; --btn-report:#0284c7;
+        --row-hover: rgba(59,130,246,.08);
+      }
+    }
 
-        .report-button {
-            padding: 12px 20px;
-            white-space: nowrap;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            background: var(--back-button-color);
-        }
+    *{ box-sizing:border-box }
+    html,body{ margin:0; padding:0 }
+    body{
+      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.35;
+    }
+    .container{ max-width:1100px; margin:20px auto 32px; padding:0 16px }
 
-        .report-button:hover {
-            transform: translateY(-2px);
-        }
+    /* ========= HERO ========= */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(18px, 4vw, 26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        var(--hero-image, radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25))),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(2px);
+      margin-bottom:18px;
+    }
+    .hero-head{
+      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
+      color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12);
+      transition: transform .12s ease, background .2s ease, opacity .2s ease;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            font-size: 1em;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
+    .back{ background: linear-gradient(135deg, #4b5563, #374151); }
+    .report{ background: linear-gradient(135deg, #06b6d4, #0ea5e9); }
 
-        th, td {
-            padding: 15px;
-            border-bottom: 1px solid var(--dark-bg);
-            vertical-align: middle;
-            text-align: left;
-        }
+    .hero-title{
+      margin:4px 0 0; text-align:center; font-weight:800;
+      font-size: clamp(1.15rem, 3vw, 1.9rem); letter-spacing:.3px;
+    }
+    .hero-sub{ margin:6px 0 0; text-align:center; opacity:.92; font-size:.95rem }
 
-        th {
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: 500;
-            text-align: left;
-        }
+    /* ========= Painel ========= */
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(14px, 2vw, 18px);
+    }
+    .panel-head{
+      display:flex; flex-wrap:wrap; gap:10px 12px; align-items:center; justify-content:space-between; margin-bottom:10px;
+    }
+    .metrics{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .chip{
+      display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+      border:1px solid var(--line); background:linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,.2));
+      color:var(--ink); font-weight:700; box-shadow: inset 0 0 12px rgba(255,255,255,.15);
+    }
+    .chip i{ opacity:.75 }
 
-        /* Botões */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            color: white;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 1em;
-            margin-right: 5px;
-            cursor: pointer;
-            border: none;
-            transition: opacity 0.3s ease, transform 0.2s ease;
-            padding: 10px 16px;
-            white-space: nowrap;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
+    /* Search */
+    .search{
+      position:relative; flex:1 1 360px; min-width:260px;
+    }
+    .search i{ position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted) }
+    .search input{
+      width:100%; padding:10px 12px 10px 38px; border-radius:10px; border:1px solid var(--line);
+      background:var(--panel); color:var(--ink); font-size:1rem;
+      outline:none; transition: box-shadow .15s ease, border-color .15s ease;
+    }
+    .search input:focus{ box-shadow:var(--focus); border-color:#93c5fd }
 
-        .btn:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
+    /* ========= Tabela ========= */
+    .table-wrap{
+      margin-top:8px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--panel);
+      box-shadow:var(--shadow);
+    }
+    .table-scroll{ max-height:66vh; overflow:auto }
+    table{ width:100%; border-collapse:separate; border-spacing:0 }
+    thead th{
+      position:sticky; top:0; z-index:2; background:linear-gradient(180deg, rgba(248,250,252,.9), rgba(248,250,252,.8));
+      backdrop-filter: blur(2px); color:#0f172a; font-weight:800; text-align:left; font-size:.92rem;
+      border-bottom:1px solid var(--line); padding:12px 14px;
+    }
+    @media (prefers-color-scheme: dark){
+      thead th{ background:linear-gradient(180deg, rgba(15,21,32,.9), rgba(15,21,32,.82)); color:#e5e7eb }
+    }
+    tbody td{ padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle; }
+    tbody tr:nth-child(even){ background: rgba(2, 6, 23, .02) }
+    tbody tr:hover{ background: var(--row-hover) }
 
-        .btn-view    { background: var(--success-color); }
-        .btn-edit    { background: var(--primary-color); }
-        .btn-delete  { background: var(--danger-color); }
-        .btn-ficha   { background: var(--accent-color); }
-        .btn-cracha  { background: #d35400; }
-        .btn-pagamento { background: #16a085; }
+    .td-name{ min-width: 220px }
+    .td-actions{ white-space:nowrap; width: 360px }
+    .td-pay{ text-align:center; width:60px }
+    .td-check{ text-align:center; width:160px }
 
-        .payment-status {
-            text-align: center;
-            width: 40px;
-            font-size: 1.3em;
-        }
+    /* Status pago/pendente */
+    .status{
+      display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-weight:700;
+      border:1px solid var(--line); background: #fff; color:#111827;
+    }
+    .status.-ok{ background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.35); color:#065f46 }
+    .status.-bad{ background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.35); color:#7f1d1d }
 
-        .actions-cell {
-            white-space: nowrap;
-            width: 250px;
-        }
+    /* Botões de ação (ícone) */
+    .btn{
+      --bg:#111827;
+      display:inline-flex; align-items:center; justify-content:center;
+      width:36px; height:36px; border-radius:10px; color:#fff; text-decoration:none;
+      background:var(--bg); border:1px solid rgba(255,255,255,.12);
+      box-shadow: var(--shadow);
+      transition: transform .12s ease, filter .2s ease, box-shadow .2s ease;
+      margin-right:6px;
+    }
+    .btn:last-child{ margin-right:0 }
+    .btn:hover{ transform: translateY(-1px); filter: brightness(1.05) }
+    .btn:focus-visible{ outline:none; box-shadow: var(--focus) }
 
-        input[type="checkbox"] {
-            transform: scale(1.3);
-            cursor: pointer;
-            margin-left: 10px;
-        }
+    .-view { --bg: linear-gradient(135deg, #34d399, #22c55e) }
+    .-edit { --bg: linear-gradient(135deg, #60a5fa, #2563eb) }
+    .-del  { --bg: linear-gradient(135deg, #f87171, #ef4444) }
+    .-ficha{ --bg: linear-gradient(135deg, #ffe082, #ffc107); color:#1f2937 }
+    .-cracha{ --bg: linear-gradient(135deg, #ff8a4c, #d35400) }
+    .-pgt  { --bg: linear-gradient(135deg, #2ec4b6, #16a085) }
 
-        .save-btn {
-            background: var(--primary-color);
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8px 12px;
-            color: white;
-            font-weight: 500;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            margin-left: 10px;
-        }
+    /* Checkbox/Salvar inline */
+    .inline-form{ display:inline-flex; align-items:center; gap:8px; justify-content:center }
+    .inline-form input[type="checkbox"]{ transform: scale(1.25); cursor:pointer }
+    .save{
+      display:inline-flex; align-items:center; justify-content:center; gap:6px;
+      padding:8px 10px; border-radius:10px; font-weight:700; color:#fff; border:none; cursor:pointer;
+      background: linear-gradient(135deg, #60a5fa, #2563eb);
+      box-shadow: var(--shadow); transition: transform .12s ease, filter .2s ease;
+    }
+    .save:hover{ transform: translateY(-1px); filter: brightness(1.05) }
+    .save:focus-visible{ outline:none; box-shadow: var(--focus) }
 
-        .save-btn:hover {
-            background: #388E3C;
-        }
-
-        form.inline-form {
-            display: inline-flex;
-            align-items: center;
-        }
-
-        /* Estilo do campo de busca */
-        #searchInput {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-            border: 1.5px solid var(--dark-bg);
-            border-radius: 10px;
-            box-sizing: border-box;
-            color: var(--text-color);
-        }
-
-        /* Responsivo */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2em;
-            }
-
-            .actions-cell {
-                width: 150px;
-            }
-
-            .btn {
-                font-size: 0.9em;
-                padding: 8px 12px;
-            }
-        }
-
-        /* Total de Participantes */
-        .total-participantes {
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-            color: var(--text-color);
-            font-weight: 500;
-        }
-    </style>
+    /* Acessibilidade visual escondida */
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  </style>
 </head>
+
 <body>
+  <div class="container">
+    <!-- HERO -->
+    <header class="hero"
+      {% if evento.banner %}style="--hero-image: url('{{ evento.banner.url }}') center/cover no-repeat;"{% endif %}>
+      <div class="hero-head">
+        <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="pill back" aria-label="Voltar ao painel">
+          <i class="fa-solid fa-arrow-left"></i><span>Voltar</span>
+        </a>
+        <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema claro/escuro">
+          <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+        </button>
+        <a href="{% url 'inscricoes:relatorios_evento' evento.id %}" class="pill report" aria-label="Ir para Relatórios">
+          <i class="fa-solid fa-chart-column"></i><span>Relatórios</span>
+        </a>
+      </div>
+      <h1 class="hero-title">Participantes — {{ evento.nome }}</h1>
+      <p class="hero-sub">Gerencie inscrições, acompanhe pagamentos e imprima documentos.</p>
+    </header>
 
-<div class="top-buttons">
-    <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="back-link">
-        <i class="fas fa-arrow-left"></i> Voltar ao Painel
-    </a>
-    <a href="{% url 'inscricoes:relatorios_evento' evento.id %}" class="report-button">
-        📊 Relatórios
-    </a>
-</div>
+    <!-- PAINEL -->
+    <section class="panel" aria-labelledby="ttl-participantes">
+      <div class="panel-head">
+        <h2 id="ttl-participantes" class="sr-only">Lista de participantes</h2>
 
-<h1>{{ evento.nome }}</h1>
+        <div class="search" role="search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <label class="sr-only" for="searchInput">Buscar participante</label>
+          <input id="searchInput" type="text" placeholder="Buscar participante por nome..." autocomplete="off" />
+        </div>
 
-<label for="searchInput" style="font-weight:600;"><i class="fas fa-search"></i> Buscar participante:</label>
-<input type="text" id="searchInput" placeholder="Digite o nome para buscar..." />
+        <div class="metrics" aria-label="Indicadores do evento">
+          <div class="chip" title="Total de participantes">
+            <i class="fa-solid fa-users"></i> {{ total_participantes|default:"0" }}
+          </div>
+          <!-- se tiver variáveis de pagos/pendentes, descomente:
+          <div class="chip" title="Pagos">
+            <i class="fa-solid fa-circle-check" style="color:var(--ok)"></i> {{ total_pagos|default:"0" }}
+          </div>
+          <div class="chip" title="Pendentes">
+            <i class="fa-solid fa-circle-xmark" style="color:var(--bad)"></i> {{ total_pendentes|default:"0" }}
+          </div>
+          -->
+        </div>
+      </div>
 
-<p class="total-participantes">Total de Participantes: {{ total_participantes }}</p>
+      <!-- TABELA -->
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table aria-describedby="ttl-participantes">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th class="td-pay" title="Status do pagamento"><i class="fa-solid fa-dollar-sign" aria-hidden="true"></i><span class="sr-only">Pagamento</span></th>
+                <th class="td-check">Selecionado</th>
+                <th class="td-actions"><i class="fa-solid fa-toolbox" aria-hidden="true"></i> Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for inscricao in participantes %}
+              <tr>
+                <td class="td-name">{{ inscricao.participante.nome }}</td>
 
-<table>
-    <thead>
-        <tr>
-            <th>Nome</th>
-            <th class="payment-status" title="Status do pagamento"><i class="fas fa-dollar-sign"></i></th>
-            <th>Selecionado</th>
-            <th class="actions-cell"><i class="fas fa-tools"></i> Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for inscricao in participantes %}
-        <tr>
-            <td>{{ inscricao.participante.nome }}</td>
-            <td class="payment-status">
-                {% if inscricao.pagamento_confirmado %}<i class="fas fa-check-circle" style="color: var(--success-color);"></i>{% else %}<i class="fas fa-times-circle" style="color: var(--danger-color);"></i>{% endif %}
-            </td>
-            <td style="text-align:center;">
-                <form method="POST" class="inline-form">
+                <td class="td-pay">
+                  {% if inscricao.pagamento_confirmado %}
+                    <span class="status -ok"><i class="fa-solid fa-check"></i><span class="sr-only">Pago</span></span>
+                  {% else %}
+                    <span class="status -bad"><i class="fa-solid fa-xmark"></i><span class="sr-only">Pendente</span></span>
+                  {% endif %}
+                </td>
+
+                <td class="td-check">
+                  <form method="POST" class="inline-form">
                     {% csrf_token %}
                     <input type="hidden" name="inscricao_id" value="{{ inscricao.id }}" />
-                    <input type="checkbox" name="foi_selecionado" value="1" {% if inscricao.foi_selecionado %}checked{% endif %} />
-                    <button type="submit" class="save-btn" title="Salvar"><i class="fas fa-save"></i></button>
-                </form>
-            </td>
-            <td class="actions-cell">
-                <a href="{% url 'inscricoes:ver_inscricao' inscricao.id %}" class="btn btn-view" title="Ver"><i class="fas fa-eye"></i></a>
-                <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}" class="btn btn-edit" title="Editar"><i class="fas fa-edit"></i></a>
-                <a href="{% url 'inscricoes:deletar_inscricao' inscricao.id %}" class="btn btn-delete" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir?');"><i class="fas fa-trash-alt"></i></a>
-                <a href="{% url 'inscricoes:ficha_inscricao' inscricao.id %}" class="btn btn-ficha" title="Ficha"><i class="fas fa-file-alt"></i></a>
-                <a href="{% url 'inscricoes:imprimir_cracha' inscricao.id %}" class="btn btn-cracha" title="Crachá" target="_blank"><i class="fas fa-id-card"></i></a>
-                <a href="{% url 'inscricoes:incluir_pagamento' inscricao.id %}" class="btn btn-pagamento" title="Incluir Pagamento"><i class="fas fa-dollar-sign"></i></a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="4" style="text-align:center;">Nenhum participante inscrito.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                    <label class="sr-only" for="sel_{{ inscricao.id }}">Selecionado</label>
+                    <input id="sel_{{ inscricao.id }}" type="checkbox" name="foi_selecionado" value="1" {% if inscricao.foi_selecionado %}checked{% endif %} />
+                    <button type="submit" class="save" title="Salvar seleção">
+                      <i class="fa-solid fa-floppy-disk"></i><span class="sr-only">Salvar</span>
+                    </button>
+                  </form>
+                </td>
 
-<script>
-  document.addEventListener("DOMContentLoaded", function() {
-    const searchInput = document.getElementById("searchInput");
-    const tableBody = document.querySelector("table tbody");
-    const rows = tableBody.querySelectorAll("tr");
+                <td class="td-actions">
+                  <a href="{% url 'inscricoes:ver_inscricao' inscricao.id %}" class="btn -view" title="Ver inscrição">
+                    <i class="fa-solid fa-eye" aria-hidden="true"></i><span class="sr-only">Ver</span>
+                  </a>
+                  <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}" class="btn -edit" title="Editar inscrição">
+                    <i class="fa-solid fa-pen" aria-hidden="true"></i><span class="sr-only">Editar</span>
+                  </a>
+                  <a href="{% url 'inscricoes:deletar_inscricao' inscricao.id %}" class="btn -del" title="Excluir inscrição"
+                     onclick="return confirm('Tem certeza que deseja excluir?');">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i><span class="sr-only">Excluir</span>
+                  </a>
+                  <a href="{% url 'inscricoes:ficha_inscricao' inscricao.id %}" class="btn -ficha" title="Ficha">
+                    <i class="fa-solid fa-file-lines" aria-hidden="true"></i><span class="sr-only">Ficha</span>
+                  </a>
+                  <a href="{% url 'inscricoes:imprimir_cracha' inscricao.id %}" class="btn -cracha" title="Imprimir Crachá" target="_blank" rel="noopener noreferrer">
+                    <i class="fa-solid fa-id-card" aria-hidden="true"></i><span class="sr-only">Crachá</span>
+                  </a>
+                  <a href="{% url 'inscricoes:incluir_pagamento' inscricao.id %}" class="btn -pgt" title="Incluir Pagamento">
+                    <i class="fa-solid fa-dollar-sign" aria-hidden="true"></i><span class="sr-only">Pagamento</span>
+                  </a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" style="text-align:center; color:var(--muted); padding:20px;">Nenhum participante inscrito.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
 
-    searchInput.addEventListener("input", function() {
-      const filter = searchInput.value.toLowerCase();
-
-      rows.forEach(row => {
-        const nome = row.querySelector("td:first-child").textContent.toLowerCase();
-        if (nome.includes(filter)) {
-          row.style.display = "";
-        } else {
-          row.style.display = "none";
-        }
+  <script>
+    // Busca por nome (client-side)
+    (function(){
+      const input = document.getElementById('searchInput');
+      const rows  = Array.from(document.querySelectorAll('tbody tr'));
+      input?.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        rows.forEach(tr => {
+          const cell = tr.querySelector('.td-name');
+          if (!cell) return;
+          const show = cell.textContent.trim().toLowerCase().includes(q);
+          tr.style.display = show ? '' : 'none';
+        });
       });
-    });
-  });
-</script>
+    })();
 
+    // Toggle de tema com persistência (mesmo do outro template)
+    (function themeToggle(){
+      const KEY='relatorios-theme';
+      const btn=document.getElementById('themeToggle');
+      const root=document.documentElement;
+      function apply(theme){
+        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      }
+      apply(localStorage.getItem(KEY) || 'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next);
+        apply(next);
+        btn.setAttribute('aria-label',`Tema: ${next}`);
+      });
+    })();
+  </script>
 </body>
 </html>

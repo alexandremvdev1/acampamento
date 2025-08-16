@@ -1,220 +1,305 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Criar Paróquia - Admin Geral</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        /* Cores */
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #2c3e50;
-            --light-bg: #f9f9f9;
-            --text-color: #333;
-            --border-color: #ddd;
-            --white: #fff;
-            --error-color: #e74c3c;
-        }
+  <meta charset="UTF-8" />
+  <title>Novo — Paróquia | Admin Geral</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* ===== Design tokens (coerentes com as outras telas) ===== */
+    :root{
+      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
+      --focus:0 0 0 3px rgba(37,99,235,.25);
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--light-bg);
-            color: var(--text-color);
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+      --pill-back:#4b5563; --pill-accent:#0ea5e9;
+      --accent:#2563eb; --accent-2:#1d4ed8;
 
-        .container {
-            max-width: 900px; /* Aumenta a largura do container */
-            margin: 30px auto;
-            padding: 30px;
-            background-color: var(--white);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border-radius: 10px;
-            flex: 1; /* Ocupa o espaço restante */
-        }
+      --err:#ef4444; --ok:#16a34a; --warn:#f59e0b;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow:0 10px 40px rgba(0,0,0,.45);
+        --pill-back:#6b7280; --pill-accent:#0284c7;
+        --accent:#1d4ed8; --accent-2:#1e40af;
+      }
+    }
 
-        h1 {
-            color: var(--secondary-color);
-            text-align: center;
-            margin-bottom: 30px;
-            font-weight: 600;
-            font-size: 2.5em;
-        }
+    *{ box-sizing:border-box }
+    html,body{ margin:0; padding:0 }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.42;
+    }
+    .container{ max-width:900px; margin:20px auto 32px; padding:0 16px }
 
-        /* Formulário */
-        form {
-            margin-top: 20px;
-        }
+    /* ===== HERO ===== */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(18px,4vw,26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.18);
+      margin-bottom:18px;
+    }
+    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.2rem,3vw,1.9rem); letter-spacing:.3px }
+    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
+      color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12);
+      transition: transform .12s ease, background .2s ease;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
+    .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
+    .pill.-accent{ background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
 
-        .form-row {
-            display: flex;
-            flex-wrap: wrap; /* Permite que os campos quebrem para a próxima linha em telas menores */
-            gap: 20px; /* Espaçamento entre os campos */
-        }
+    /* ===== Painel / Form ===== */
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(16px,2vw,22px);
+    }
+    .panel h2{
+      margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
+      display:flex; align-items:center; gap:8px;
+    }
 
-        .form-group {
-            flex: 1; /* Cada campo ocupa o mesmo espaço */
-            min-width: 250px; /* Largura mínima para evitar que os campos fiquem muito estreitos */
-        }
+    form{ display:grid; gap:16px; }
+    .grid{
+      display:grid; gap:14px;
+      grid-template-columns: repeat(12, 1fr);
+    }
+    @media (max-width:720px){ .grid{ grid-template-columns: 1fr } }
+    .col-12{ grid-column: span 12 } .col-6{ grid-column: span 6 } .col-4{ grid-column: span 4 } .col-3{ grid-column: span 3 }
 
-        label {
-            display: block;
-            margin: 15px 0 5px;
-            font-weight: 500;
-            color: var(--secondary-color);
-        }
+    .field{ display:grid; gap:6px; }
+    .label{ font-weight:700; color:var(--muted) }
+    .req{ color:var(--warn); margin-left:4px }
 
-        input[type="text"],
-        input[type="email"],
-        input[type="tel"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 12px;
-            box-sizing: border-box;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            margin-bottom: 15px;
-            font-size: 1em;
-            color: var(--text-color);
-            background-color: var(--light-bg);
-            transition: border-color 0.3s ease;
-        }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="file"], select, textarea{
+      width:100%; border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+      background:var(--panel); color:var(--ink); font-size:1rem;
+    }
+    textarea{ min-height:120px; resize:vertical }
+    input:focus, select:focus, textarea:focus{ outline:none; box-shadow:var(--focus) }
 
-        input[type="text"]:focus,
-        input[type="email"]:focus,
-        input[type="tel"]:focus,
-        select:focus,
-        textarea:focus {
-            border-color: var(--primary-color);
-            outline: none;
-        }
+    .help{ color:var(--muted); font-size:.92rem }
+    .errors{ display:grid; gap:6px; margin:0; padding:0; list-style:none }
+    .error{
+      border:1px solid rgba(239,68,68,.4); background:rgba(239,68,68,.08);
+      color:#b91c1c; padding:8px 10px; border-radius:10px; font-size:.92rem;
+    }
+    .nonfield{
+      border:1px dashed rgba(239,68,68,.5); background:rgba(239,68,68,.06);
+      color:#b91c1c; padding:10px 12px; border-radius:12px; margin-bottom:6px;
+    }
 
-        /* Botões */
-        button[type="submit"] {
-            padding: 14px 28px;
-            background-color: var(--primary-color);
-            color: var(--white);
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1.1em;
-            transition: background-color 0.3s ease;
-            margin-top: 20px;
-        }
+    .logo-preview{
+      display:flex; align-items:center; gap:12px; margin-top:6px;
+    }
+    .logo-preview img{
+      width:56px; height:56px; object-fit:contain; border-radius:10px;
+      border:1px solid var(--line); background:#fff;
+    }
 
-        button[type="submit"]:hover {
-            background-color: #207ac2;
-        }
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:4px }
+    .btn{
+      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      padding:12px 16px; border-radius:12px; font-weight:700; color:#fff; text-decoration:none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      transition: transform .12s ease, filter .2s ease;
+    }
+    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
+    .btn.-ghost{ color:var(--ink); background:transparent; border:1px solid var(--line) }
 
-        .btn-back {
-            display: inline-block;
-            margin-top: 20px;
-            text-decoration: none;
-            color: var(--primary-color);
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-back:hover {
-            text-decoration: underline;
-        }
-
-        /* Erros de Formulário */
-        .errorlist {
-            margin: 10px 0;
-            padding: 0;
-            list-style: none;
-            color: var(--error-color);
-            font-size: 0.9em;
-        }
-
-        .errorlist li {
-            margin-bottom: 5px;
-        }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 20px;
-            background-color: var(--secondary-color);
-            color: var(--white);
-            margin-top: 30px;
-            border-radius: 0;
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .container {
-                padding: 20px;
-                margin: 15px auto;
-            }
-
-            h1 {
-                font-size: 2em;
-            }
-
-            .form-row {
-                flex-direction: column; /* Empilha os campos em telas menores */
-            }
-
-            .form-group {
-                min-width: auto; /* Permite que os campos ocupem a largura total */
-            }
-
-            input[type="text"],
-            input[type="email"],
-            input[type="tel"],
-            select,
-            textarea {
-                padding: 10px;
-                font-size: 0.9em;
-            }
-
-            button[type="submit"] {
-                padding: 12px 24px;
-                font-size: 1em;
-            }
-        }
-    </style>
+    .hint{ color:var(--muted); font-size:.9rem; margin-top:4px }
+  </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Criar Nova Paróquia</h1>
-        <form method="post">
-            {% csrf_token %}
-            <div class="form-row">
-                {% for field in form %}
-                    <div class="form-group">
-                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}
-                            <ul class="errorlist">
-                                {% for error in field.errors %}
-                                    <li>{{ error }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            </div>
-            <button type="submit">Salvar</button>
-        </form>
-        </a><a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="btn btn-back">
-            <i class="fas fa-arrow-left"></i> Voltar para o Dashboard
-        </a>
-    </div>
 
-    <footer>
-        &copy; {{ current_year }} Admin Geral - Todos os direitos reservados
-    </footer>
+<body>
+  <div class="container">
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-head">
+        <div>
+          <h1 class="hero-title">Criar Nova Paróquia</h1>
+          <p class="hero-sub">Cadastre os dados institucionais e de contato. Você pode anexar o logo para o portal público.</p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="pill -back">
+            <i class="fa-solid fa-arrow-left"></i><span>Voltar à Lista</span>
+          </a>
+          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema">
+            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- FORM -->
+    <section class="panel" aria-labelledby="formTitle">
+      <h2 id="formTitle"><i class="fa-solid fa-church"></i> Dados da Paróquia</h2>
+
+      {% if form.non_field_errors %}
+        <div class="nonfield">
+          {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" novalidate id="paroquiaForm">
+        {% csrf_token %}
+
+        <div class="grid">
+          {% for field in form %}
+            {% with name=field.name|lower %}
+              <div class="field
+                {% if 'nome' in name %} col-12
+                {% elif 'email' in name %} col-6
+                {% elif 'telefone' in name or 'cel' in name %} col-4
+                {% elif 'cep' in name or 'estado' in name or 'uf' in name or 'numero' in name %} col-3
+                {% elif 'cidade' in name %} col-6
+                {% elif 'logo' in name or 'imagem' in name %} col-12
+                {% else %} col-6 {% endif %}">
+                <label class="label" for="{{ field.id_for_label }}">
+                  {{ field.label }}
+                  {% if field.field.required %}<span class="req" title="campo obrigatório">*</span>{% endif %}
+                </label>
+
+                {{ field }}
+
+                {% if field.help_text %}
+                  <div class="help">{{ field.help_text|safe }}</div>
+                {% endif %}
+                {% if field.errors %}
+                  <ul class="errors">
+                    {% for error in field.errors %}
+                      <li class="error"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+
+                {% if 'logo' in name or 'imagem' in name %}
+                  <div class="logo-preview" data-logo-preview hidden>
+                    <img alt="Prévia do logo" aria-hidden="true"/>
+                    <span class="help">Pré-visualização do arquivo selecionado.</span>
+                  </div>
+                {% endif %}
+              </div>
+            {% endwith %}
+          {% endfor %}
+        </div>
+
+        <div class="actions">
+          <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn -ghost">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+          <button type="submit" class="btn">
+            <i class="fa-solid fa-floppy-disk"></i> Salvar
+          </button>
+        </div>
+        <p class="hint">Dica: use <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (ou <kbd>⌘</kbd>+<kbd>Enter</kbd>) para enviar.</p>
+      </form>
+    </section>
+  </div>
+
+  <script>
+    // ===== Tema com persistência (mesma chave das outras telas) =====
+    (function themeToggle(){
+      const KEY='relatorios-theme';
+      const btn=document.getElementById('themeToggle');
+      const root=document.documentElement;
+      function apply(theme){
+        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      }
+      apply(localStorage.getItem(KEY) || 'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next); apply(next);
+        btn.setAttribute('aria-label',`Tema: ${next}`);
+      });
+    })();
+
+    // ===== UX do formulário: foco, Ctrl/Cmd+Enter, máscaras e prévia de logo =====
+    (function formUX(){
+      const form = document.getElementById('paroquiaForm');
+      if(!form) return;
+
+      // Foco no primeiro campo
+      const first = form.querySelector('input:not([type=file]), select, textarea');
+      first && first.focus();
+
+      // Ctrl/Cmd + Enter para enviar
+      document.addEventListener('keydown', (e)=>{
+        if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='enter'){
+          e.preventDefault();
+          form.requestSubmit();
+        }
+      });
+
+      // Máscara leve para telefone
+      form.querySelectorAll('input[type="tel"]').forEach(p=>{
+        p.addEventListener('input', ()=>{
+          let v = p.value.replace(/\D/g,'').slice(0,11);
+          if(v.length > 10) p.value = v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');
+          else if(v.length > 6) p.value = v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+          else if(v.length > 2) p.value = v.replace(/(\d{2})(\d{0,5})/,'($1) $2');
+          else p.value = v;
+        });
+      });
+
+      // Máscara leve para CEP
+      form.querySelectorAll('input[name*="cep" i]').forEach(cep=>{
+        cep.addEventListener('input', ()=>{
+          let v = cep.value.replace(/\D/g,'').slice(0,8);
+          if(v.length > 5) cep.value = v.replace(/(\d{5})(\d{0,3})/,'$1-$2');
+          else cep.value = v;
+        });
+      });
+
+      // Estado/UF em maiúsculas (2 letras)
+      form.querySelectorAll('input[name*="estado" i], input[name*="uf" i]').forEach(uf=>{
+        uf.maxLength = 2;
+        uf.addEventListener('input', ()=>{ uf.value = uf.value.replace(/[^a-zA-Z]/g,'').toUpperCase().slice(0,2); });
+      });
+
+      // Pré-visualização do logo (campo file que contenha 'logo' ou 'imagem' no name)
+      const file = form.querySelector('input[type="file"][name*="logo" i], input[type="file"][name*="imagem" i]');
+      if(file){
+        const wrap = form.querySelector('[data-logo-preview]');
+        const img = wrap?.querySelector('img');
+        file.addEventListener('change', ()=>{
+          const f = file.files && file.files[0];
+          if(f && /^image\//.test(f.type)){
+            const reader = new FileReader();
+            reader.onload = e => {
+              if(img){ img.src = e.target.result; wrap.hidden = false; }
+            };
+            reader.readAsDataURL(f);
+          }else{
+            if(img){ img.removeAttribute('src'); wrap.hidden = true; }
+          }
+        });
+      }
+    })();
+  </script>
 </body>
 </html>

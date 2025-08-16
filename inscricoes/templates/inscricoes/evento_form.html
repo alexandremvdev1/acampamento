@@ -1,214 +1,252 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
   <title>Criar Novo Evento</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
-    :root {
-      --primary-color: #3498db;
-      --secondary-color: #2c3e50;
-      --light-bg: #f9f9f9;
-      --text-color: #333;
-      --border-color: #ddd;
-      --white: #fff;
-      --error-color: #e74c3c;
+    :root{
+      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --accent:#2563eb; --accent-2:#1d4ed8;
+      --danger:#ef4444; --ok:#16a34a; --warn:#f59e0b;
+      --radius:14px; --shadow:0 8px 32px rgba(16,24,40,.08);
+      --stripe:#f4f7f9;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow:0 14px 40px rgba(0,0,0,.5);
+        --accent:#1d4ed8; --accent-2:#1e40af;
+        --stripe:#121821;
+      }
     }
 
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: var(--light-bg);
-      color: var(--text-color);
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
+    *{box-sizing:border-box}
+    html,body{margin:0}
+    body{
+      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.55;
+      padding:20px;
     }
+    .wrap{max-width:1000px;margin:0 auto}
 
-    .container {
-      max-width: 900px;
-      margin: 30px auto;
-      padding: 30px;
-      background-color: var(--white);
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-      border-radius: 10px;
-      flex: 1;
+    /* HERO */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(16px, 3.6vw, 26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.18);
+      margin-bottom:16px;
+      display:grid; gap:10px;
     }
+    .hero-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+    .hero-title{margin:0; font-weight:800; font-size: clamp(1.2rem,3.2vw,1.8rem)}
+    .hero-sub{margin:2px 0 0; opacity:.9}
+    .actions{display:flex; gap:10px; flex-wrap:wrap}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px;
+      font-weight:800; text-decoration:none; color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12); transition:transform .12s ease, background .2s ease; cursor:pointer;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
 
-    h1 {
-      color: var(--secondary-color);
-      text-align: center;
-      margin-bottom: 30px;
-      font-weight: 600;
-      font-size: 2.5em;
+    /* PAINEL / FORM */
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(12px,2vw,18px); margin-bottom:14px;
     }
+    .panel h2{margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:800; letter-spacing:.2px; display:flex; gap:8px; align-items:center}
 
-    form {
-      margin-top: 20px;
+    form{margin:0}
+    .form-grid{
+      display:grid; gap:14px;
+      grid-template-columns: repeat(12, 1fr);
     }
+    .col-12{grid-column: span 12}
+    .col-6{grid-column: span 6}
+    .col-4{grid-column: span 4}
+    .col-3{grid-column: span 3}
+    @media (max-width: 900px){ .col-6,.col-4,.col-3{ grid-column: span 12 } }
 
-    .form-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-    }
-
-    .form-group {
-      flex: 1;
-      min-width: 250px;
-    }
-
-    label {
-      display: block;
-      margin: 15px 0 5px;
-      font-weight: 500;
-      color: var(--secondary-color);
-    }
+    .form-group{display:flex; flex-direction:column; gap:6px}
+    label{ font-size:.95rem; color:var(--muted); font-weight:700 }
+    .req{ color:var(--warn) }
 
     input[type="text"],
     input[type="date"],
     input[type="time"],
     input[type="number"],
     input[type="file"],
-    select,
-    textarea {
-      width: 95%;
-      padding: 12px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      margin-bottom: 15px;
-      font-size: 1em;
-      color: var(--text-color);
-      background-color: var(--light-bg);
-      transition: border-color 0.3s ease;
+    select, textarea{
+      width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:12px;
+      background:transparent; color:var(--ink); font-size:1rem; outline:none;
+    }
+    textarea{ min-height:120px; resize:vertical }
+
+    /* ajuda e erros */
+    .help{ font-size:.9rem; color:var(--muted) }
+    .errorlist{ list-style:none; margin:6px 0 0; padding:0 }
+    .errorlist li{
+      background:rgba(239,68,68,.08); color:var(--danger);
+      border:1px solid rgba(239,68,68,.25); padding:8px 10px; border-radius:10px; font-size:.9rem;
     }
 
-    input:focus,
-    select:focus,
-    textarea:focus {
-      border-color: var(--primary-color);
-      outline: none;
+    /* AÇÕES */
+    .actions-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:6px }
+    .btn{
+      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      padding:11px 14px; border-radius:12px; font-weight:800; color:#fff; text-decoration:none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .12s ease, filter .2s ease;
     }
+    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
+    .btn-ghost{ background:transparent; color:var(--ink); border:1px solid var(--line) }
 
-    button[type="submit"] {
-      padding: 14px 28px;
-      background-color: var(--primary-color);
-      color: var(--white);
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 1.1em;
-      transition: background-color 0.3s ease;
-      margin-top: 20px;
+    /* FILE preview */
+    .file-preview{ display:grid; grid-auto-flow:column; grid-auto-columns:120px; gap:10px; margin-top:4px; overflow:auto }
+    .file-preview__item{
+      border:1px solid var(--line); border-radius:10px; background:var(--stripe);
+      display:grid; place-items:center; padding:6px; min-height:90px; font-size:.85rem; color:var(--muted)
     }
+    .file-preview__item img{ width:100%; height:100%; object-fit:cover; border-radius:8px }
 
-    button[type="submit"]:hover {
-      background-color: #207ac2;
-    }
-
-    .btn-back {
-      display: inline-block;
-      margin-top: 20px;
-      text-decoration: none;
-      color: var(--primary-color);
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-back:hover {
-      text-decoration: underline;
-    }
-
-    .errorlist {
-      margin: 10px 0;
-      padding: 0;
-      list-style: none;
-      color: var(--error-color);
-      font-size: 0.9em;
-    }
-
-    .errorlist li {
-      margin-bottom: 5px;
-    }
-
-    footer {
-      text-align: center;
-      padding: 20px;
-      background-color: var(--secondary-color);
-      color: var(--white);
-      margin-top: 30px;
-    }
-
-    @media (max-width: 768px) {
-      .container {
-        padding: 20px;
-        margin: 15px auto;
-      }
-
-      h1 {
-        font-size: 2em;
-      }
-
-      .form-row {
-        flex-direction: column;
-      }
-
-      .form-group {
-        min-width: auto;
-      }
-
-      input,
-      select,
-      textarea {
-        padding: 10px;
-        font-size: 0.9em;
-      }
-
-      button[type="submit"] {
-        padding: 12px 24px;
-        font-size: 1em;
-      }
-    }
+    footer{ text-align:center; margin:18px auto 6px; color:var(--muted); font-size:.95rem }
   </style>
 </head>
 <body>
+  <div class="wrap">
 
-  <div class="container">
-    <h1>Criar Novo Evento</h1>
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form.hidden_fields }} <!-- garante que campos ocultos como 'paroquia' sejam enviados -->
-
-  <div class="form-row">
-    {% for field in form.visible_fields %}
-      <div class="form-group">
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
-        {% if field.errors %}
-          <ul class="errorlist">
-            {% for error in field.errors %}
-              <li>{{ error }}</li>
-            {% endfor %}
-          </ul>
-        {% endif %}
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-head">
+        <div>
+          <h1 class="hero-title">Criar Novo Evento</h1>
+          <p class="hero-sub">Preencha as informações do evento da sua paróquia</p>
+        </div>
+        <div class="actions">
+          <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="pill">
+            <i class="fa-solid fa-arrow-left"></i><span>Voltar</span>
+          </a>
+          <button id="themeToggle" type="button" class="pill" aria-label="Alternar tema">
+            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+          </button>
+        </div>
       </div>
-    {% endfor %}
+    </header>
+
+    <!-- FORM -->
+    <section class="panel">
+      <h2><i class="fa-solid fa-calendar-plus"></i> Dados do Evento</h2>
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.hidden_fields }}
+
+        <div class="form-grid">
+          {% for field in form.visible_fields %}
+            <div class="form-group
+              {% if field.field.widget.input_type == 'file' %} col-12 {% else %} col-6 {% endif %}">
+              <label for="{{ field.id_for_label }}">
+                {{ field.label }}{% if field.field.required %} <span class="req">*</span>{% endif %}
+              </label>
+              {{ field }}
+
+              {% if field.help_text %}
+                <div class="help">{{ field.help_text|safe }}</div>
+              {% endif %}
+
+              {% if field.errors %}
+                <ul class="errorlist">
+                  {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+                </ul>
+              {% endif %}
+
+              {% if field.field.widget.input_type == 'file' %}
+                <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="actions-row">
+          <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="btn btn-ghost">
+            <i class="fa-solid fa-xmark"></i> Cancelar
+          </a>
+          <button type="submit" class="btn">
+            <i class="fa-solid fa-floppy-disk"></i> Salvar
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <footer>
+      &copy; {{ current_year }} Sistema de Eventos — Todos os direitos reservados
+    </footer>
   </div>
 
-  <button type="submit">Salvar</button>
-</form>
-    <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="btn btn-back">
-      <i class="fas fa-arrow-left"></i> Voltar para a Lista de Eventos
-    </a>
-  </div>
+  <script>
+    // Tema com persistência (mesma lógica das outras telas)
+    (function themeToggle(){
+      const KEY='ui-theme';
+      const btn=document.getElementById('themeToggle');
+      const root=document.documentElement;
+      function apply(theme){
+        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      }
+      apply(localStorage.getItem(KEY) || 'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next); apply(next);
+        btn.setAttribute('aria-label',`Tema: ${next}`);
+      });
+    })();
 
-  <footer>
-    &copy; {{ current_year }} Sistema de Eventos - Todos os direitos reservados
-  </footer>
-
+    // Pré-visualização genérica para campos de arquivo (imagens)
+    (function filePreviewer(){
+      function isImage(file){ return /^image\//.test(file.type) }
+      document.querySelectorAll('input[type="file"]').forEach(input=>{
+        input.addEventListener('change', (e)=>{
+          const target = e.currentTarget;
+          const pv = document.querySelector(`[data-preview-for="${target.id}"]`);
+          if(!pv) return;
+          pv.innerHTML = '';
+          const files = Array.from(target.files||[]);
+          if(!files.length){ pv.innerHTML = '<div class="file-preview__item">Sem arquivo</div>'; return; }
+          files.forEach(f=>{
+            const item = document.createElement('div');
+            item.className='file-preview__item';
+            if(isImage(f)){
+              const img = document.createElement('img');
+              img.alt = f.name;
+              item.appendChild(img);
+              const reader = new FileReader();
+              reader.onload = ev => img.src = ev.target.result;
+              reader.readAsDataURL(f);
+            }else{
+              item.textContent = f.name;
+            }
+            pv.appendChild(item);
+          });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

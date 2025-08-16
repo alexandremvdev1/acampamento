@@ -1,119 +1,266 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>📋 Lista de Pastorais</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
+  <meta charset="UTF-8" />
+  <title>Pastorais / Movimentos — Admin Geral</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* ====== Tokens globais (coerentes com as outras telas) ====== */
+    :root{
+      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
+      --focus:0 0 0 3px rgba(37,99,235,.25);
 
-        .container {
-            max-width: 600px;
-            width: 90%;
-            background: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
+      --pill-back:#4b5563; --pill-accent:#0ea5e9; --pill-green:#22c55e;
 
-        h2 {
-            color: #2c3e50;
-            margin-bottom: 25px;
-        }
+      --card:#fff; --chip:#eef2ff; --chip-ink:#4338ca;
+      --accent:#2563eb; --accent-2:#1d4ed8;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow:0 10px 40px rgba(0,0,0,.45);
+        --pill-back:#6b7280; --pill-accent:#0284c7; --pill-green:#16a34a;
+        --card:#0f172a; --chip:#1e293b; --chip-ink:#93c5fd;
+        --accent:#1d4ed8; --accent-2:#1e40af;
+      }
+    }
 
-        ul {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 25px 0;
-        }
+    *{ box-sizing:border-box }
+    html,body{ margin:0; padding:0 }
+    body{
+      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.42;
+    }
+    .container{ max-width:900px; margin:20px auto 32px; padding:0 16px }
 
-        li {
-            background-color: #ecf0f1;
-            margin-bottom: 10px;
-            padding: 10px 15px;
-            border-radius: 6px;
-            font-size: 1.05rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            justify-content: center;
-        }
+    /* ====== HERO ====== */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(18px,4vw,26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.18);
+      margin-bottom:18px;
+    }
+    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.1rem,3vw,1.8rem); letter-spacing:.3px }
+    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
 
-        li::before {
-            content: "🔹";
-        }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
+      color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12);
+      transition: transform .12s ease, background .2s ease;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
+    .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
+    .pill.-accent{ background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
+    .pill.-green{ background: linear-gradient(135deg, #34d399, var(--pill-green)) }
 
-        .empty-message {
-            font-style: italic;
-            color: #888;
-            margin-bottom: 25px;
-        }
+    /* ====== Painel de filtros ====== */
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(14px,2vw,18px); margin-bottom:16px;
+    }
+    .panel h2{
+      margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .filters{ display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center }
+    @media (max-width:680px){ .filters{ grid-template-columns: 1fr } }
+    input[type="search"]{
+      border:1px solid var(--line); background:var(--panel); color:var(--ink);
+      border-radius:12px; padding:12px 14px; font-size:1rem; width:100%;
+    }
+    .count{ color:var(--muted); font-size:.95rem }
 
-        .btn {
-            display: block;
-            width: 96%;
-            padding: 12px;
-            text-align: center;
-            background-color: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: background-color 0.3s ease;
-            margin-bottom: 15px;
-        }
+    /* ====== Lista (cards) ====== */
+    .empty{ font-style:italic; color:var(--muted); text-align:center; padding:20px 8px }
 
-        .btn:hover {
-            background-color: #2980b9;
-        }
+    .list{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap:12px;
+      margin: 6px 0 14px;
+    }
+    .item{
+      display:flex; align-items:center; gap:10px;
+      padding:12px 14px; border:1px solid var(--line); border-radius:14px;
+      background:var(--card);
+      transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .item:hover{ transform: translateY(-2px); box-shadow: var(--shadow); border-color: rgba(37,99,235,.35) }
 
-        .btn-secondary {
-            background-color: #7f8c8d;
-        }
+    .avatar{
+      width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); color:#fff; font-weight:800;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
+      flex:0 0 auto;
+    }
+    .name{ font-weight:700; letter-spacing:.2px }
+    .chip{
+      margin-left:auto; font-size:.78rem; padding:4px 8px; border-radius:999px;
+      background:var(--chip); color:var(--chip-ink); border:1px solid rgba(99,102,241,.25); font-weight:700;
+    }
 
-        .btn-secondary:hover {
-            background-color: #636e72;
-        }
-
-        @media (max-width: 500px) {
-            .container {
-                padding: 20px;
-            }
-
-            .btn {
-                padding: 10px;
-                font-size: 0.95rem;
-            }
-        }
-    </style>
+    /* ====== Barra de ações ====== */
+    .actions{
+      display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+      margin-top: 6px;
+    }
+    .btn{
+      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      padding:12px 16px; border-radius:12px; font-weight:700; color:#fff; text-decoration:none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      transition: transform .12s ease, filter .2s ease;
+    }
+    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
+    .btn.-ghost{ color:var(--ink); background:transparent; border:1px solid var(--line) }
+  </style>
 </head>
+
 <body>
-    <div class="container">
-        <h2>📋 Lista de Pastorais / Movimentos</h2>
+  <div class="container">
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-head">
+        <div>
+          <h1 class="hero-title">Pastorais / Movimentos</h1>
+          <p class="hero-sub">Gerencie e pesquise a lista de pastorais cadastradas.</p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="pill -back">
+            <i class="fa-solid fa-arrow-left"></i><span>Dashboard</span>
+          </a>
+          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema">
+            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+          </button>
+          <a href="{% url 'inscricoes:cadastrar_pastoral_movimento' %}" class="pill -green">
+            <i class="fa-solid fa-plus"></i><span>Nova Pastoral</span>
+          </a>
+        </div>
+      </div>
+    </header>
 
-        {% if pastorais %}
-            <ul>
-                {% for p in pastorais %}
-                    <li>{{ p.nome }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p class="empty-message">⚠️ Nenhuma pastoral ou movimento cadastrado.</p>
-        {% endif %}
+    <!-- FILTROS -->
+    <section class="panel" aria-labelledby="filtros">
+      <h2 id="filtros"><i class="fa-solid fa-filter"></i> Filtros</h2>
+      <div class="filters">
+        <input type="search" id="q" placeholder="Buscar por nome… (ex.: Liturgia, RCC, Catequese)" aria-label="Buscar pastoral" />
+        <span class="count" id="count"></span>
+      </div>
+    </section>
 
-        <a href="{% url 'inscricoes:cadastrar_pastoral_movimento' %}" class="btn">➕ Cadastrar Nova Pastoral</a>
-        <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="btn btn-secondary">⬅️ Voltar para o Painel</a>
-    </div>
+    <!-- LISTA -->
+    {% if pastorais %}
+    <section class="panel" aria-labelledby="lista">
+      <h2 id="lista"><i class="fa-solid fa-list"></i> Lista</h2>
+      <div id="list" class="list" role="list">
+        {% for p in pastorais %}
+          <div class="item" role="listitem" data-name="{{ p.nome|lower }}">
+            <div class="avatar" aria-hidden="true">{{ p.nome|first|upper }}</div>
+            <div class="name">{{ p.nome }}</div>
+            <span class="chip">Pastoral</span>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="actions">
+        <a href="{% url 'inscricoes:cadastrar_pastoral_movimento' %}" class="btn">
+          <i class="fa-solid fa-plus"></i> Cadastrar Nova Pastoral
+        </a>
+        <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="btn -ghost">
+          <i class="fa-solid fa-gauge"></i> Voltar ao Painel
+        </a>
+      </div>
+    </section>
+    {% else %}
+      <section class="panel">
+        <p class="empty">⚠️ Nenhuma pastoral ou movimento cadastrado.</p>
+        <div class="actions">
+          <a href="{% url 'inscricoes:cadastrar_pastoral_movimento' %}" class="btn">
+            <i class="fa-solid fa-plus"></i> Cadastrar Nova Pastoral
+          </a>
+          <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="btn -ghost">
+            <i class="fa-solid fa-gauge"></i> Voltar ao Painel
+          </a>
+        </div>
+      </section>
+    {% endif %}
+
+    <footer style="text-align:center; color:var(--muted); margin-top:10px;">
+      &copy; {{ current_year }} Admin Geral — Todos os direitos reservados
+    </footer>
+  </div>
+
+  <script>
+    // ===== Tema com persistência (usa a mesma key das outras telas) =====
+    (function themeToggle(){
+      const KEY='relatorios-theme';
+      const btn=document.getElementById('themeToggle');
+      const root=document.documentElement;
+      function apply(theme){
+        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      }
+      apply(localStorage.getItem(KEY) || 'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next); apply(next);
+        btn.setAttribute('aria-label',`Tema: ${next}`);
+      });
+    })();
+
+    // ===== Busca, normalização e contador =====
+    (function listControls(){
+      const list = document.getElementById('list');
+      const q = document.getElementById('q');
+      const count = document.getElementById('count');
+      if(!list || !q || !count) return;
+
+      const items = Array.from(list.children);
+
+      // Ordena A→Z logo no carregamento (considera pt-BR)
+      items.sort((a,b)=> a.dataset.name.localeCompare(b.dataset.name,'pt-BR',{sensitivity:'base'}))
+           .forEach(el => list.appendChild(el));
+
+      const norm = (s)=> (s||'').toLowerCase()
+        .normalize('NFD').replace(/\p{Diacritic}/gu,'');
+
+      function apply(){
+        const term = norm(q.value);
+        let shown = 0;
+        items.forEach(el=>{
+          const name = norm(el.dataset.name);
+          const vis = !term || name.includes(term);
+          el.style.display = vis ? '' : 'none';
+          if(vis) shown++;
+        });
+        count.textContent = shown + ' de ' + items.length + ' pastorais';
+      }
+
+      q.addEventListener('input', apply);
+      apply();
+    })();
+  </script>
 </body>
 </html>

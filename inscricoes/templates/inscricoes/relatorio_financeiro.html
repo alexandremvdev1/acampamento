@@ -1,260 +1,389 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório Financeiro - {{ evento.nome }}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        /* Cores (Mais vibrantes e acessíveis) */
-        :root {
-            --primary-color: #2980b9; /* Azul mais moderno */
-            --secondary-color: #34495e; /* Cinza-azulado escuro */
-            --light-bg: #f4f7f9; /* Cinza bem claro */
-            --text-color: #2c3e50; /* Texto principal */
-            --border-color: #e0e6ed; /* Bordas suaves */
-            --white: #fff;
-            --success-color: #27ae60; /* Verde */
-            --warning-color: #d35400; /* Laranja */
-            --back-button-color: #7f8c8d; /* Cinza para o botão voltar */
-            --accent-color: #f1c40f; /* Amarelo para detalhes */
-        }
+  <meta charset="UTF-8" />
+  <title>Relatório Financeiro — {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    :root{
+      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
+      --accent:#2563eb; --accent-2:#1d4ed8;
+      --good:#16a34a; --warn:#f59e0b; --bad:#ef4444; --info:#0891b2;
+      --chip:#111827; --chip-2:#374151;
+      --okbg: #ecfdf5; --warnbg:#fff7ed; --badbg:#fef2f2;
+      --table-stripe:#f4f7f9;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow:0 10px 40px rgba(0,0,0,.45);
+        --accent:#1d4ed8; --accent-2:#1e40af;
+        --chip:#374151; --chip-2:#111827;
+        --okbg:#052e1a; --warnbg:#2a1902; --badbg:#2b0b0b;
+        --table-stripe:#121821;
+      }
+    }
 
-        /* Reset básico para melhor consistência entre navegadores */
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+    *{box-sizing:border-box}
+    html,body{margin:0}
+    body{
+      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.5;
+      padding:20px;
+    }
+    .container{max-width:980px; margin:0 auto}
 
-        body {
-            font-family: 'Nunito Sans', sans-serif; /* Fonte mais moderna */
-            background-color: var(--light-bg);
-            color: var(--text-color);
-            line-height: 1.7;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
+    /* HERO */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(18px, 4vw, 28px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.18);
+      margin-bottom:18px;
+    }
+    .hero-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+    .hero-title{margin:0; font-weight:800; font-size: clamp(1.2rem,3.8vw,2rem); letter-spacing:.2px}
+    .hero-sub{margin:4px 0 0; opacity:.9; font-size:.98rem}
+    .actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px;
+      font-weight:800; text-decoration:none; color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12); transition:transform .12s ease, background .2s ease; cursor:pointer;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
 
-        /* Container principal */
-        .container {
-            max-width: 900px; /* Aumenta um pouco a largura */
-            margin: 20px auto;
-            background-color: var(--white);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Sombra mais suave */
-            border-radius: 12px; /* Bordas mais arredondadas */
-            padding: 30px; /* Espaçamento interno maior */
-            flex: 1;
-        }
+    /* Painel base */
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(14px,2vw,18px); margin-bottom:14px;
+    }
+    .panel h2{margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:800; letter-spacing:.2px; display:flex; gap:8px; align-items:center}
 
-        /* Título */
-        h1 {
-            color: var(--secondary-color);
-            text-align: center;
-            margin-bottom: 30px;
-            font-weight: 700; /* Mais forte */
-            font-size: 1.9em; /* Aumenta o tamanho */
-            letter-spacing: -0.02em; /* Ajuste fino do espaçamento */
-        }
+    /* KPIs */
+    .kpis{ display:grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap:12px }
+    @media (max-width:900px){ .kpis{ grid-template-columns: repeat(2,1fr) } }
+    @media (max-width:540px){ .kpis{ grid-template-columns: 1fr } }
+    .kpi{
+      background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px;
+      display:grid; gap:4px; box-shadow:var(--shadow);
+    }
+    .kpi .label{ color:var(--muted); font-size:.9rem }
+    .kpi .value{ font-size:1.3rem; font-weight:800 }
+    .kpi.good .value{ color:var(--good) }
+    .kpi.warn .value{ color:var(--warn) }
+    .stack{ display:flex; align-items:center; justify-content:space-between; gap:6px }
+    .sub{ color:var(--muted); font-size:.9rem }
 
-        /* Seção de resumo */
-        .summary {
-            background-color: var(--white);
-            border: 1px solid var(--border-color);
-            padding: 20px;
-            margin-bottom: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06); /* Sombra sutil */
-        }
+    /* Progresso */
+    .progress{
+      margin-top:10px; background:rgba(0,0,0,.06); border:1px solid var(--line); border-radius:999px; height:12px; overflow:hidden;
+    }
+    .bar{
+      height:100%; width:0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width .6s ease;
+    }
 
-        .summary p {
-            margin-bottom: 12px;
-            font-size: 1.1em; /* Tamanho um pouco maior */
-            color: var(--text-color);
-        }
+    /* Filtros & busca */
+    .controls{ display:grid; gap:10px; grid-template-columns: 1fr auto auto; align-items:center }
+    @media (max-width:760px){ .controls{ grid-template-columns: 1fr } }
+    .search{ display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px }
+    .search input{ border:none; outline:none; width:100%; background:transparent; color:var(--ink); font-size:1rem }
+    .btn{
+      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      padding:10px 12px; border-radius:12px; font-weight:800; color:#fff; text-decoration:none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .12s ease, filter .2s ease;
+    }
+    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
+    .btn.-ghost{ color:var(--ink); background:transparent; border:1px solid var(--line) }
 
-        .summary p strong {
-            color: var(--primary-color); /* Destaca os títulos */
-            font-weight: 600;
-            margin-right: 5px;
-        }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px }
+    .chip{
+      display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+      background:linear-gradient(135deg, var(--chip), var(--chip-2)); color:#fff; border:1px solid rgba(255,255,255,.12);
+      cursor:pointer; user-select:none; font-weight:800; font-size:.92rem; transition:transform .12s ease, filter .2s ease;
+    }
+    .chip:hover{ transform:translateY(-1px); filter:brightness(1.05) }
+    .chip[data-active="false"]{ opacity:.55 }
 
-        .summary hr {
-            border: none;
-            border-top: 1px solid var(--border-color);
-            margin: 20px 0;
-        }
+    .legend{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; color:var(--muted); font-size:.92rem }
+    .lg{ display:inline-flex; align-items:center; gap:6px }
+    .dot{ width:10px; height:10px; border-radius:50% }
+    .pix{ background:#10b981 } .cred{ background:#3b82f6 } .deb{ background:#06b6d4 } .cash{ background:#f59e0b }
 
-        /* Tabela */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 25px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.07); /* Sombra mais definida */
-            border-radius: 10px;
-            overflow: hidden;
-        }
+    /* Tabela */
+    .table-wrap{ overflow:auto; border:1px solid var(--line); border-radius:12px }
+    table{ width:100%; border-collapse:collapse; min-width:640px; background:var(--panel) }
+    th, td{ padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; font-size: .98rem }
+    thead th{ background:linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,0)); font-weight:800 }
+    tbody tr:nth-child(even){ background:var(--table-stripe) }
+    tbody tr:hover{ background:rgba(37,99,235,.06) }
 
-        th, td {
-            border: 1px solid var(--border-color);
-            padding: 12px 15px; /* Aumenta o preenchimento */
-            text-align: left;
-            font-size: 1em;
-        }
+    .no-data{ text-align:center; padding:18px; color:var(--muted) }
 
-        th {
-            background-color: var(--primary-color);
-            color: var(--white);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            text-align: left;
-        }
-
-        tbody tr:nth-child(even) {
-            background-color: var(--light-bg);
-        }
-
-        tbody tr:hover {
-            background-color: #f0f3f5; /* Hover mais suave */
-            transition: background-color 0.3s ease;
-        }
-
-        /* Mensagem de "sem dados" */
-        .no-data {
-            text-align: center;
-            padding: 20px;
-            font-style: italic;
-            color: var(--light-text);
-            font-size: 1.1em;
-        }
-
-        /* Botão Voltar */
-        .back-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 18px;
-            background-color: var(--back-button-color);
-            color: var(--white);
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: 600;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        .back-button:hover {
-            background-color: #636e72;
-            transform: translateY(-2px);
-        }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 20px;
-            background-color: var(--secondary-color);
-            color: var(--white);
-            margin-top: 40px;
-            border-radius: 8px;
-            font-size: 0.9em;
-        }
-
-        /* Cores de status */
-        .positive {
-            color: var(--success-color);
-            font-weight: 600;
-        }
-
-        .negative {
-            color: var(--warning-color);
-            font-weight: 600;
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .container {
-                padding: 20px;
-                margin: 10px auto;
-            }
-
-            h1 {
-                font-size: 2em;
-            }
-
-            .summary {
-                padding: 15px;
-            }
-
-            .summary p {
-                font-size: 1em;
-            }
-
-            th, td {
-                padding: 8px;
-                font-size: 0.9em;
-            }
-
-            .back-button {
-                font-size: 0.9em;
-            }
-        }
-    </style>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    footer{
+      text-align:center; margin:22px auto 8px; color:var(--muted); font-size:.95rem
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <a href="{% url 'inscricoes:evento_participantes' evento.id %}" class="back-button">
-            <i class="fas fa-arrow-left"></i> Voltar
-        </a>
-        <h1>Relatório Financeiro - {{ evento.nome }}</h1>
+  <div class="container">
 
-        <div class="summary">
-            <p><strong>Total Arrecadado:</strong> R$ {{ total_arrecadado }}</p>
-            <p><strong>Total Esperado:</strong> R$ {{ total_esperado }}</p>
-            {% if total_pendente > 0 %}
-                <p><strong>Total Pendente:</strong> <span class="negative">R$ {{ total_pendente }}</span></p>
-            {% else %}
-                <p><strong>Total Pendente:</strong> <span class="positive">R$ {{ total_pendente }}</span></p>
-            {% endif %}
-            <hr>
-            <p><strong>Total em PIX:</strong> R$ {{ total_pix }}</p>
-            <p><strong>Total em Cartão de Crédito:</strong> R$ {{ total_credito }}</p>
-            <p><strong>Total em Cartão de Débito:</strong> R$ {{ total_debito }}</p>
-            <p><strong>Total em Dinheiro:</strong> R$ {{ total_dinheiro }}</p>
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-head">
+        <div>
+          <h1 class="hero-title">Relatório Financeiro</h1>
+          <p class="hero-sub">{{ evento.nome }}</p>
+        </div>
+        <div class="actions">
+          <a href="{% url 'inscricoes:evento_participantes' evento.id %}" class="pill">
+            <i class="fa-solid fa-arrow-left"></i><span>Voltar</span>
+          </a>
+          <button id="themeToggle" type="button" class="pill" aria-label="Alternar tema">
+            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPIs -->
+    <section class="panel" id="kpis"
+             data-arrecadado="{{ total_arrecadado|default:'0' }}"
+             data-esperado="{{ total_esperado|default:'0' }}">
+      <h2><i class="fa-solid fa-gauge"></i> Visão geral</h2>
+      <div class="kpis">
+        <div class="kpi">
+          <div class="label">Total Arrecadado</div>
+          <div class="value">R$ {{ total_arrecadado }}</div>
+          <div class="sub">Meta: R$ {{ total_esperado }}</div>
+        </div>
+        <div class="kpi {% if total_pendente|floatformat:2 > 0 %}warn{% else %}good{% endif %}">
+          <div class="label">Total Pendente</div>
+          <div class="value">R$ {{ total_pendente }}</div>
+          <div class="sub">{% if total_pendente|floatformat:2 > 0 %}A receber{% else %}Tudo em dia{% endif %}</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Total em PIX</div>
+          <div class="stack">
+            <div class="value" style="color:#10b981">R$ {{ total_pix }}</div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="label">Cartões & Dinheiro</div>
+          <div class="stack">
+            <div class="value">R$ {{ total_credito|default:"0,00" }}</div>
+            <div class="sub">Crédito</div>
+          </div>
+          <div class="stack">
+            <div class="value" style="font-weight:700">R$ {{ total_debito|default:"0,00" }}</div>
+            <div class="sub">Débito</div>
+          </div>
+          <div class="stack">
+            <div class="value" style="color:#f59e0b">R$ {{ total_dinheiro|default:"0,00" }}</div>
+            <div class="sub">Dinheiro</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progresso em relação ao Total Esperado -->
+      <div class="progress" aria-label="Progresso em relação ao total esperado">
+        <div class="bar" id="progressBar" style="width:0%"></div>
+      </div>
+      <div class="legend" style="margin-top:6px">
+        <span class="lg"><span class="dot pix"></span>PIX</span>
+        <span class="lg"><span class="dot cred"></span>Crédito</span>
+        <span class="lg"><span class="dot deb"></span>Débito</span>
+        <span class="lg"><span class="dot cash"></span>Dinheiro</span>
+      </div>
+    </section>
+
+    <!-- FILTROS / BUSCA / AÇÕES -->
+    <section class="panel">
+      <h2><i class="fa-solid fa-sliders"></i> Filtros & Ações</h2>
+
+      <div class="controls">
+        <div class="search" role="search">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input id="q" type="search" placeholder="Buscar por inscrição, método, valor ou data…" autocomplete="off" />
         </div>
 
-        <h2>Pagamentos Confirmados</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Inscrição</th>
-                    <th>Método</th>
-                    <th>Valor</th>
-                    <th>Data</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for pagamento in pagamentos_confirmados %}
-                    <tr>
-                        <td>{{ pagamento.inscricao }}</td>
-                        <td>{{ pagamento.get_metodo_display }}</td>
-                        <td>R$ {{ pagamento.valor }}</td>
-                        <td>{{ pagamento.data_pagamento }}</td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="4" class="no-data">Nenhum pagamento confirmado.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
+        <button id="printBtn" class="btn -ghost"><i class="fa-solid fa-print"></i> Imprimir</button>
+        <button id="exportCsv" class="btn"><i class="fa-solid fa-file-export"></i> Exportar CSV</button>
+      </div>
+
+      <div class="chips" id="chips">
+        <!-- dataset usa nomes de método em minúsculas -->
+        <button class="chip" data-metodo="pix"      data-active="true"><span class="dot pix"></span> PIX</button>
+        <button class="chip" data-metodo="credito"  data-active="true"><span class="dot cred"></span> Crédito</button>
+        <button class="chip" data-metodo="debito"   data-active="true"><span class="dot deb"></span> Débito</button>
+        <button class="chip" data-metodo="dinheiro" data-active="true"><span class="dot cash"></span> Dinheiro</button>
+      </div>
+    </section>
+
+    <!-- TABELA -->
+    <section class="panel">
+      <h2><i class="fa-solid fa-receipt"></i> Pagamentos Confirmados</h2>
+      <div class="table-wrap">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>Inscrição</th>
+              <th>Método</th>
+              <th>Valor</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            {% for pagamento in pagamentos_confirmados %}
+              <tr data-metodo="{{ pagamento.metodo|default:''|lower }}">
+                <td data-col="inscricao">{{ pagamento.inscricao }}</td>
+                <td data-col="metodo">{{ pagamento.get_metodo_display }}</td>
+                <td data-col="valor">R$ {{ pagamento.valor }}</td>
+                <td data-col="data">{{ pagamento.data_pagamento }}</td>
+              </tr>
+            {% empty %}
+              <tr class="no-data-row"><td colspan="4" class="no-data">Nenhum pagamento confirmado.</td></tr>
+            {% endfor %}
+          </tbody>
         </table>
-    </div>
+      </div>
+    </section>
+
     <footer>
-        &copy; {{ current_year }} Admin Geral - Todos os direitos reservados
+      &copy; {{ current_year }} Admin Geral — Todos os direitos reservados
     </footer>
+  </div>
+
+  <script>
+    // ===== Tema com persistência (mesma chave usada nas outras telas premium) =====
+    (function themeToggle(){
+      const KEY='relatorios-theme';
+      const btn=document.getElementById('themeToggle');
+      const root=document.documentElement;
+      function apply(theme){
+        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      }
+      apply(localStorage.getItem(KEY) || 'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next); apply(next);
+        btn.setAttribute('aria-label',`Tema: ${next}`);
+      });
+    })();
+
+    // ===== Util: parse de moeda BR (aceita "R$ 1.234,56" ou "1234.56") =====
+    function parseBRL(x){
+      if(x==null) return 0;
+      const s = String(x).replace(/\s|R\$/g,'');
+      if(/[.,]/.test(s)){
+        // remove milhares e normaliza decimal
+        const n = s.replace(/\./g,'').replace(/,/g,'.');
+        const f = parseFloat(n);
+        return isNaN(f)?0:f;
+      }
+      const f = parseFloat(s);
+      return isNaN(f)?0:f;
+    }
+
+    // ===== Progresso (Arrecadado / Esperado) =====
+    (function progress(){
+      const k = document.getElementById('kpis');
+      if(!k) return;
+      const arrec = parseBRL(k.dataset.arrecadado);
+      const esp   = parseBRL(k.dataset.esperado);
+      const pct = esp > 0 ? Math.min(100, Math.round((arrec/esp)*100)) : 0;
+      const bar = document.getElementById('progressBar');
+      if(bar) bar.style.width = pct + '%';
+    })();
+
+    // ===== Filtros, busca, export e imprimir =====
+    (function tableUI(){
+      const q = document.getElementById('q');
+      const chipsWrap = document.getElementById('chips');
+      const tbody = document.getElementById('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr')).filter(r=>!r.classList.contains('no-data-row'));
+      const printBtn = document.getElementById('printBtn');
+      const exportBtn = document.getElementById('exportCsv');
+
+      function activeMetodos(){
+        const map = {pix:true, credito:true, debito:true, dinheiro:true};
+        chipsWrap.querySelectorAll('.chip').forEach(ch=>{
+          map[ch.dataset.metodo] = ch.dataset.active !== 'false';
+        });
+        return map;
+      }
+
+      function matchesSearch(tr, term){
+        if(!term) return true;
+        term = term.toLowerCase();
+        return Array.from(tr.children).some(td => (td.textContent||'').toLowerCase().includes(term));
+      }
+
+      function apply(){
+        const term = q.value.trim();
+        const act = activeMetodos();
+        let anyVisible=false;
+        rows.forEach(tr=>{
+          const met = tr.dataset.metodo || '';
+          const ok = !!act[met] && matchesSearch(tr, term);
+          tr.style.display = ok ? '' : 'none';
+          if(ok) anyVisible = true;
+        });
+        const emptyRow = tbody.querySelector('.no-data-row');
+        if(emptyRow){
+          emptyRow.style.display = anyVisible ? 'none' : '';
+        }
+      }
+
+      q.addEventListener('input', apply);
+      chipsWrap.addEventListener('click', (e)=>{
+        const b = e.target.closest('.chip'); if(!b) return;
+        b.dataset.active = b.dataset.active === 'false' ? 'true' : 'false';
+        apply();
+      });
+
+      printBtn.addEventListener('click', ()=> window.print());
+
+      exportBtn.addEventListener('click', ()=>{
+        const visibleRows = rows.filter(r=> r.style.display !== 'none');
+        const header = ['Inscricao','Metodo','Valor','Data'];
+        const lines = [header];
+        visibleRows.forEach(r=>{
+          const c = r.querySelectorAll('td');
+          const vals = Array.from(c).map(td => `"${String(td.textContent).trim().replace(/"/g,'""')}"`);
+          lines.push(vals);
+        });
+        const csv = lines.map(a=>a.join(',')).join('\n');
+        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'relatorio_financeiro.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+
+      apply(); // inicial
+    })();
+  </script>
 </body>
 </html>

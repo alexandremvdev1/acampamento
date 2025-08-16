@@ -1,90 +1,230 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>➕ Cadastrar Pastoral</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #f5f6fa;
-            margin: 0;
-            padding: 20px;
-        }
+  <meta charset="UTF-8" />
+  <title>Nova Pastoral — Admin Geral</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* ===== Tokens globais (coerentes com as outras telas) ===== */
+    :root{
+      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
+      --focus:0 0 0 3px rgba(37,99,235,.25);
 
-        .container {
-            max-width: 500px;
-            background: #fff;
-            margin: 40px auto;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
+      --pill-back:#4b5563; --pill-accent:#0ea5e9; --pill-green:#22c55e;
+      --accent:#2563eb; --accent-2:#1d4ed8;
 
-        h2 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
+      --err:#ef4444; --ok:#16a34a; --warn:#f59e0b;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow:0 10px 40px rgba(0,0,0,.45);
+        --pill-back:#6b7280; --pill-accent:#0284c7; --pill-green:#16a34a;
+        --accent:#1d4ed8; --accent-2:#1e40af;
+      }
+    }
 
-        form label {
-            display: block;
-            margin-top: 15px;
-            font-weight: bold;
-            color: #333;
-        }
+    *{ box-sizing:border-box }
+    html,body{ margin:0; padding:0 }
+    body{
+      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.42;
+    }
+    .container{ max-width:720px; margin:20px auto 32px; padding:0 16px }
 
-        form input[type="text"] {
-            width: 96%;
-            padding: 10px;
-            margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-        }
+    /* ===== HERO ===== */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(18px,4vw,26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.18);
+      margin-bottom:18px;
+    }
+    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.1rem,3vw,1.8rem); letter-spacing:.3px }
+    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
+      color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12);
+      transition: transform .12s ease, background .2s ease;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
+    .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
+    .pill.-accent{ background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
 
-        .btn {
-            display: inline-block;
-            margin-top: 25px;
-            background-color: #3498db;
-            color: white;
-            padding: 12px 20px;
-            text-align: center;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            width: 100%;
-            cursor: pointer;
-        }
+    /* ===== Painel / Form ===== */
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(16px,2vw,20px);
+    }
+    .panel h2{
+      margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
+      display:flex; align-items:center; gap:8px;
+    }
 
-        .btn:hover {
-            background-color: #2980b9;
-        }
+    form{ display:grid; gap:14px; }
+    .field{ display:grid; gap:6px; }
+    .label{ font-weight:700; color:var(--muted) }
+    .req{ color:var(--warn); margin-left:4px }
 
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 15px;
-            text-decoration: none;
-            color: #888;
-            font-size: 0.9rem;
-        }
+    input[type="text"], input[type="email"], input[type="url"], textarea{
+      width:100%; border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+      background:var(--panel); color:var(--ink); font-size:1rem;
+    }
+    textarea{ min-height:120px; resize:vertical }
+    input:focus, textarea:focus{ outline:none; box-shadow:var(--focus) }
 
-        .back-link:hover {
-            color: #555;
-        }
-    </style>
+    .help{ color:var(--muted); font-size:.92rem }
+    .errors{ display:grid; gap:6px; margin:0; padding:0; list-style:none }
+    .error{
+      border:1px solid rgba(239,68,68,.4); background:rgba(239,68,68,.08);
+      color:#b91c1c; padding:8px 10px; border-radius:10px; font-size:.92rem;
+    }
+
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:4px }
+    .btn{
+      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      padding:12px 16px; border-radius:12px; font-weight:700; color:#fff; text-decoration:none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      transition: transform .12s ease, filter .2s ease;
+    }
+    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
+    .btn.-ghost{ color:var(--ink); background:transparent; border:1px solid var(--line) }
+    .hint{ color:var(--muted); font-size:.9rem; margin-top:4px }
+  </style>
 </head>
+
 <body>
-    <div class="container">
-        <h2>➕ Cadastrar Nova Pastoral</h2>
+  <div class="container">
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-head">
+        <div>
+          <h1 class="hero-title">Cadastrar Pastoral / Movimento</h1>
+          <p class="hero-sub">Inclua uma nova pastoral para usar nos formulários e relatórios do sistema.</p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <a href="{% url 'inscricoes:listar_pastorais_movimentos' %}" class="pill -back">
+            <i class="fa-solid fa-arrow-left"></i><span>Lista de Pastorais</span>
+          </a>
+          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema">
+            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+          </button>
+        </div>
+      </div>
+    </header>
 
-        <form method="POST">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit" class="btn">Salvar</button>
-        </form>
+    <!-- FORM -->
+    <section class="panel" aria-labelledby="formTitle">
+      <h2 id="formTitle"><i class="fa-solid fa-plus"></i> Nova Pastoral</h2>
 
-        <a href="{% url 'inscricoes:listar_pastorais_movimentos' %}" class="back-link">← Voltar para lista</a>
-    </div>
+      <form method="post" novalidate id="pastoralForm">
+        {% csrf_token %}
+
+        {% for field in form %}
+          <div class="field">
+            <label class="label" for="{{ field.id_for_label }}">
+              {{ field.label }}
+              {% if field.field.required %}<span class="req" title="campo obrigatório">*</span>{% endif %}
+            </label>
+            {{ field }}
+            {% if field.help_text %}
+              <div class="help">{{ field.help_text|safe }}</div>
+            {% endif %}
+            {% if field.errors %}
+              <ul class="errors">
+                {% for error in field.errors %}
+                  <li class="error"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        <div class="actions">
+          <a href="{% url 'inscricoes:listar_pastorais_movimentos' %}" class="btn -ghost">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+          <button type="submit" class="btn">
+            <i class="fa-solid fa-floppy-disk"></i> Salvar
+          </button>
+        </div>
+
+        <p class="hint">Dica: use <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (ou <kbd>⌘</kbd>+<kbd>Enter</kbd>) para enviar.</p>
+      </form>
+    </section>
+  </div>
+
+  <script>
+    // ===== Tema com persistência (mesma chave das outras telas) =====
+    (function themeToggle(){
+      const KEY='relatorios-theme';
+      const btn=document.getElementById('themeToggle');
+      const root=document.documentElement;
+      function apply(theme){
+        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      }
+      apply(localStorage.getItem(KEY) || 'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next); apply(next);
+        btn.setAttribute('aria-label',`Tema: ${next}`);
+      });
+    })();
+
+    // ===== UX extra: focar o primeiro campo, Ctrl/Cmd+Enter envia, e autogerar slug se houver =====
+    (function formUX(){
+      const form = document.getElementById('pastoralForm');
+      if(!form) return;
+
+      // Foco no primeiro input visível
+      const firstInput = form.querySelector('input[type="text"], input, textarea, select');
+      firstInput && firstInput.focus();
+
+      // Ctrl/Cmd + Enter para enviar
+      document.addEventListener('keydown', (e)=>{
+        if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='enter'){
+          e.preventDefault();
+          form.requestSubmit();
+        }
+      });
+
+      // Se existir um campo "nome" e um "slug", sugerir slug automaticamente
+      const nome = form.querySelector('input[name$="nome"]');
+      const slug = form.querySelector('input[name$="slug"]');
+      if(nome && slug){
+        const slugify = (s)=> (s||'')
+          .normalize('NFD').replace(/\p{Diacritic}/gu,'')
+          .toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+        nome.addEventListener('input', ()=>{
+          if(!slug.dataset.touched){ slug.value = slugify(nome.value); }
+        });
+        slug.addEventListener('input', ()=> slug.dataset.touched = '1');
+      }
+    })();
+  </script>
 </body>
 </html>
