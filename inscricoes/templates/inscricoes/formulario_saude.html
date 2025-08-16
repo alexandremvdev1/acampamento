@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -189,6 +190,8 @@
             width: 80%;
             max-width: 500px;
             position: relative;
+            /* ADIÇÃO: centraliza conteúdo (como no modelo) */
+            text-align: center;
         }
 
         .close {
@@ -213,7 +216,7 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background-color: #009443;
+            background-color: #ffffff;
             width: 60px;
             height: 60px;
             border-radius: 50%;
@@ -230,7 +233,7 @@
         }
 
         #whatsapp-flutuante:hover {
-            background-color: #02853d;
+            background-color: #ffffff;
         }
 
         /* Botão dentro do modal WhatsApp */
@@ -272,6 +275,26 @@
         /* Estilos para mostrar/esconder campos */
         .hidden {
             display: none;
+        }
+
+        /* ===========================
+           ADIÇÕES: imagem na bolinha
+           =========================== */
+        #whatsapp-flutuante img{
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            display: block;
+        }
+        /* Efeito hover (zoom/sombra) como no modelo anterior */
+        #whatsapp-flutuante{
+            box-shadow: 0 4px 10px rgba(0,0,0,.25);
+            transition: transform .15s ease, box-shadow .15s ease, background-color .3s ease;
+        }
+        #whatsapp-flutuante:hover{
+            transform: scale(1.06);
+            box-shadow: 0 6px 16px rgba(0,0,0,.35);
         }
     </style>
 </head>
@@ -479,7 +502,15 @@
 
 
 <!-- Caixinha flutuante WhatsApp -->
-<div id="whatsapp-flutuante" title="Fale conosco pelo WhatsApp" onclick="openModal('modalWhatsApp')">🙋🏼‍♂️</div>
+<div id="whatsapp-flutuante" title="Fale conosco pelo WhatsApp" onclick="openModal('modalWhatsApp')">
+    <!-- ADIÇÃO: imagem dentro da bolinha (mantendo o emoji) -->
+    {% if politica.imagem_ajuda %}
+      <img src="{{ politica.imagem_ajuda.url }}" alt="Ajuda" width="60" height="60" loading="lazy">
+    {% else %}
+      <img src="{% static 'img/ajuda/porquinho.png' %}" alt="Ajuda" width="60" height="60" loading="lazy">
+    {% endif %}
+    
+</div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

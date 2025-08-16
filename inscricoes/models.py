@@ -777,24 +777,24 @@ class PoliticaPrivacidade(models.Model):
     imagem_1 = CloudinaryField(verbose_name="Imagem 1 (opcional)", null=True, blank=True)
     imagem_2 = CloudinaryField(verbose_name="Imagem 2 (opcional)", null=True, blank=True)
 
-    # Dados do dono do sistema
-    cpf_cnpj = models.CharField("CPF/CNPJ", max_length=18, blank=True, null=True)
-    email_contato = models.EmailField("E-mail de Contato", blank=True, null=True)
-
-    telefone_contato = models.CharField(
-        "Telefone de Contato (E.164 BR)",
-        max_length=20,
-        blank=True,
-        null=True,
-        help_text="Use +55DDDNÚMERO (ex.: +5563920013103)",
-        validators=[
-            RegexValidator(
-                regex=r'^\+55\d{10,11}$',
-                message="Formato inválido. Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103).",
-            )
-        ],
+    # NOVO
+    imagem_ajuda = CloudinaryField(
+        verbose_name="Imagem da Ajuda (botão flutuante)",
+        null=True, blank=True
     )
 
+    # Dados do dono do sistema...
+    cpf_cnpj = models.CharField("CPF/CNPJ", max_length=18, blank=True, null=True)
+    email_contato = models.EmailField("E-mail de Contato", blank=True, null=True)
+    telefone_contato = models.CharField(
+        "Telefone de Contato (E.164 BR)",
+        max_length=20, blank=True, null=True,
+        help_text="Use +55DDDNÚMERO (ex.: +5563920013103)",
+        validators=[RegexValidator(
+            regex=r'^\+55\d{10,11}$',
+            message="Formato inválido. Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103).",
+        )],
+    )
     endereco = models.CharField("Endereço", max_length=255, blank=True, null=True)
     numero = models.CharField("Número", max_length=10, blank=True, null=True)
     bairro = models.CharField("Bairro", max_length=100, blank=True, null=True)
@@ -802,21 +802,6 @@ class PoliticaPrivacidade(models.Model):
 
     def __str__(self):
         return "Política de Privacidade"
-
-    def clean(self):
-        super().clean()
-        if self.telefone_contato:
-            norm = normalizar_e164_br(self.telefone_contato)
-            if not norm or not validar_e164_br(norm):
-                raise ValidationError({'telefone_contato': "Informe um telefone BR válido. Ex.: +5563920013103"})
-            self.telefone_contato = norm
-
-    def save(self, *args, **kwargs):
-        if self.telefone_contato:
-            norm = normalizar_e164_br(self.telefone_contato)
-            if norm:
-                self.telefone_contato = norm
-        super().save(*args, **kwargs)
 
 
 # ---------------------------------------------------------------------

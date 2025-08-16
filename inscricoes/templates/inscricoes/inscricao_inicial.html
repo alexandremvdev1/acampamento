@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -5,36 +6,28 @@
   <title>Inscrição - {{ evento.nome }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{
-      --space-1:6px; --space-2:10px; --space-3:14px; --space-4:18px; --space-5:22px;
-    }
+    :root{ --space-1:6px; --space-2:10px; --space-3:14px; --space-4:18px; --space-5:22px; }
     *{box-sizing:border-box}
     body{
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Open Sans","Helvetica Neue",sans-serif;
-      line-height:1.5;
-      max-width:480px;
-      margin:20px auto;
-      padding:15px;
-      background:#fff;
-      color:#333;
-      position:relative;
+      line-height:1.5; max-width:480px; margin:20px auto; padding:15px; background:#fff; color:#333; position:relative;
     }
     body::before{
-      content:"";position:fixed;inset:0;
+      content:""; position:fixed; inset:0;
       background-image:url("{{ politica.imagem_2.url }}");
-      background-size:cover;background-position:center;
-      filter:blur(5px);opacity:.2;z-index:-1;
+      background-size:cover; background-position:center; filter:blur(5px); opacity:.2; z-index:-1;
     }
     header{text-align:center;margin-bottom:var(--space-5);position:relative}
     header img{display:block;max-width:100%;height:auto;border-radius:8px;margin:0 auto var(--space-3);box-shadow:0 4px 6px rgba(0,0,0,.1)}
     header h1{font-size:1.8rem;margin:0 0 var(--space-1);color:#222}
     .info-periodos p{font-size:.95rem;margin:2px 0;color:#555;line-height:1.35}
-    #id_endereco, #id_bairro { text-transform: capitalize; }
-    #id_nome { text-transform: capitalize; }
+
+    /* Visual (o JS também normaliza o valor) */
+    #id_nome, #id_endereco, #id_bairro { text-transform: capitalize; }
 
     form{
-      background:#fff;padding:20px 18px;border-radius:12px;box-shadow:0 2px 5px rgba(0,0,0,.1);
-      display:flex;flex-direction:column;gap:var(--space-3);position:relative
+      background:#fff; padding:20px 18px; border-radius:12px; box-shadow:0 2px 5px rgba(0,0,0,.1);
+      display:flex; flex-direction:column; gap:var(--space-3); position:relative;
     }
     .field{display:flex;flex-direction:column;row-gap:6px}
     .field label{font-weight:600;color:#444}
@@ -62,10 +55,20 @@
     .politica-link a{color:#007bff;text-decoration:none}
     .politica-link a:hover{text-decoration:underline}
 
-    #whatsapp-flutuante{position:fixed;bottom:20px;right:20px;background:#009443;width:60px;height:60px;border-radius:50%;
-      box-shadow:0 4px 8px rgba(0,0,0,.3);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1100;
-      transition:background-color .25s ease;font-size:30px;color:#fff;user-select:none}
-    #whatsapp-flutuante:hover{background:#02853d}
+    /* Botão flutuante com imagem */
+    #whatsapp-flutuante{
+      position: fixed; bottom: 20px; right: 20px; width: 64px; height: 64px;
+      padding: 0; border: 0; background: transparent; border-radius: 50%;
+      box-shadow: 0 4px 10px rgba(0,0,0,.25); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1100; transition: transform .15s ease, box-shadow .15s ease;
+    }
+    #whatsapp-flutuante img{
+      width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;
+    }
+    #whatsapp-flutuante:hover,#whatsapp-flutuante:focus{
+      transform: scale(1.06); box-shadow: 0 6px 16px rgba(0,0,0,.35); outline: none;
+    }
 
     .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;
       overflow:auto;background-color:rgba(0,0,0,.5);justify-content:center;align-items:center;padding:20px}
@@ -74,6 +77,33 @@
     .modal-body{text-align:left}
     .close-modal{color:#aaa;position:absolute;right:15px;top:10px;font-size:28px;font-weight:bold;cursor:pointer}
     .close-modal:hover,.close-modal:focus{color:#000}
+      /* Botão verde do WhatsApp no modal */
+    .btn-whatsapp{
+      background:#25D366;          /* verde WhatsApp */
+      color:#fff !important;
+      border:0;
+      border-radius:10px;
+      padding:12px 18px;
+      font-weight:700;
+      font-size:1rem;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      box-shadow:0 3px 8px rgba(0,0,0,.2);
+      transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .btn-whatsapp:hover,
+    .btn-whatsapp:focus{
+      background:#1ebe5b;          /* hover mais escuro */
+      text-decoration:none;
+      transform:translateY(-1px);
+      box-shadow:0 6px 14px rgba(0,0,0,.25);
+    }
+    .btn-whatsapp:focus-visible{
+      outline:3px solid rgba(37,211,102,.35);
+      outline-offset:2px;
+    }
 
     @media (max-width:480px){
       body{margin:10px;padding:10px;padding-bottom:90px}
@@ -194,8 +224,16 @@
     </div>
   </div>
 
-  <!-- WhatsApp flutuante -->
-  <div id="whatsapp-flutuante" title="Fale conosco pelo WhatsApp">​🙋🏼‍♂️​</div>
+  <!-- Botão flutuante (imagem) -->
+  <button id="whatsapp-flutuante" type="button" aria-label="Ajuda">
+    {% if politica.imagem_ajuda %}
+      <img src="{{ politica.imagem_ajuda.url }}" alt="Ajuda" width="64" height="64" loading="lazy">
+    {% else %}
+      <img src="{% static 'img/ajuda/porquinho.png' %}" alt="Ajuda" width="64" height="64" loading="lazy">
+    {% endif %}
+  </button>
+
+  <!-- Modal de Ajuda/WhatsApp -->
   <div id="modal-whatsapp" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-whatsapp-title">
     <div class="modal-content">
       <span class="close-modal" id="fechar-whatsapp" aria-label="Fechar">&times;</span>
@@ -212,7 +250,6 @@
 
   <script>
   document.addEventListener("DOMContentLoaded", () => {
-    // Base da URL para ver_inscricao (gera /inscricao/0/ e depois remove o 0)
     const verInscricaoBase = "{% url 'inscricoes:ver_inscricao' 0 %}".replace('/0/', '/');
 
     const form1         = document.getElementById("form-inscricao");
@@ -257,32 +294,32 @@
       const valid=(digits.length===11 && cpfIsValid(digits));
       cpfInput.setAttribute("aria-invalid", (!valid && digits.length>0) ? "true" : "false");
       cpfErrBox.textContent = (!valid && digits.length>0) ? "CPF inválido. Verifique os dígitos." : "";
-      btnNext && (btnNext.disabled = !valid || extraBox.hidden);
+      if(btnNext) btnNext.disabled = !valid || extraBox.hidden;
       return valid;
     }
 
-    // Capitaliza primeira letra do primeiro nome ENQUANTO DIGITA
-    function liveCapitalizeFirstName(e){
-      const el = e.target;
-      let v = (el.value||"");
-      if(!v) return;
-      // quebra em blocos por espaço, capitaliza só o primeiro
-      const parts = v.split(/\s+/);
-      if(parts.length){
-        parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
-        // mantemos o restante como foi digitado
-        const novo = parts.join(' ');
-        if(novo !== v){
-          const pos = el.selectionStart;
-          el.value = novo;
+    // ——— Normalizadores (preservando caret) ———
+    const toTitle = (s) => s.replace(/\s+/g,' ').trim().split(' ')
+      .map(p => p ? p.charAt(0).toUpperCase()+p.slice(1).toLowerCase() : '')
+      .join(' ');
+
+    function normalizeOnInput(el, formatter){
+      el.addEventListener('input', () => {
+        const before = el.value;
+        const pos = el.selectionStart;
+        const after = formatter(before);
+        if(after !== before){
+          el.value = after;
           try{ el.setSelectionRange(pos,pos); }catch(_){}
         }
-      }
+      });
+      el.addEventListener('blur', () => el.value = formatter(el.value || ''));
     }
-    if(nomeInput){
-      nomeInput.addEventListener('input', liveCapitalizeFirstName);
-      nomeInput.addEventListener('blur',  liveCapitalizeFirstName);
-    }
+
+    // Nome, Endereço, Bairro → Title Case em tempo real
+    if(nomeInput)     normalizeOnInput(nomeInput, toTitle);
+    if(enderecoInput) normalizeOnInput(enderecoInput, toTitle);
+    if(bairroInput)   normalizeOnInput(bairroInput, toTitle);
 
     // CPF input/paste → mostra/oculta extras
     if(cpfInput){
@@ -295,36 +332,42 @@
       cpfInput.addEventListener("paste", () => setTimeout(onCpfChange, 0));
     }
 
-    // CPF blur → AJAX para retomar etapa se já existir inscrição
+    // CPF blur → AJAX (compatível com respostas antigas e novas)
     if(cpfInput){
       cpfInput.addEventListener("blur", async () => {
         if(!applyCpfValidation()) return;
         const cpf = onlyDigits(cpfInput.value);
         if(cpf.length!==11) return;
+
         try{
           const url = `/ajax/buscar-participante/?cpf=${cpf}&evento_id={{ evento.id }}`;
           const res = await fetch(url);
           if(!res.ok) return;
           const data = await res.json();
 
-          // 1) Se houver próxima etapa → redireciona para ela
-          if (data.progresso && data.progresso.next_url) {
+          // NOVO formato: progresso.next_url
+          if (data && data.progresso && data.progresso.next_url){
             window.location.href = data.progresso.next_url;
             return;
           }
 
-          // 2) Já enviada/concluída → resumo
-          if (data.status === 'enviada' || data.status === 'concluida') {
-            const destino = data.view_url || (verInscricaoBase + (data.inscricao_id || '') + '/');
-            window.location.href = destino;
+          // Antigo formato: ja_inscrito + inscricao_id
+          if (data && data.ja_inscrito && data.inscricao_id){
+            window.location.href = verInscricaoBase + data.inscricao_id + '/';
             return;
           }
 
-          // 3) Sem inscrição para este evento → autopreenche (segue fluxo)
-          if (data.existe_participante && data.status === 'sem_inscricao') {
-            if (data.nome && nomeInput)       nomeInput.value = data.nome;
-            if (data.email && emailInput)     emailInput.value = data.email;
-            if (data.telefone && telefoneInput) telefoneInput.value = data.telefone;
+          // Formatos com status + view_url
+          if (data && (data.status === 'enviada' || data.status === 'concluida')){
+            const destino = data.view_url || (verInscricaoBase + (data.inscricao_id || '') + '/');
+            if (destino) { window.location.href = destino; return; }
+          }
+
+          // Autopreenche dados (antigo ou novo)
+          if (data){
+            if (data.nome && nomeInput)           nomeInput.value = toTitle(data.nome);
+            if (data.email && emailInput)         emailInput.value = data.email;
+            if (data.telefone && telefoneInput)   telefoneInput.value = data.telefone;
           }
         }catch(err){
           console.error("Erro ao buscar participante:", err);
@@ -338,17 +381,17 @@
         const ok = applyCpfValidation();
         if(!ok || extraBox.hidden){
           e.preventDefault();
-          cpfInput?.focus();
+          if(cpfInput) cpfInput.focus();
         }
       });
     }
 
     // ViaCEP (quando estamos no form de endereço)
     const limpaEndereco=()=>{
-      enderecoInput && (enderecoInput.value="");
-      bairroInput && (bairroInput.value="");
-      cidadeInput && (cidadeInput.value="");
-      estadoInput && (estadoInput.value="");
+      if(enderecoInput) enderecoInput.value="";
+      if(bairroInput)   bairroInput.value="";
+      if(cidadeInput)   cidadeInput.value="";
+      if(estadoInput)   estadoInput.value="";
     }
     if(cepInput){
       cepInput.addEventListener("blur", async () => {
@@ -363,10 +406,10 @@
           const resCep = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
           const d = await resCep.json();
           if(d.erro) throw new Error("CEP não encontrado.");
-          enderecoInput && (enderecoInput.value = d.logradouro || "");
-          bairroInput   && (bairroInput.value   = d.bairro || "");
-          cidadeInput   && (cidadeInput.value   = d.localidade || "");
-          estadoInput   && (estadoInput.value   = d.uf || "");
+          if(enderecoInput) enderecoInput.value = toTitle(d.logradouro || "");
+          if(bairroInput)   bairroInput.value   = toTitle(d.bairro || "");
+          if(cidadeInput)   cidadeInput.value   = d.localidade || "";
+          if(estadoInput)   estadoInput.value   = d.uf || "";
         }catch(e){
           console.error("Erro ao buscar CEP:", e);
           alert(e.message || "Erro ao buscar CEP.");
@@ -375,7 +418,7 @@
       });
     }
 
-    // Modal WhatsApp
+    // Modal Ajuda (WhatsApp)
     const modal = document.getElementById("modal-whatsapp");
     const btn   = document.getElementById("whatsapp-flutuante");
     const close = document.getElementById("fechar-whatsapp");

@@ -5,12 +5,10 @@ from .models import InscricaoSenior, InscricaoJuvenil, InscricaoMirim, Inscricao
 from .models import EventoAcampamento
 from .models import PoliticaPrivacidade
 from .models import Inscricao
-from .models import VideoEventoAcampamento
+from .models import VideoEventoAcampamento  # Certifique-se de importar o modelo Inscricao
 from .models import PastoralMovimento
 from .models import Conjuge
 from .models import MercadoPagoConfig
-from django.utils import timezone
-from .models import Pagamento
 
 class MercadoPagoConfigForm(forms.ModelForm):
     class Meta:
@@ -285,7 +283,7 @@ class EventoForm(forms.ModelForm):
 class PoliticaPrivacidadeForm(forms.ModelForm):
     class Meta:
         model = PoliticaPrivacidade
-        fields = ['texto', 'imagem_camisa', 'imagem_1', 'imagem_2']
+        fields = ['texto', 'imagem_camisa', 'imagem_1', "imagem_ajuda", 'imagem_2']
         widgets = {
             'texto': forms.Textarea(attrs={'rows': 5, 'cols': 40}),
         }
@@ -568,6 +566,10 @@ class ConjugeForm(forms.ModelForm):
         model = Conjuge
         fields = ['nome', 'conjuge_inscrito', 'ja_e_campista']
 
+# inscricoes/forms.py
+from django import forms
+from django.utils import timezone
+from .models import Pagamento
 
 class PagamentoForm(forms.ModelForm):
     class Meta:
