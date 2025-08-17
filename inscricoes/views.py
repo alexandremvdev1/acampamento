@@ -5,13 +5,9 @@ import logging
 from io import BytesIO
 from urllib.parse import urljoin
 from datetime import timedelta, timezone as dt_tz
-from django.utils import timezone
 from types import SimpleNamespace
-
-# ——— Terceiros
-import mercadopago
-import qrcode
-from django.views.decorators.http import require_http_methods
+from decimal import Decimal
+import csv
 
 # ——— Django
 from django.conf import settings
@@ -20,14 +16,20 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Count
 from django.http import Http404, HttpResponse, JsonResponse, FileResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
+from django.utils import timezone
 from django.utils import timezone as dj_tz
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.contrib.admin.views.decorators import staff_member_required
+
+# ——— Terceiros
+import mercadopago
+import qrcode
 
 # ——— App (models e forms)
 from .models import (
@@ -47,7 +49,8 @@ from .models import (
     Participante,
     PoliticaPrivacidade,
     Contato,
-    PreferenciasComunicacao
+    PreferenciasComunicacao,
+    PoliticaReembolso
 )
 from .forms import (
     ContatoForm,
@@ -67,14 +70,18 @@ from .forms import (
     EventoForm,
     ConjugeForm,
     MercadoPagoConfigForm,
-    PagamentoForm
+    PagamentoForm,
+    UserCreationForm,
+    PoliticaReembolsoForm,
+    AdminParoquiaCreateForm,
 )
+
 
 User = get_user_model()
 
 # --- PROGRESSO DA INSCRIÇÃO (ordem: endereço -> personalizado -> contato -> saúde) ---
 
-from django.urls import reverse
+
 
 def _tem_endereco_completo(p: Participante) -> bool:
     return all([
@@ -2302,12 +2309,6 @@ def portal_participante(request):
         "cpf_informado": request.POST.get("cpf") if request.method == "POST" else "",
     })
 
-from decimal import Decimal
-from django.db.models import Sum, Count
-from django.utils.dateparse import parse_date
-from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponse
-import csv
 
 @login_required
 @user_passes_test(is_admin_geral)
@@ -2478,3 +2479,113 @@ def whatsapp_webhook(request):
         return JsonResponse({"ok": True})
 
     return HttpResponse(status=405)
+
+def editar_politica_reembolso(request, evento_id):
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+    politica, _ = PoliticaReembolso.objects.get_or_create(evento=evento)
+
+    if request.method == 'POST':
+        form = PoliticaReembolsoForm(request.POST, instance=politica)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Política de reembolso salva com sucesso.')
+            # volte para o painel da paróquia ou para a lista de eventos — ajuste se preferir
+            return redirect('inscricoes:admin_paroquia_painel', paroquia_id=evento.paroquia_id)
+    else:
+        form = PoliticaReembolsoForm(instance=politica)
+
+    return render(request, 'inscricoes/editar_politica_reembolso.html', {
+        'evento': evento,
+        'form': form,
+    })
+
+@login_required
+def admin_paroquia_create_admin(request):
+    # Só Admin da Paróquia (da própria) ou Admin Geral
+    if not (hasattr(request.user, "tipo_usuario") and (request.user.is_admin_paroquia() or request.user.is_admin_geral())):
+        messages.error(request, "Você não tem permissão para acessar esta página.")
+        return redirect("inscricoes:home_redirect")
+
+    # Paróquia “alvo”:
+    # - Admin da paróquia: sempre a sua
+    # - Admin geral: pode usar ?paroquia=<id> (opcional); senão, também usamos a sua
+    paroquia = request.user.paroquia
+    if request.user.is_admin_geral():
+        pid = request.GET.get("paroquia")
+        if pid:
+            paroquia = get_object_or_404(Paroquia, pk=pid)
+
+    if not paroquia:
+        messages.error(request, "Seu usuário não está vinculado a uma paróquia.")
+        return redirect("inscricoes:admin_geral_dashboard")
+
+    if request.method == "POST":
+        form = AdminParoquiaCreateForm(request.POST)
+        if form.is_valid():
+            form.save(paroquia=paroquia)
+            messages.success(request, "Administrador de paróquia criado com sucesso.")
+            # volta para a mesma página (mantendo ?paroquia=) para ver a lista atualizada
+            url = reverse("inscricoes:admin_paroquia_create_admin")
+            if request.user.is_admin_geral() and request.GET.get("paroquia"):
+                url += f"?paroquia={paroquia.id}"
+            return redirect(url)
+    else:
+        form = AdminParoquiaCreateForm()
+
+    # Lista de admins desta paróquia
+    admins = (
+        User.objects
+            .filter(tipo_usuario="admin_paroquia", paroquia=paroquia)
+            .order_by("first_name", "last_name", "username")
+    )
+
+    ctx = {
+        "form": form,
+        "paroquia": paroquia,
+        "admins": admins,  # << para o template renderizar a tabela + botão Excluir
+        "current_year": timezone.now().year,
+        "is_admin_geral": request.user.is_admin_geral(),
+    }
+    return render(request, "inscricoes/admin_paroquia_criar_admin.html", ctx)
+
+
+@login_required
+def admin_paroquia_delete_admin(request, user_id: int):
+    if request.method != "POST":
+        messages.error(request, "Método inválido.")
+        return redirect("inscricoes:admin_paroquia_create_admin")
+
+    if not (hasattr(request.user, "tipo_usuario") and (request.user.is_admin_paroquia() or request.user.is_admin_geral())):
+        messages.error(request, "Você não tem permissão para esta ação.")
+        return redirect("inscricoes:home_redirect")
+
+    alvo = get_object_or_404(User, pk=user_id)
+
+    # precisa existir paróquia no usuário que executa
+    if not request.user.paroquia and not request.user.is_admin_geral():
+        messages.error(request, "Seu usuário não está vinculado a uma paróquia.")
+        return redirect("inscricoes:admin_geral_dashboard")
+
+    # segurança: só excluir admin_paroquia da MESMA paróquia
+    # (admin geral pode excluir de qualquer paróquia)
+    if alvo.tipo_usuario != "admin_paroquia":
+        messages.error(request, "Somente usuários 'admin_paroquia' podem ser excluídos aqui.")
+        return redirect("inscricoes:admin_paroquia_create_admin")
+
+    if request.user.is_admin_paroquia() and alvo.paroquia_id != request.user.paroquia_id:
+        messages.error(request, "Você não pode excluir um administrador de outra paróquia.")
+        return redirect("inscricoes:admin_paroquia_create_admin")
+
+    if alvo.id == request.user.id:
+        messages.error(request, "Você não pode excluir o próprio usuário.")
+        return redirect("inscricoes:admin_paroquia_create_admin")
+
+    nome = alvo.get_full_name() or alvo.username
+    alvo.delete()
+    messages.success(request, f"Administrador '{nome}' excluído com sucesso.")
+
+    # preservar ?paroquia= para admin geral
+    url = reverse("inscricoes:admin_paroquia_create_admin")
+    if request.user.is_admin_geral() and request.GET.get("paroquia"):
+        url += f"?paroquia={request.GET.get('paroquia')}"
+    return redirect(url)

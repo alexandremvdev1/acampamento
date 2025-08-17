@@ -249,39 +249,44 @@
     <!-- PAINEL: ações rápidas -->
     <section class="panel" aria-labelledby="ttl-quick">
       <h2 id="ttl-quick"><i class="fa-solid fa-bolt"></i> Ações rápidas</h2>
-      <div class="quick">
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-calendar-plus"></i> Novo Evento</p>
-          <p class="desc">Crie um novo evento e configure inscrições, datas e políticas.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:evento_novo' %}" class="cta -blue"><i class="fa-solid fa-plus"></i> Criar evento</a>
-          </div>
-        </div>
+<div class="quick">
+  <div class="card">
+    <p class="ttl"><i class="fa-solid fa-calendar-plus"></i> Novo Evento</p>
+    <p class="desc">Crie um novo evento e configure inscrições, datas e políticas.</p>
+    <div class="row">
+      <a href="{% url 'inscricoes:evento_novo' %}" class="cta -blue"><i class="fa-solid fa-plus"></i> Criar evento</a>
+    </div>
+  </div>
 
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-credit-card"></i> Pagamentos</p>
-          <p class="desc">Configure as chaves do Mercado Pago para receber inscrições.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:mp_config' %}" class="cta -teal"><i class="fa-solid fa-gear"></i> Configurar MP</a>
-          </div>
-        </div>
+  <div class="card">
+    <p class="ttl"><i class="fa-solid fa-credit-card"></i> Pagamentos</p>
+    <p class="desc">Configure as chaves do Mercado Pago para receber inscrições.</p>
+    <div class="row">
+      <a href="{% url 'inscricoes:mp_config' %}" class="cta -teal"><i class="fa-solid fa-gear"></i> Configurar MP</a>
+    </div>
+  </div>
 
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-users"></i> Participantes</p>
-          <p class="desc">Acesse a lista de inscritos por evento, imprima fichas e crachás.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="cta"><i class="fa-solid fa-arrow-right"></i> Ir para eventos</a>
-          </div>
-        </div>
+<div class="card">
+  <p class="ttl"><i class="fa-solid fa-user-shield"></i> Usuários da Paróquia</p>
+  <p class="desc">Cadastre um novo administrador vinculado a esta paróquia.</p>
+  <div class="row">
+    <a href="{% url 'inscricoes:admin_paroquia_create_admin' %}" class="cta -blue">
+      <i class="fa-solid fa-user-plus"></i> Novo Usuário
+    </a>
+  </div>
+</div>
 
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-shield-halved"></i> Portal do Participante</p>
-          <p class="desc">Envie o link público para consulta e pagamento via CPF.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" class="cta"><i class="fa-solid fa-up-right-from-square"></i> Abrir portal</a>
-          </div>
-        </div>
-      </div>
+  <div class="card">
+    <p class="ttl"><i class="fa-solid fa-shield-halved"></i> Portal do Participante</p>
+    <p class="desc">Envie o link público para consulta e pagamento via CPF.</p>
+    <div class="row">
+      <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" class="cta">
+        <i class="fa-solid fa-up-right-from-square"></i> Abrir portal
+      </a>
+    </div>
+  </div>
+</div>
+
     </section>
 
     <!-- PAINEL: link público -->
@@ -336,6 +341,9 @@
             <a href="{% url 'inscricoes:evento_participantes' evento.id %}" class="btn -view">
               <i class="fa-solid fa-eye"></i> Detalhes
             </a>
+            <a href="{% url 'inscricoes:editar_politica_reembolso' evento.id %}" class="btn -edit">
+            <i class="fa-solid fa-file-contract"></i> Política de Reembolso
+          </a>
           </div>
         </div>
         {% endfor %}

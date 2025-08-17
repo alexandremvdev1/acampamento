@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Novo Admin da Paróquia — {{ paroquia.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    :root{
+      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08); --focus:0 0 0 3px rgba(37,99,235,.25);
+      --pill-back:#4b5563; --pill-accent:#0ea5e9; --pill-green:#22c55e; --thead:#2563eb; --thead-ink:#fff;
+      --ok:#16a34a; --warn:#f59e0b; --err:#ef4444; --info:#0284c7;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow:0 10px 40px rgba(0,0,0,.45); --pill-back:#6b7280; --pill-accent:#0284c7; --pill-green:#16a34a;
+        --thead:#1d4ed8; --thead-ink:#e5e7eb;
+      }
+    }
+    *{ box-sizing:border-box }
+    html,body{ margin:0; padding:0 }
+    body{
+      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.42;
+    }
+    .container{ max-width:1000px; margin:20px auto 32px; padding:0 16px }
+
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff; padding:clamp(18px,4vw,26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow); border:1px solid rgba(255,255,255,.18); margin-bottom:18px;
+    }
+    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+    .hero-title{ margin:0; font-weight:800; font-size:clamp(1.1rem,3vw,1.8rem) }
+    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
+      color:#fff; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.12);
+      transition: transform .12s ease, background .2s ease;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
+
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(16px,2vw,20px); margin-bottom:16px;
+    }
+    .panel h2{ margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:700; display:flex; gap:8px; align-items:center }
+    label{ display:block; font-weight:700; color:var(--muted); margin:10px 0 6px }
+    input{
+      width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px;
+      background:var(--panel); color:var(--ink); font-size:14px;
+    }
+    .grid{ display:grid; gap:12px }
+    .row-2{ grid-template-columns:1fr 1fr }
+    @media (max-width:900px){ .row-2{ grid-template-columns:1fr } }
+
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px }
+    .btn{
+      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:12px; font-weight:700; color:#fff; text-decoration:none;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      transition: transform .12s ease, filter .2s ease;
+    }
+    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
+    .btn.-secondary{ background: linear-gradient(135deg, #4b5563, #374151) }
+    .btn.-danger{ background: linear-gradient(135deg, #f87171, #ef4444) }
+
+    .alerts{ display:grid; gap:10px; margin:0 0 12px }
+    .alert{
+      border-radius:12px; padding:12px 14px; border:1px solid var(--line); background:#fff; display:flex; gap:10px;
+    }
+    .alert.error{ border-color: rgba(239,68,68,.45); background: rgba(239,68,68,.08) }
+    .alert.success{ border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.06) }
+
+    .table-wrap{ overflow:auto; border:1px solid var(--line); border-radius:14px }
+    table{ width:100%; border-collapse:separate; border-spacing:0; min-width:760px; background:var(--panel) }
+    thead th{
+      position:sticky; top:0; z-index:1; text-align:left; font-weight:700; color:var(--thead-ink);
+      background:var(--thead); padding:12px 14px;
+    }
+    tbody td{ padding:12px 14px; border-top:1px solid var(--line) }
+    tbody tr:hover{ background:rgba(37,99,235,.06) }
+    @media (prefers-color-scheme: dark){ tbody tr:hover{ background:rgba(59,130,246,.08) } }
+
+    footer{ text-align:center; color:var(--muted); margin:18px 0 0 }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-head">
+        <div>
+          <h1 class="hero-title">Novo Admin da Paróquia</h1>
+          <p class="hero-sub">Crie um usuário administrador para a paróquia <strong>{{ paroquia.nome }}</strong>.</p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <a href="{% url 'inscricoes:admin_paroquia_painel' paroquia.id %}" class="pill -back">
+            <i class="fa-solid fa-arrow-left"></i><span>Voltar ao Painel</span>
+          </a>
+          <button type="button" class="pill" id="themeToggle">
+            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mensagens Django -->
+    {% if messages %}
+      <div class="alerts">
+        {% for message in messages %}
+          <div class="alert {{ message.tags|default:'info' }}"><div>{{ message }}</div></div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- FORM: criar admin -->
+    <section class="panel">
+      <h2><i class="fa-solid fa-user-shield"></i> Dados do novo administrador</h2>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alerts">
+            {% for e in form.non_field_errors %}
+              <div class="alert error">{{ e }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="grid row-2">
+          <div>
+            <label for="{{ form.first_name.id_for_label }}">Nome</label>
+            {{ form.first_name }}
+            {% for e in form.first_name.errors %}<div class="alerts"><div class="alert error">{{ e }}</div></div>{% endfor %}
+          </div>
+          <div>
+            <label for="{{ form.last_name.id_for_label }}">Sobrenome</label>
+            {{ form.last_name }}
+            {% for e in form.last_name.errors %}<div class="alerts"><div class="alert error">{{ e }}</div></div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="grid row-2">
+          <div>
+            <label for="{{ form.username.id_for_label }}">Usuário</label>
+            {{ form.username }}
+            {% for e in form.username.errors %}<div class="alerts"><div class="alert error">{{ e }}</div></div>{% endfor %}
+          </div>
+          <div>
+            <label for="{{ form.email.id_for_label }}">E-mail</label>
+            {{ form.email }}
+            {% for e in form.email.errors %}<div class="alerts"><div class="alert error">{{ e }}</div></div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="grid row-2">
+          <div>
+            <label for="id_password1">Senha</label>
+            {{ form.password1 }}
+            {% for e in form.password1.errors %}<div class="alerts"><div class="alert error">{{ e }}</div></div>{% endfor %}
+          </div>
+          <div>
+            <label for="id_password2">Confirmar senha</label>
+            {{ form.password2 }}
+            {% for e in form.password2.errors %}<div class="alerts"><div class="alert error">{{ e }}</div></div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="actions">
+          <a class="btn -secondary" href="{% url 'inscricoes:admin_paroquia_painel' paroquia.id %}">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+          <button class="btn" type="submit">
+            <i class="fa-solid fa-floppy-disk"></i> Criar admin
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- LISTA: admins da paróquia -->
+    <section class="panel">
+      <h2><i class="fa-solid fa-users-gear"></i> Administradores desta paróquia</h2>
+
+      {% if admins %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Usuário</th>
+                <th>E-mail</th>
+                <th style="text-align:center;">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for u in admins %}
+                <tr>
+                  <td>{{ u.get_full_name|default:u.username }}</td>
+                  <td>{{ u.username }}</td>
+                  <td>{{ u.email|default:"—" }}</td>
+                  <td style="text-align:center; white-space:nowrap;">
+                    <form method="post"
+                          action="{% url 'inscricoes:admin_paroquia_delete_admin' u.id %}{% if is_admin_geral and request.GET.paroquia %}?paroquia={{ request.GET.paroquia }}{% endif %}"
+                          style="display:inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn -danger"
+                              onclick="return confirm('Excluir o admin {{ u.get_full_name|default:u.username }}?');">
+                        <i class="fa-solid fa-trash"></i> Excluir
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="color:var(--muted); margin:0;">Nenhum administrador cadastrado para esta paróquia.</p>
+      {% endif %}
+    </section>
+
+    <footer>&copy; {{ current_year }} Admin Geral — Todos os direitos reservados</footer>
+  </div>
+
+  <script>
+    (function themeToggle(){
+      const KEY='relatorios-theme', btn=document.getElementById('themeToggle'), root=document.documentElement;
+      const apply=t=>{
+        if(t==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(t==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      };
+      apply(localStorage.getItem(KEY)||'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next); apply(next);
+      });
+    })();
+  </script>
+</body>
+</html>

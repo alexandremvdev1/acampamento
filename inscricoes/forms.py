@@ -9,6 +9,9 @@ from .models import VideoEventoAcampamento  # Certifique-se de importar o modelo
 from .models import PastoralMovimento
 from .models import Conjuge
 from .models import MercadoPagoConfig
+from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from .models import User
 
 class MercadoPagoConfigForm(forms.ModelForm):
     class Meta:
@@ -598,3 +601,38 @@ class PagamentoForm(forms.ModelForm):
         if status == Pagamento.StatusPagamento.CONFIRMADO and not data_pg:
             cleaned["data_pagamento"] = timezone.now()
         return cleaned
+
+# forms.py
+from django import forms
+from .models import PoliticaReembolso
+
+class PoliticaReembolsoForm(forms.ModelForm):
+    class Meta:
+        model = PoliticaReembolso
+        fields = [
+            'ativo',
+            'permite_reembolso',
+            'prazo_solicitacao_dias',
+            'taxa_administrativa_percent',
+            'descricao',
+            'contato_email',
+            'contato_whatsapp',
+        ]
+        widgets = {
+            'descricao': forms.Textarea(attrs={'rows': 6}),
+        }
+
+
+class AdminParoquiaCreateForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ["first_name", "last_name", "username", "email"]  # senha vem do UserCreationForm
+
+    def save(self, commit=True, paroquia=None):
+        user = super().save(commit=False)
+        user.tipo_usuario = "admin_paroquia"
+        if paroquia is not None:
+            user.paroquia = paroquia
+        if commit:
+            user.save()
+        return user

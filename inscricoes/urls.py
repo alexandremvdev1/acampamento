@@ -124,6 +124,10 @@ urlpatterns = [
 
     path('paroquia/<int:paroquia_id>/toggle-status/', views.admin_geral_toggle_status_paroquia, name='admin_geral_toggle_status_paroquia'),
 
+    path('evento/<uuid:evento_id>/politica-reembolso/',views.editar_politica_reembolso,name='editar_politica_reembolso'),
+
+    path('admin-paroquia/usuarios/novo/', views.admin_paroquia_create_admin, name='admin_paroquia_create_admin'),
+    path('admin-paroquia/usuarios/<int:user_id>/excluir/',views.admin_paroquia_delete_admin,name='admin_paroquia_delete_admin'),
 
 ]
 

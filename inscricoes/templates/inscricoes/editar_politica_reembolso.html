@@ -1,0 +1,296 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Política de Reembolso — {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* ============ Tokens globais (idênticos ao template de Política de Privacidade) ============ */
+    :root{
+      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
+      --focus:0 0 0 3px rgba(37,99,235,.25);
+
+      --pill-back:#4b5563; --pill-accent:#0ea5e9; --pill-green:#22c55e;
+      --thead:#2563eb; --thead-ink:#fff; --row-hover:rgba(37,99,235,.06);
+
+      --ok:#16a34a; --warn:#f59e0b; --err:#ef4444; --info:#0284c7;
+      --kbd-bg:#111827; --kbd-ink:#e5e7eb;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow:0 10px 40px rgba(0,0,0,.45);
+        --pill-back:#6b7280; --pill-accent:#0284c7; --pill-green:#16a34a;
+        --thead:#1d4ed8; --thead-ink:#e5e7eb; --row-hover:rgba(59,130,246,.08);
+        --kbd-bg:#0b1220; --kbd-ink:#cbd5e1;
+      }
+    }
+
+    *{ box-sizing:border-box }
+    html,body{ margin:0; padding:0 }
+    body{
+      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.42;
+    }
+    .container{ max-width:1000px; margin:20px auto 32px; padding:0 16px }
+
+    /* ============ HERO ============ */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(18px,4vw,26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.18);
+      margin-bottom:18px;
+    }
+    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.1rem,3vw,1.8rem); letter-spacing:.3px }
+    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
+      color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12);
+      transition: transform .12s ease, background .2s ease;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
+    .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
+    .pill.-accent{ background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
+    .pill.-green{ background: linear-gradient(135deg, #34d399, #22c55e) }
+
+    /* ============ Painel/Form ============ */
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(16px,2vw,20px); margin-bottom:16px;
+    }
+    .panel h2{
+      margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
+      display:flex; align-items:center; gap:8px;
+    }
+    label{ display:block; font-weight:700; color:var(--muted); margin:10px 0 6px }
+
+    input[type="text"], input[type="email"], input[type="number"], textarea, select{
+      width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:12px;
+      background:var(--panel); color:var(--ink); font-size:14px;
+    }
+    textarea{ min-height:180px; resize:vertical }
+
+    .grid{ display:grid; gap:12px }
+    .row-2{ grid-template-columns: 1fr 1fr }
+    .row-3{ grid-template-columns: 1fr 1fr 1fr }
+    @media (max-width: 900px){
+      .row-2, .row-3 { grid-template-columns: 1fr }
+    }
+
+    .controls{
+      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:10px 0 6px;
+    }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap }
+    .btn{
+      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:12px; font-weight:700; color:#fff; text-decoration:none;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      transition: transform .12s ease, filter .2s ease;
+    }
+    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
+    .btn.-secondary{ background: linear-gradient(135deg, #4b5563, #374151) }
+    .btn.-danger{ background: linear-gradient(135deg, #ef4444, #dc2626) }
+
+    .hint{ font-size:.9rem; color:var(--muted); margin-top:6px }
+
+    /* Alerts (Django messages) – idêntico ao template base */
+    .alerts{ display:grid; gap:10px; margin:0 0 12px }
+    .alert{
+      border-radius:12px; padding:12px 14px; border:1px solid var(--line); background:#fff;
+      display:flex; align-items:flex-start; gap:10px;
+    }
+    .alert.info{ border-color: rgba(2,132,199,.35); background: rgba(2,132,199,.06) }
+    .alert.success{ border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.06) }
+    .alert.warning{ border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.08) }
+    .alert.error{ border-color: rgba(239,68,68,.45); background: rgba(239,68,68,.08) }
+    .alert .icon{ min-width:20px; margin-top:2px }
+    .alert .msg{ flex:1 }
+
+    footer{ text-align:center; color:var(--muted); margin:18px 0 0 }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-head">
+        <div>
+          <h1 class="hero-title">Política de Reembolso</h1>
+          <p class="hero-sub">
+            Defina as regras de reembolso para o evento <strong>{{ evento.nome }}</strong>.
+            As alterações ficam disponíveis imediatamente após salvar.
+          </p>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <a href="{% url 'inscricoes:admin_paroquia_painel' evento.paroquia_id %}" class="pill -back">
+            <i class="fa-solid fa-arrow-left"></i><span>Voltar ao Painel</span>
+          </a>
+          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema">
+            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Alerts (Django messages) -->
+    {% if messages %}
+    <div class="alerts">
+      {% for message in messages %}
+        <div class="alert {{ message.tags|default:'info' }}">
+          <div class="icon">
+            {% if 'error' in message.tags %}<i class="fa-solid fa-triangle-exclamation"></i>
+            {% elif 'success' in message.tags %}<i class="fa-solid fa-circle-check"></i>
+            {% elif 'warning' in message.tags %}<i class="fa-solid fa-circle-exclamation"></i>
+            {% else %}<i class="fa-solid fa-circle-info"></i>{% endif %}
+          </div>
+          <div class="msg">{{ message }}</div>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- FORM -->
+    <section class="panel">
+      <h2><i class="fa-solid fa-file-contract"></i> Configurar Política de Reembolso</h2>
+
+      <form method="post" id="refundForm">
+        {% csrf_token %}
+
+        <!-- Linha: status/permite -->
+        <div class="grid row-2">
+          <div>
+            <label for="{{ form.ativo.id_for_label }}">Política ativa</label>
+            {{ form.ativo }}
+            {% for error in form.ativo.errors %}
+              <div class="alerts" style="margin-top:6px"><div class="alert error"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="msg">{{ error }}</div></div></div>
+            {% endfor %}
+            <p class="hint">Se desativada, a política não será considerada em fluxos do sistema.</p>
+          </div>
+
+          <div>
+            <label for="{{ form.permite_reembolso.id_for_label }}">Permite solicitar reembolso</label>
+            {{ form.permite_reembolso }}
+            {% for error in form.permite_reembolso.errors %}
+              <div class="alerts" style="margin-top:6px"><div class="alert error"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="msg">{{ error }}</div></div></div>
+            {% endfor %}
+            <p class="hint">Desmarque para bloquear novas solicitações para este evento.</p>
+          </div>
+        </div>
+
+        <!-- Linha: prazo/taxa -->
+        <div class="grid row-2">
+          <div>
+            <label for="{{ form.prazo_solicitacao_dias.id_for_label }}">Prazo para solicitar (dias antes do início)</label>
+            {{ form.prazo_solicitacao_dias }}
+            {% for error in form.prazo_solicitacao_dias.errors %}
+              <div class="alerts" style="margin-top:6px"><div class="alert error"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="msg">{{ error }}</div></div></div>
+            {% endfor %}
+          </div>
+
+          <div>
+            <label for="{{ form.taxa_administrativa_percent.id_for_label }}">Taxa administrativa (%)</label>
+            {{ form.taxa_administrativa_percent }}
+            {% for error in form.taxa_administrativa_percent.errors %}
+              <div class="alerts" style="margin-top:6px"><div class="alert error"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="msg">{{ error }}</div></div></div>
+            {% endfor %}
+            <p class="hint">Valor entre 0 e 100. Ex.: <strong>10.00</strong> para 10%.</p>
+          </div>
+        </div>
+
+        <!-- Descrição -->
+        <div class="grid">
+          <div>
+            <label for="{{ form.descricao.id_for_label }}">Regras detalhadas</label>
+            {{ form.descricao }}
+            {% for error in form.descricao.errors %}
+              <div class="alerts" style="margin-top:6px"><div class="alert error"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="msg">{{ error }}</div></div></div>
+            {% endfor %}
+            <p class="hint">
+              Exemplo: “Reembolso integral até 7 dias antes do início. Após esse prazo, devolução de 70%.”
+            </p>
+          </div>
+        </div>
+
+        <!-- Contatos -->
+        <div class="grid row-2">
+          <div>
+            <label for="{{ form.contato_email.id_for_label }}">E-mail para dúvidas</label>
+            {{ form.contato_email }}
+            {% for error in form.contato_email.errors %}
+              <div class="alerts" style="margin-top:6px"><div class="alert error"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="msg">{{ error }}</div></div></div>
+            {% endfor %}
+          </div>
+          <div>
+            <label for="{{ form.contato_whatsapp.id_for_label }}">WhatsApp (E.164)</label>
+            {{ form.contato_whatsapp }}
+            {% for error in form.contato_whatsapp.errors %}
+              <div class="alerts" style="margin-top:6px"><div class="alert error"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="msg">{{ error }}</div></div></div>
+            {% endfor %}
+            <p class="hint">Use <strong>+55</strong> com DDD. Ex.: <code>+5563920013103</code>.</p>
+          </div>
+        </div>
+
+        <!-- Ações -->
+        <div class="controls" style="margin-top:12px">
+          <div class="actions">
+            <a href="{% url 'inscricoes:admin_paroquia_painel' evento.paroquia_id %}" class="btn -secondary">
+              <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
+            </a>
+            <button type="submit" class="btn">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar política
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <footer>&copy; {{ current_year }} Admin Geral — Todos os direitos reservados</footer>
+  </div>
+
+  <script>
+    // ===== Tema com persistência (mesma key das outras telas) =====
+    (function themeToggle(){
+      const KEY='relatorios-theme';
+      const btn=document.getElementById('themeToggle');
+      const root=document.documentElement;
+      function apply(theme){
+        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      }
+      apply(localStorage.getItem(KEY) || 'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next); apply(next);
+        btn.setAttribute('aria-label',`Tema: ${next}`);
+      });
+    })();
+  </script>
+</body>
+</html>
