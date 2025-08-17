@@ -409,14 +409,55 @@ def inscricoes_listar(request):
     pass
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def evento_editar(request, pk):
-    # código para editar evento
-    pass
+    """Editar evento (pk é UUID)."""
+    evento = get_object_or_404(EventoAcampamento, pk=pk)
+
+    # Permissão: admin da MESMA paróquia ou admin geral
+    if not request.user.is_superuser:
+        if not hasattr(request.user, "paroquia") or request.user.paroquia_id != evento.paroquia_id:
+            return HttpResponseForbidden("Você não tem permissão para editar este evento.")
+
+    if request.method == "POST":
+        form = EventoForm(request.POST, request.FILES, instance=evento, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Evento atualizado com sucesso!")
+            # redireciona para o painel da paróquia correta
+            if hasattr(request.user, "is_admin_geral") and request.user.is_admin_geral():
+                return redirect("inscricoes:admin_paroquia_painel", paroquia_id=evento.paroquia_id)
+            return redirect("inscricoes:admin_paroquia_painel")
+    else:
+        form = EventoForm(instance=evento, user=request.user)
+
+    return render(request, "inscricoes/evento_form.html", {"form": form, "evento": evento})
+
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def evento_deletar(request, pk):
-    # código para deletar evento
-    pass
+    """Confirma e deleta o evento (pk é UUID)."""
+    evento = get_object_or_404(EventoAcampamento, pk=pk)
+
+    # Permissão: admin da MESMA paróquia ou admin geral
+    if not request.user.is_superuser:
+        if not hasattr(request.user, "paroquia") or request.user.paroquia_id != evento.paroquia_id:
+            return HttpResponseForbidden("Você não tem permissão para excluir este evento.")
+
+    if request.method == "POST":
+        nome = evento.nome
+        paroquia_id = evento.paroquia_id
+        evento.delete()
+        messages.success(request, f"Evento “{nome}” excluído com sucesso.")
+
+        # Volta para o painel apropriado
+        if hasattr(request.user, "is_admin_geral") and request.user.is_admin_geral():
+            return redirect("inscricoes:admin_paroquia_painel", paroquia_id=paroquia_id)
+        return redirect("inscricoes:admin_paroquia_painel")
+
+    # GET: mostra a página de confirmação
+    return render(request, "inscricoes/evento_confirm_delete.html", {"obj": evento, "tipo": "Evento"})
 
 @login_required
 def evento_participantes(request, evento_id):

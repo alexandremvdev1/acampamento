@@ -1,0 +1,30 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Confirmar exclusão</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; padding:24px}
+    .card{max-width:600px; margin:0 auto; padding:18px; border:1px solid #e5e7eb; border-radius:12px}
+    .danger{background:#ef4444; color:#fff; border:none; padding:10px 14px; border-radius:10px; cursor:pointer}
+    .ghost{background:#fff; border:1px solid #e5e7eb; padding:10px 14px; border-radius:10px; text-decoration:none; color:#111827}
+    .row{display:flex; gap:10px; margin-top:14px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Excluir {{ tipo }}</h1>
+    <p>Tem certeza que deseja excluir o evento <strong>{{ obj.nome }}</strong>?</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="row">
+        <button type="submit" class="danger">Sim, excluir</button>
+        {% comment %} volta para o painel da paróquia do evento {% endcomment %}
+        <a class="ghost" href="{% url 'inscricoes:admin_paroquia_painel' obj.paroquia_id %}">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
