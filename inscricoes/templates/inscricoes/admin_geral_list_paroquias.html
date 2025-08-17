@@ -72,7 +72,7 @@
     .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
     .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
     .pill.-accent{ background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
-    .pill.-green{ background: linear-gradient(135deg, #34d399, var(--pill-green)) }
+    .pill.-green{ background: linear-gradient(135deg, #34d399, #22c55e) }
 
     /* ========= Painéis ========= */
     .panel{
@@ -115,6 +115,19 @@
     .count{ color:var(--muted); font-size:.92rem }
 
     footer{ text-align:center; color:var(--muted); margin:12px 0 0 }
+
+    /* ======= ADIÇÕES ======= */
+    /* Fonte menor para o nome da paróquia */
+    td[data-col="nome"]{ font-size:.9rem; font-weight:600; }
+    /* Badges de status */
+    .badge-ativa{
+      display:inline-block; padding:2px 8px; border-radius:999px;
+      background:#dcfce7; color:#166534; border:1px solid #86efac; font-weight:700; font-size:.75rem; margin-right:6px;
+    }
+    .badge-inativa{
+      display:inline-block; padding:2px 8px; border-radius:999px;
+      background:#fee2e2; color:#991b1b; border:1px solid #fecaca; font-weight:700; font-size:.75rem; margin-right:6px;
+    }
   </style>
 </head>
 
@@ -164,31 +177,64 @@
               <th>Nome</th>
               <th>Cidade</th>
               <th>Estado</th>
+              <!-- ADIÇÃO: cabeçalho Status -->
+              <th>Status</th>
               <th>Responsável</th>
-              <th>E-mail</th>
               <th>Telefone</th>
               <th style="text-align:center;">Ações</th>
             </tr>
           </thead>
-          <tbody>
-            {% for paroquia in paroquias %}
-            <tr>
-              <td data-col="nome">{{ paroquia.nome }}</td>
-              <td data-col="cidade">{{ paroquia.cidade }}</td>
-              <td data-col="uf">{{ paroquia.estado }}</td>
-              <td data-col="resp">{{ paroquia.responsavel }}</td>
-              <td data-col="email">{{ paroquia.email }}</td>
-              <td data-col="tel">{{ paroquia.telefone }}</td>
-              <td class="actions-col">
-                <a href="{% url 'inscricoes:admin_paroquia_painel' paroquia.id %}" class="btn-view">
-                  <i class="fa-solid fa-eye"></i> Ver
-                </a>
-              </td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="7" style="text-align:center; color:var(--muted); padding:18px;">Nenhuma paróquia cadastrada.</td></tr>
-            {% endfor %}
-          </tbody>
+<!-- ... resto do código igual ao seu ... -->
+
+<tbody>
+  {% for paroquia in paroquias %}
+  <tr>
+    <td data-col="nome">{{ paroquia.nome }}</td>
+    <td data-col="cidade">{{ paroquia.cidade }}</td>
+    <td data-col="uf">{{ paroquia.estado }}</td>
+
+    <!-- STATUS apenas com badge -->
+    <td data-col="status">
+      {% if paroquia.status == "ativa" %}
+        <span class="badge-ativa">Ativa</span>
+      {% else %}
+        <span class="badge-inativa">Inativa</span>
+      {% endif %}
+    </td>
+
+    <td data-col="resp">{{ paroquia.responsavel }}</td>
+
+    <td data-col="tel">{{ paroquia.telefone }}</td>
+
+    <!-- AÇÕES: Ver + botão ligar/desligar -->
+    <td class="actions-col">
+      <a href="{% url 'inscricoes:admin_paroquia_painel' paroquia.id %}" class="btn-view">
+        <i class="fa-solid fa-eye"></i> Ver
+      </a>
+
+      <form method="post" action="{% url 'inscricoes:admin_geral_toggle_status_paroquia' paroquia.id %}" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        {% if paroquia.status == "ativa" %}
+          <button type="submit" class="pill -back" title="Inativar esta paróquia" style="margin-left:6px;">
+            <i class="fa-solid fa-power-off"></i>
+          </button>
+        {% else %}
+          <button type="submit" class="pill -green" title="Ativar esta paróquia" style="margin-left:6px;">
+            <i class="fa-solid fa-power-off"></i>
+          </button>
+        {% endif %}
+      </form>
+    </td>
+  </tr>
+  {% empty %}
+  <tr>
+    <td colspan="8" style="text-align:center; color:var(--muted); padding:18px;">
+      Nenhuma paróquia cadastrada.
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
         </table>
       </div>
     </section>

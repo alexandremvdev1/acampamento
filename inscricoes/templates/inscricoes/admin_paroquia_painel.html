@@ -167,11 +167,50 @@
 
     /* ========= Acessibilidade ========= */
     .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+    /* ========= ALERTA DE PARÓQUIA INATIVA ========= */
+    .alert{
+      background: linear-gradient(135deg, #fef2f2, #ffe4e6);
+      border:1px solid #fecaca;
+      color:#7f1d1d;
+      border-radius:16px;
+      box-shadow:var(--shadow);
+      padding:20px;
+      text-align:center;
+      font-weight:700;
+    }
+    @media (prefers-color-scheme: dark){
+      .alert{
+        background: linear-gradient(135deg, rgba(127,29,29,.15), rgba(190,18,60,.18));
+        border-color: rgba(254,202,202,.35);
+        color:#fecaca;
+      }
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
+
+    {# ===== NOVO: se a paróquia estiver inativa, mostra só a mensagem e NÃO renderiza o resto ===== #}
+    {% if paroquia.status == 'inativa' %}
+      <section class="panel">
+        <div class="alert">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          &nbsp;Esta paróquia está <strong>INATIVA</strong>. Nenhum conteúdo do painel é exibido.
+        </div>
+      </section>
+      {% comment %} Opcional: se o usuário for admin geral, um botão para voltar {% endcomment %}
+      {% if is_admin_geral %}
+      <div style="margin-top:10px; display:flex; justify-content:center;">
+        <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="pill -back">
+          <i class="fa-solid fa-arrow-left"></i><span>Voltar para Paróquias</span>
+        </a>
+      </div>
+      {% endif %}
+    {% else %}
+    {# ===== A partir daqui está TODO o seu conteúdo original do painel ===== #}
+
     <!-- HERO -->
     <header class="hero"
       {% if paroquia.banner %}style="--hero-image: url('{{ paroquia.banner.url }}') center/cover no-repeat;"{% endif %}>
@@ -187,7 +226,7 @@
         </div>
 
         <div style="display:flex; gap:10px; align-items:center;">
-          {% if is_admin_paroquia %}
+          {% if is_admin_geral %}
           <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="pill -back" aria-label="Voltar para lista de paróquias">
             <i class="fa-solid fa-arrow-left"></i><span>Voltar</span>
           </a>
@@ -305,6 +344,8 @@
         <p style="color:var(--muted); margin:0;">Sem eventos cadastrados.</p>
       {% endif %}
     </section>
+
+    {% endif %} {# fecha o "paroquia.status != 'inativa'" #}
   </div>
 
   <script>

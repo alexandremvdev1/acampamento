@@ -1,0 +1,177 @@
+{% load cloudinary %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Ficha Cozinha – {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    :root{
+      --ink:#111; --muted:#555; --line:#444;
+      --warn:#b91c1c; --warn-bg:#fde8e8;
+      --ok:#065f46; --paper:#fff;
+    }
+    body{ margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; background:#f6f7f9; color:var(--ink) }
+
+    /* Barra de ações */
+    .print-container{ text-align:center; margin:20px 0 }
+    .print-container button{
+      padding:8px 16px; border:none; border-radius:4px; cursor:pointer;
+      background:#0ea5e9; color:#fff; font-size:1rem;
+    }
+    .filter-form{ margin:0 20px 20px; font-size:1rem }
+    .filter-form select{ padding:6px; font-size:1rem }
+
+    @media print{
+      .print-container,.filter-form{ display:none }
+      body{ background:#fff }
+    }
+
+    /* Página A4 retrato */
+    .page{
+      width:210mm; padding:15mm; box-sizing:border-box; margin:0 auto;
+      page-break-after:always; background:var(--paper);
+    }
+
+    /* Grid 2 col */
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:20px }
+
+    /* Card da ficha */
+    .ficha{
+      border:1px solid var(--line); border-radius:6px; background:#fff;
+      box-shadow:0 2px 4px rgba(0,0,0,.06); padding:12px;
+    }
+
+    /* Cabeçalho */
+    .header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px }
+    .header .texts{ line-height:1.2 }
+    .header .title{ font-weight:bold; font-size:1.1rem }
+    .header .sub{ color:var(--muted); font-size:.9rem }
+    .header img{
+      width:70px; height:70px; object-fit:cover; border-radius:50%; background:#eee;
+    }
+
+    /* Faixa de alerta visível para cozinha */
+    .alerta{
+      border:2px solid var(--warn); background:var(--warn-bg); color:var(--warn);
+      padding:8px 10px; border-radius:6px; font-weight:700; margin-bottom:10px; font-size:.92rem;
+    }
+
+    /* Tabela (larguras fixas) */
+    table{ width:100%; border-collapse:collapse; table-layout:fixed; font-size:.78rem }
+    th,td{ border:1px solid #666; padding:4px 6px; vertical-align:top; word-wrap:break-word }
+    th{ background:#f5f5f5; text-align:left }
+
+    .chip{
+      display:inline-block; padding:2px 8px; border-radius:999px;
+      border:1px solid var(--warn); color:var(--warn); background:#fff; font-size:.72rem; font-weight:700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ações -->
+  <div class="print-container">
+    <button onclick="window.print()">🖨️ Imprimir</button>
+  </div>
+
+  <!-- Filtro por cidade -->
+  <form class="filter-form" method="get">
+    Filtrar por cidade:
+    <select name="cidade" onchange="this.form.submit()">
+      <option value="">Todas</option>
+      {% for c in cidades %}
+        <option value="{{ c }}" {% if c == cidade_sel %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  {# IMPORTANTE: ideal que 'fichas' JÁ esteja filtrado por alergia_alimento == "sim" na view #}
+  {% for bloco in fichas %}
+    {% if forloop.first or forloop.counter0|divisibleby:"2" %}
+      <div class="page">
+        <div class="grid">
+    {% endif %}
+
+      {# Segurança extra: só renderiza se tiver alergia a alimento #}
+      {% if bloco.base.alergia_alimento == "sim" %}
+      <div class="ficha">
+        <div class="header">
+          <div class="texts">
+            <div class="title">Ficha Cozinha <span class="chip">ALERGIA ALIMENTAR</span></div>
+            <div class="sub">{{ evento.nome }} • {{ bloco.inscricao.participante.cidade }}/{{ bloco.inscricao.participante.estado }}</div>
+          </div>
+          {% if bloco.inscricao.participante.foto %}
+            {% cloudinary bloco.inscricao.participante.foto width=70 height=70 crop="thumb" %}
+          {% else %}
+            <div style="width:70px;height:70px;background:#ddd;border-radius:50%;"></div>
+          {% endif %}
+        </div>
+
+        <div class="alerta">
+          ⚠️ ATENÇÃO COZINHA: Participante com alergia alimentar. Verificar preparo/serviço!
+        </div>
+
+        <table>
+          <colgroup>
+            <col style="width: 150%;">
+            <col style="width: 150%;">
+          </colgroup>
+
+          <tr>
+            <th>Nome</th>
+            <td>{{ bloco.inscricao.participante.nome|default:"Não informado" }}</td>
+          </tr>
+          <tr>
+            <th>CPF</th>
+            <td>{{ bloco.inscricao.participante.cpf|default:"Não informado" }}</td>
+          </tr>
+          <tr>
+            <th>Nascimento</th>
+            <td>{{ bloco.base.data_nascimento|date:"d/m/Y"|default:"Não informado" }}</td>
+          </tr>
+
+          <tr>
+            <th>ALERGIA A ALIMENTO?</th>
+            <td>{{ bloco.base.alergia_alimento|default:"Não informado" }}</td>
+          </tr>
+
+          <tr>
+            <th>QUAL(is) ALIMENTOS</th>
+            <td>
+              {{ bloco.base.qual_alergia_alimento|default:"Não informado" }}
+            </td>
+          </tr>
+
+          {% if bloco.base.informacoes_extras %}
+          <tr>
+            <th>OBSERVAÇÕES PARA COZINHA</th>
+            <td>{{ bloco.base.informacoes_extras }}</td>
+          </tr>
+          {% endif %}
+
+          {# Campos úteis para identificar/triagem (opcional) #}
+          <tr>
+            <th>Tipo Sanguíneo</th>
+            <td>{{ bloco.base.tipo_sanguineo|default:"Não informado" }}</td>
+          </tr>
+          <tr>
+            <th>Responsável/Contato</th>
+            <td>
+              {{ bloco.inscricao.participante.telefone|default:"Não informado" }}
+              {% if bloco.inscricao.participante.email %} • {{ bloco.inscricao.participante.email }}{% endif %}
+            </td>
+          </tr>
+        </table>
+      </div>
+      {% endif %}
+
+    {% if forloop.counter|divisibleby:"2" or forloop.last %}
+        </div>
+      </div>
+    {% endif %}
+  {% endfor %}
+
+</body>
+</html>

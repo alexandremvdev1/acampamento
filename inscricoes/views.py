@@ -6,7 +6,7 @@ from io import BytesIO
 from urllib.parse import urljoin
 from datetime import timedelta, timezone as dt_tz
 from django.utils import timezone
-
+from types import SimpleNamespace
 
 # ——— Terceiros
 import mercadopago
@@ -225,8 +225,66 @@ def admin_geral_delete_paroquia(request, pk):
         return redirect('inscricoes:admin_geral_list_paroquias')
     return render(request, 'inscricoes/admin_geral_confirm_delete.html', {'obj': paroquia, 'tipo': 'Paróquia'})
 
+def _is_admin_geral(user):
+    return (
+        user.is_authenticated and (
+            getattr(user, "is_superuser", False) or
+            getattr(user, "is_staff", False) or
+            user.groups.filter(name__in=["AdminGeral","AdministradorGeral"]).exists() or
+            getattr(user, "tipo_usuario", "") == "admin_geral"
+        )
+    )
 
+@login_required
+@user_passes_test(_is_admin_geral)
+@require_POST
+def admin_geral_set_status_paroquia(request, pk):
+    paroquia = get_object_or_404(Paroquia, pk=pk)
+    status = (request.POST.get("status") or "").lower()
+    if status not in ("ativa","inativa"):
+        return HttpResponse("Status inválido.", status=400)
+    paroquia.status = status
+    paroquia.save(update_fields=["status"])
+    messages.success(request, f"Paróquia marcada como {status}.")
+    return redirect(request.POST.get("next") or reverse("inscricoes:admin_geral_list_paroquias"))
 # -------- Usuários Admin Paróquia --------
+def _is_ajax(req):
+    return (
+        req.headers.get('x-requested-with') == 'XMLHttpRequest'
+        or req.headers.get('HX-Request') == 'true'
+        or 'application/json' in (req.headers.get('Accept',''))
+    )
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser or u.is_admin_geral())
+def admin_geral_toggle_status_paroquia(request, paroquia_id):
+    paroquia = get_object_or_404(Paroquia, id=paroquia_id)
+    if request.method == "POST":
+        paroquia.status = "inativa" if paroquia.status == "ativa" else "ativa"
+        paroquia.save()
+    return redirect(request.POST.get("next") or "inscricoes:admin_geral_list_paroquias")
+
+
+@login_required
+@user_passes_test(is_admin_geral)
+@require_POST
+def admin_geral_set_status_paroquia(request, pk: int):
+    paroquia = get_object_or_404(Paroquia, pk=pk)
+    novo = (request.POST.get("status") or "").strip().lower()
+    if novo not in ("ativa", "inativa"):
+        if _is_ajax(request):
+            return JsonResponse({"ok": False, "error": "status inválido"}, status=400)
+        messages.error(request, "Status inválido.")
+        return redirect(request.META.get('HTTP_REFERER', reverse('inscricoes:admin_geral_list_paroquias')))
+
+    paroquia.status = novo
+    paroquia.save(update_fields=["status"])
+
+    if _is_ajax(request):
+        return JsonResponse({"ok": True, "status": paroquia.status})
+
+    messages.success(request, f"Status atualizado para {paroquia.status}.")
+    return redirect(request.META.get('HTTP_REFERER', reverse('inscricoes:admin_geral_list_paroquias')))
 
 @login_required
 @user_passes_test(is_admin_geral)
@@ -1746,13 +1804,86 @@ def relatorio_etiquetas_bagagem(request, evento_id):
         'cidade_sel': cidade_sel,
     })
 
+def _is_admin_geral(user) -> bool:
+    return (
+        user.is_superuser
+        or user.is_staff
+        or user.groups.filter(name__in=["AdminGeral", "AdministradorGeral"]).exists()
+    )
+
+def _get_base(inscricao):
+    """
+    Retorna a BaseInscricao (InscricaoSenior/Juvenil/Mirim/Servos) ligada à inscrição.
+    Ajuste os related_names abaixo conforme seu projeto.
+    """
+    for rel in [
+        "inscricaosenior",
+        "inscricaojuvenil",
+        "inscricaomirim",
+        "inscricaoservos",
+        "base",  # caso exista um generic/base direto
+    ]:
+        base = getattr(inscricao, rel, None)
+        if base:
+            return base
+    return None
+
 @login_required
 def relatorio_ficha_cozinha(request, evento_id):
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
+
+    # Permissão: igual ao seu exemplo (superuser OU mesma paróquia do evento)
     if not request.user.is_superuser and evento.paroquia != getattr(request.user, 'paroquia', None):
         return HttpResponseForbidden()
-    # TODO: implementar geração da ficha de cozinha
-    return HttpResponse(f"Ficha de cozinha para {evento.nome}")
+
+    # Filtro por cidade (opcional via GET)
+    cidade_sel = (request.GET.get('cidade') or '').strip()
+
+    # Para performance, filtramos direto na tabela do subtipo conforme o tipo do evento
+    tipo = evento.tipo
+    if tipo == 'senior':
+        base_qs = (InscricaoSenior.objects
+                   .filter(inscricao__evento=evento,
+                           inscricao__pagamento_confirmado=True,
+                           alergia_alimento__iexact='sim')
+                   .select_related('inscricao__participante'))
+    elif tipo == 'juvenil':
+        base_qs = (InscricaoJuvenil.objects
+                   .filter(inscricao__evento=evento,
+                           inscricao__pagamento_confirmado=True,
+                           alergia_alimento__iexact='sim')
+                   .select_related('inscricao__participante'))
+    elif tipo == 'mirim':
+        base_qs = (InscricaoMirim.objects
+                   .filter(inscricao__evento=evento,
+                           inscricao__pagamento_confirmado=True,
+                           alergia_alimento__iexact='sim')
+                   .select_related('inscricao__participante'))
+    else:
+        base_qs = (InscricaoServos.objects
+                   .filter(inscricao__evento=evento,
+                           inscricao__pagamento_confirmado=True,
+                           alergia_alimento__iexact='sim')
+                   .select_related('inscricao__participante'))
+
+    if cidade_sel:
+        base_qs = base_qs.filter(inscricao__participante__cidade=cidade_sel)
+
+    # Monta estrutura esperada pelo template: [{'inscricao': ..., 'base': ...}, ...]
+    fichas = [{'inscricao': b.inscricao, 'base': b} for b in base_qs]
+
+    # Opções de cidades (derivadas do conjunto já filtrado por pagamento + alergia)
+    cidades = (base_qs
+               .values_list('inscricao__participante__cidade', flat=True)
+               .distinct()
+               .order_by('inscricao__participante__cidade'))
+
+    return render(request, 'inscricoes/ficha_cozinha.html', {
+        'evento': evento,
+        'fichas': fichas,        # somente pagos + com alergia a alimento
+        'cidades': cidades,
+        'cidade_sel': cidade_sel,
+    })
 
 @login_required
 def relatorio_ficha_farmacia(request, evento_id):

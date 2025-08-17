@@ -120,6 +120,11 @@ urlpatterns = [
     path("admin-geral/financeiro/", views.financeiro_geral, name="financeiro_geral"),
     path("admin-geral/financeiro/exportar.csv", views.financeiro_geral_export, name="financeiro_geral_export"),
 
+    path('admin-geral/paroquias/<int:pk>/status/',views.admin_geral_set_status_paroquia,name='admin_geral_set_status_paroquia'),
+
+    path('paroquia/<int:paroquia_id>/toggle-status/', views.admin_geral_toggle_status_paroquia, name='admin_geral_toggle_status_paroquia'),
+
+
 ]
 
 if settings.DEBUG:
