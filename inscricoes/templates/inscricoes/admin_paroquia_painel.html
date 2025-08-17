@@ -276,14 +276,13 @@
   </div>
 </div>
 
-  <div class="card">
-    <p class="ttl"><i class="fa-solid fa-shield-halved"></i> Portal do Participante</p>
-    <p class="desc">Envie o link público para consulta e pagamento via CPF.</p>
-    <div class="row">
-      <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" class="cta">
-        <i class="fa-solid fa-up-right-from-square"></i> Abrir portal
-      </a>
-    </div>
+<div class="card">
+  <p class="ttl"><i class="fa-solid fa-hand-holding-dollar"></i> Repasses</p>
+  <p class="desc">Consulte o valor a repassar ao sistema por evento.</p>
+  <div class="row">
+    <a href="{% url 'inscricoes:repasse_lista_eventos' %}" class="cta -teal">
+      <i class="fa-solid fa-wallet"></i> Ver Repasses
+    </a>
   </div>
 </div>
 

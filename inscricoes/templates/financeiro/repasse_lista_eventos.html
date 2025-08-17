@@ -1,0 +1,217 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Repasses — Eventos da Paróquia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    :root{
+      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
+      --radius:14px; --shadow:0 8px 32px rgba(16,24,40,.08);
+      --accent:#2563eb; --accent-2:#1d4ed8;
+      --ok:#16a34a; --warn:#f59e0b; --chip:#111827; --chip-2:#374151;
+      --table-stripe:#f4f7f9;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
+        --shadow:0 14px 40px rgba(0,0,0,.5);
+        --accent:#1d4ed8; --accent-2:#1e40af;
+        --chip:#374151; --chip-2:#111827; --table-stripe:#121821;
+      }
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0}
+    body{
+      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
+        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
+        var(--page);
+      line-height:1.55;
+      padding:20px;
+    }
+    .wrap{ max-width:1100px; margin:0 auto }
+
+    /* HERO */
+    .hero{
+      position:relative; border-radius:18px; overflow:hidden; color:#fff;
+      padding: clamp(16px, 3.6vw, 26px);
+      background:
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
+        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
+        linear-gradient(135deg, #111827, #1f2937);
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.18);
+      margin-bottom:16px;
+      display:grid; gap:10px;
+    }
+    .hero-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+    .hero-title{margin:0; font-weight:800; font-size: clamp(1.2rem,3.2vw,1.8rem)}
+    .hero-sub{margin:2px 0 0; opacity:.9}
+    .actions{display:flex; gap:10px; flex-wrap:wrap}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px;
+      font-weight:800; text-decoration:none; color:#fff; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12); transition:transform .12s ease, background .2s ease; cursor:pointer;
+    }
+    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+
+    /* KPIs */
+    .kpis{ display:grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap:12px; margin-bottom:14px }
+    @media (max-width:900px){ .kpis{ grid-template-columns: repeat(2,1fr) } }
+    @media (max-width:560px){ .kpis{ grid-template-columns: 1fr } }
+    .kpi{
+      background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px;
+      display:grid; gap:6px; box-shadow:var(--shadow);
+    }
+    .kpi .label{ color:var(--muted); font-size:.92rem }
+    .kpi .value{ font-size:1.25rem; font-weight:800 }
+    .kpi .sub{ color:var(--muted); font-size:.92rem }
+    .kpi.ok .value{ color:var(--ok) }
+
+    /* Painéis / Tabela */
+    .panel{
+      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding: clamp(12px,2vw,16px); margin-bottom:14px;
+    }
+    .panel h2{margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:800; letter-spacing:.2px; display:flex; gap:8px; align-items:center}
+    .table-wrap{ overflow:auto; border:1px solid var(--line); border-radius:12px }
+    table{ width:100%; border-collapse:collapse; min-width:760px; background:var(--panel) }
+    th, td{ padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; font-size:.98rem; vertical-align:top }
+    thead th{ background:linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,0)); font-weight:800; position:sticky; top:0; z-index:1 }
+    tbody tr:nth-child(even){ background:var(--table-stripe) }
+    tbody tr:hover{ background:rgba(37,99,235,.06) }
+    .muted{ color:var(--muted) }
+
+    .btn{ border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      padding:10px 12px; border-radius:12px; font-weight:800; color:#fff; text-decoration:none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .12s ease, filter .2s ease; }
+    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
+
+    footer{ text-align:center; margin:18px auto 6px; color:var(--muted); font-size:.95rem }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- HERO -->
+    <header class="hero">
+      <div class="hero-head">
+        <div>
+          <h1 class="hero-title">Repasses — Eventos da Paróquia</h1>
+          <p class="hero-sub">Veja o status financeiro e acesse o repasse por evento</p>
+        </div>
+        <div class="actions">
+          <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="pill">
+            <i class="fa-solid fa-arrow-left"></i><span>Painel da Paróquia</span>
+          </a>
+          <button id="themeToggle" type="button" class="pill" aria-label="Alternar tema">
+            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
+          </button>
+          <button id="printBtn" type="button" class="pill">
+            <i class="fa-solid fa-print"></i><span>Imprimir</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- KPIs (simples) -->
+    <section class="kpis" aria-label="Indicadores">
+      <div class="kpi">
+        <div class="label">Eventos listados</div>
+        <div class="value">{{ linhas|length }}</div>
+        <div class="sub">Com movimentação</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Período</div>
+        <div class="value">—</div>
+        <div class="sub">Opcional filtrar por data na próxima versão</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Total Bruto (estimado)</div>
+        <div class="value">
+          R$
+          {% with 0 as tot %}
+            {% for l in linhas %}{% if forloop.first %}{% endif %}{% endfor %}
+          {% endwith %}
+          <!-- Deixe o total detalhado por evento abaixo -->
+        </div>
+        <div class="sub">Veja o detalhamento por evento</div>
+      </div>
+      <div class="kpi ok">
+        <div class="label">Ação</div>
+        <div class="value">Gerar Repasse</div>
+        <div class="sub">No detalhe do evento</div>
+      </div>
+    </section>
+
+    <!-- TABELA -->
+    <section class="panel">
+      <h2><i class="fa-solid fa-receipt"></i> Eventos da Paróquia</h2>
+      <div class="table-wrap" role="region" aria-label="Tabela de eventos">
+        <table>
+          <thead>
+            <tr>
+              <th>Evento</th>
+              <th style="width:160px">Arrecadado Bruto</th>
+              <th style="width:160px">Taxas MP</th>
+              <th style="width:160px">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in linhas %}
+              <tr>
+                <td><strong>{{ l.evento.nome }}</strong><br><span class="muted">{{ l.evento.data_inicio|date:"d/m/Y" }}</span></td>
+                <td>R$ {{ l.bruto|floatformat:2 }}</td>
+                <td>R$ {{ l.taxas_mp|floatformat:2 }}</td>
+                <td>
+                  <a class="btn" href="{{ l.detalhe_url }}"><i class="fa-solid fa-eye"></i> Ver repasse</a>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="muted" style="text-align:center; padding:16px">Nenhum evento encontrado.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      &copy; {{ current_year }} Painel da Paróquia — Repasses
+    </footer>
+  </div>
+
+  <script>
+    // Tema
+    (function themeToggle(){
+      const KEY='repasse-theme';
+      const btn=document.getElementById('themeToggle');
+      const root=document.documentElement;
+      function apply(theme){
+        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+      }
+      apply(localStorage.getItem(KEY) || 'auto');
+      btn?.addEventListener('click', ()=>{
+        const cur=localStorage.getItem(KEY)||'auto';
+        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+        localStorage.setItem(KEY,next); apply(next);
+        btn.setAttribute('aria-label',`Tema: ${next}`);
+      });
+    })();
+
+    // Imprimir
+    document.getElementById('printBtn')?.addEventListener('click', ()=>window.print());
+  </script>
+</body>
+</html>

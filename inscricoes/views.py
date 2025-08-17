@@ -1,21 +1,22 @@
 # ——— Python stdlib
 import os
+import csv
 import json
 import logging
 from io import BytesIO
-from urllib.parse import urljoin
-from datetime import timedelta, timezone as dt_tz
 from types import SimpleNamespace
 from decimal import Decimal
-import csv
+from urllib.parse import urljoin
+from datetime import timedelta, timezone as dt_tz
 
 # ——— Django
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.core.exceptions import PermissionDenied
-from django.db import IntegrityError
+from django.contrib.admin.views.decorators import staff_member_required
+from django.core.exceptions import FieldDoesNotExist, PermissionDenied
+from django.db import transaction, IntegrityError
 from django.db.models import Q, Sum, Count
 from django.http import Http404, HttpResponse, JsonResponse, FileResponse
 from django.shortcuts import render, get_object_or_404, redirect
@@ -25,14 +26,15 @@ from django.utils import timezone as dj_tz
 from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from django.contrib.admin.views.decorators import staff_member_required
 
 # ——— Terceiros
 import mercadopago
 import qrcode
 from django.forms import modelform_factory
 
-# ——— App (models e forms)
+# ——— App (helpers, models, forms)
+from .helpers_mp_owner import mp_owner_client
+
 from .models import (
     MercadoPagoConfig,
     PastoralMovimento,
@@ -54,8 +56,11 @@ from .models import (
     PoliticaReembolso,
     InscricaoCasais,
     InscricaoEvento,
-    InscricaoRetiro
+    InscricaoRetiro,
+    Repasse,
+    MercadoPagoOwnerConfig,
 )
+
 from .forms import (
     ContatoForm,
     DadosSaudeForm,
@@ -80,9 +85,9 @@ from .forms import (
     AdminParoquiaCreateForm,
     InscricaoCasaisForm,
     InscricaoEventoForm,
-    InscricaoRetiroForm
-
+    InscricaoRetiroForm,
 )
+
 
 
 User = get_user_model()
@@ -2713,3 +2718,227 @@ def admin_paroquia_delete_admin(request, user_id: int):
     if request.user.is_admin_geral() and request.GET.get("paroquia"):
         url += f"?paroquia={request.GET.get('paroquia')}"
     return redirect(url)
+
+try:
+    from .finance_calc import calcular_financeiro_evento as _calc_financeiro_evento_external
+except Exception:
+    _calc_financeiro_evento_external = None
+
+
+# ===== CÁLCULO FINANCEIRO (com fallback) =====
+TAXA_SISTEMA_DEFAULT = Decimal("3.00")
+
+def calcular_financeiro_evento(evento, taxa_percentual=TAXA_SISTEMA_DEFAULT):
+    """
+    Se existir .finance_calc, delega para lá. Caso contrário,
+    calcula aqui com base nos Pagamentos confirmados do evento.
+    """
+    if _calc_financeiro_evento_external:
+        return _calc_financeiro_evento_external(evento, taxa_percentual)
+
+    pagos = Pagamento.objects.filter(
+        inscricao__evento=evento,
+        status=Pagamento.StatusPagamento.CONFIRMADO
+    )
+
+    bruto = pagos.aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
+
+    # taxa do MP (se a coluna fee_mp existir)
+    try:
+        Pagamento._meta.get_field("fee_mp")
+        taxas_mp = pagos.aggregate(total=Sum("fee_mp"))["total"] or Decimal("0.00")
+    except FieldDoesNotExist:
+        taxas_mp = Decimal("0.00")
+
+    base = (bruto - taxas_mp).quantize(Decimal("0.01"))
+    taxa = (base * Decimal(taxa_percentual) / Decimal("100")).quantize(Decimal("0.01"))
+    liquido_paroquia = (base - taxa).quantize(Decimal("0.01"))
+
+    return {
+        "bruto": bruto,
+        "taxas_mp": taxas_mp,
+        "base_repasse": base,
+        "taxa_percent": Decimal(taxa_percentual),
+        "valor_repasse": taxa,
+        "liquido_paroquia": liquido_paroquia,
+    }
+
+
+# ===== LISTA DE EVENTOS (REPASSES) =====
+@login_required
+@user_passes_test(lambda u: u.is_admin_paroquia())
+def repasse_lista_eventos(request):
+    paroquia = request.user.paroquia
+    eventos = (EventoAcampamento.objects
+               .filter(paroquia=paroquia)
+               .order_by("-data_inicio"))
+
+    # verifica se o campo fee_mp existe no modelo Pagamento
+    has_fee_mp = True
+    try:
+        Pagamento._meta.get_field("fee_mp")
+    except FieldDoesNotExist:
+        has_fee_mp = False
+
+    linhas = []
+    for ev in eventos:
+        pagos = Pagamento.objects.filter(
+            inscricao__evento=ev,
+            status=Pagamento.StatusPagamento.CONFIRMADO
+        )
+        bruto = pagos.aggregate(total=Sum("valor"))["total"] or Decimal("0.00")
+
+        if has_fee_mp:
+            taxas_mp = pagos.aggregate(total=Sum("fee_mp"))["total"] or Decimal("0.00")
+        else:
+            taxas_mp = Decimal("0.00")  # sem a coluna fee_mp
+
+        linhas.append({
+            "evento": ev,
+            "bruto": bruto,
+            "taxas_mp": taxas_mp,
+            "detalhe_url": reverse("inscricoes:repasse_evento_detalhe", args=[ev.id]),
+            "sem_fee_mp": not has_fee_mp,
+        })
+
+    return render(request, "financeiro/repasse_lista_eventos.html", {"linhas": linhas})
+
+
+# ===== DETALHE DO EVENTO (REPASSE) =====
+@login_required
+@user_passes_test(lambda u: u.is_admin_paroquia())
+def repasse_evento_detalhe(request, evento_id):
+    evento = get_object_or_404(EventoAcampamento, id=evento_id, paroquia=request.user.paroquia)
+    fin = calcular_financeiro_evento(evento)
+
+    historico = (Repasse.objects
+                 .filter(evento=evento, paroquia=request.user.paroquia)
+                 .order_by("-criado_em"))
+
+    return render(request, "financeiro/repasse_evento_detalhe.html", {
+        "evento": evento,
+        "fin": fin,
+        "historico": historico,
+    })
+
+
+# ===== GERAR PIX DO REPASSE =====
+@login_required
+@user_passes_test(lambda u: u.is_admin_paroquia())
+def gerar_pix_repasse_evento(request, evento_id):
+    evento = get_object_or_404(EventoAcampamento, id=evento_id, paroquia=request.user.paroquia)
+    fin = calcular_financeiro_evento(evento)
+    valor = float(fin["valor_repasse"])
+
+    if valor <= 0:
+        messages.error(request, "Não há valor a repassar para este evento.")
+        return redirect("inscricoes:repasse_evento_detalhe", evento_id=evento.id)
+
+    try:
+        sdk, cfg = mp_owner_client()
+    except Exception as e:
+        messages.error(request, f"Configuração do Mercado Pago (DONO) ausente/inválida: {e}")
+        return redirect("inscricoes:repasse_evento_detalhe", evento_id=evento.id)
+
+    notification_url = (cfg.notificacao_webhook_url or "").strip()
+
+    with transaction.atomic():
+        # Reutiliza (lock) ou cria um único repasse pendente por evento
+        repasse = (Repasse.objects
+                   .select_for_update()
+                   .filter(paroquia=request.user.paroquia,
+                           evento=evento,
+                           status=Repasse.Status.PENDENTE)
+                   .first())
+
+        if not repasse:
+            repasse = Repasse.objects.create(
+                paroquia=request.user.paroquia,
+                evento=evento,
+                valor_base=fin["base_repasse"],
+                taxa_percentual=fin["taxa_percent"],
+                valor_repasse=fin["valor_repasse"],
+                status=Repasse.Status.PENDENTE,
+            )
+        else:
+            # atualiza valores (se mudou algo desde a criação)
+            repasse.valor_base = fin["base_repasse"]
+            repasse.taxa_percentual = fin["taxa_percent"]
+            repasse.valor_repasse = fin["valor_repasse"]
+
+        body = {
+            "transaction_amount": float(repasse.valor_repasse),
+            "description": f"Repasse taxa sistema – {evento.nome}",
+            "payment_method_id": "pix",
+            "payer": {
+                "email": (request.user.email or cfg.email_cobranca or "repasse@dominio.local")
+            },
+            "external_reference": f"repasse:{request.user.paroquia_id}:{evento.id}",
+        }
+        if notification_url:
+            body["notification_url"] = notification_url
+
+        try:
+            resp = sdk.payment().create(body).get("response", {}) or {}
+            pio = (resp.get("point_of_interaction") or {})
+            tx = (pio.get("transaction_data") or {})
+
+            repasse.transacao_id = str(resp.get("id") or "")
+            repasse.qr_code_text = tx.get("qr_code")
+            repasse.qr_code_base64 = tx.get("qr_code_base64")
+            repasse.save()
+
+            messages.success(request, "PIX de repasse gerado/atualizado com sucesso.")
+        except Exception as e:
+            messages.error(request, f"Erro ao gerar PIX: {e}")
+
+    return redirect("inscricoes:repasse_evento_detalhe", evento_id=evento.id)
+
+
+# ===== WEBHOOK DO DONO (REPASSES) =====
+@csrf_exempt
+def mp_owner_webhook(request):
+    """
+    Webhook exclusivo para pagamentos de REPASSE (conta do DONO).
+    Atualiza o status do Repasse com base no payment_id recebido.
+    """
+    try:
+        payload = json.loads(request.body or "{}")
+        payment_id = (payload.get("data") or {}).get("id") or payload.get("id")
+        if not payment_id:
+            return HttpResponse(status=200)
+
+        sdk, _ = mp_owner_client()
+        payment = sdk.payment().get(payment_id).get("response", {})
+        ext = (payment.get("external_reference") or "")
+        # Formato esperado: repasse:<paroquia_id>:<evento_id>
+        if not ext.startswith("repasse:"):
+            return HttpResponse(status=200)
+
+        parts = ext.split(":")
+        if len(parts) != 3:
+            return HttpResponse(status=200)
+
+        paroquia_id, evento_id = parts[1], parts[2]
+
+        rep = Repasse.objects.filter(transacao_id=str(payment.get("id") or "")).first()
+        if not rep:
+            rep = (Repasse.objects
+                   .filter(paroquia_id=paroquia_id, evento_id=evento_id, status=Repasse.Status.PENDENTE)
+                   .order_by("-criado_em").first())
+        if not rep:
+            return HttpResponse(status=200)
+
+        status = (payment.get("status") or "").lower()
+        if status == "approved":
+            rep.status = Repasse.Status.PAGO
+        elif status in ("pending", "in_process"):
+            rep.status = Repasse.Status.PENDENTE
+        else:
+            rep.status = Repasse.Status.CANCELADO
+
+        rep.save(update_fields=["status", "atualizado_em"])
+        return HttpResponse(status=200)
+    except Exception:
+        # Não quebrar o fluxo de callbacks
+        return HttpResponse(status=200)

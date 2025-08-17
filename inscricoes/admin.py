@@ -325,3 +325,18 @@ class PoliticaReembolsoAdmin(admin.ModelAdmin):
     )
     list_filter = ('ativo', 'permite_reembolso',)
     search_fields = ('evento__nome', 'contato_email', 'contato_whatsapp')
+
+# admin.py
+from django.contrib import admin
+from .models import MercadoPagoOwnerConfig, Repasse
+
+@admin.register(MercadoPagoOwnerConfig)
+class MercadoPagoOwnerConfigAdmin(admin.ModelAdmin):
+    list_display = ("nome_exibicao", "ativo", "email_cobranca")
+    search_fields = ("nome_exibicao", "email_cobranca")
+
+@admin.register(Repasse)
+class RepasseAdmin(admin.ModelAdmin):
+    list_display = ("paroquia", "evento", "valor_repasse", "status", "criado_em")
+    list_filter = ("status", "paroquia")
+    search_fields = ("evento__nome", "paroquia__nome", "transacao_id")

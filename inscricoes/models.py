@@ -770,6 +770,12 @@ class Pagamento(models.Model):
     inscricao = models.OneToOneField(Inscricao, on_delete=models.CASCADE)
     metodo = models.CharField(max_length=20, choices=MetodoPagamento.choices, default=MetodoPagamento.PIX)
     valor = models.DecimalField(max_digits=8, decimal_places=2)
+
+    # ⬇️ ADICIONE ESTES DOIS CAMPOS
+    fee_mp = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    net_received = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    # ⬆️
+
     status = models.CharField(max_length=20, choices=StatusPagamento.choices, default=StatusPagamento.PENDENTE)
     data_pagamento = models.DateTimeField(null=True, blank=True)
     transacao_id = models.CharField(max_length=100, blank=True)
@@ -783,6 +789,7 @@ class Pagamento(models.Model):
 
     def __str__(self):
         return f"Pagamento de {self.inscricao}"
+
 
 
 # ---------------------------------------------------------------------
@@ -1142,3 +1149,52 @@ class PoliticaReembolso(models.Model):
             if norm:
                 self.contato_whatsapp = norm
         super().save(*args, **kwargs)
+
+class MercadoPagoOwnerConfig(models.Model):
+    """
+    Credenciais do Mercado Pago do DONO do sistema.
+    Usado EXCLUSIVAMENTE para gerar PIX de repasse.
+    """
+    nome_exibicao = models.CharField(max_length=100, default="Admin do Sistema")
+    access_token = models.CharField(max_length=255)  # PROD access token do dono
+    notificacao_webhook_url = models.URLField(blank=True, null=True, help_text="Opcional: URL pública do webhook de repasses")
+    email_cobranca = models.EmailField(blank=True, null=True, help_text="E-mail que aparecerá como pagador padrão")
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Configuração MP (Dono)"
+        verbose_name_plural = "Configurações MP (Dono)"
+
+    def __str__(self):
+        return f"MP Dono ({'ativo' if self.ativo else 'inativo'})"
+    
+class Repasse(models.Model):
+    class Status(models.TextChoices):
+        PENDENTE = "pendente", "Pendente"
+        PAGO = "pago", "Pago"
+        CANCELADO = "cancelado", "Cancelado"
+
+    paroquia = models.ForeignKey("inscricoes.Paroquia", on_delete=models.CASCADE, related_name="repasses")
+    evento = models.ForeignKey("inscricoes.EventoAcampamento", on_delete=models.CASCADE, related_name="repasses")
+    # base = arrecadado confirmado - taxas MP (dos pagamentos das inscrições)
+    valor_base = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    taxa_percentual = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("3.00"))
+    valor_repasse = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDENTE)
+
+    # dados do PIX gerado na conta do DONO
+    transacao_id = models.CharField(max_length=64, blank=True, null=True)
+    qr_code_text = models.TextField(blank=True, null=True)     # copia-e-cola
+    qr_code_base64 = models.TextField(blank=True, null=True)   # <img src="data:image/png;base64,...">
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        constraints = [
+            models.UniqueConstraint(fields=["paroquia", "evento", "status"], condition=models.Q(status="pendente"), name="uniq_repasse_pendente_por_evento")
+        ]
+
+    def __str__(self):
+        return f"Repasse {self.paroquia} / {self.evento} — {self.valor_repasse} ({self.status})"

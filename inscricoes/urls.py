@@ -130,6 +130,11 @@ urlpatterns = [
     path('admin-paroquia/usuarios/<int:user_id>/excluir/',views.admin_paroquia_delete_admin,name='admin_paroquia_delete_admin'),
 
     path('ajax/buscar-conjuge/', views.ajax_buscar_conjuge, name='ajax_buscar_conjuge'),
+
+    path("admin-paroquia/financeiro/repasses/", views.repasse_lista_eventos, name="repasse_lista_eventos"),
+    path("admin-paroquia/financeiro/repasse/<uuid:evento_id>/", views.repasse_evento_detalhe, name="repasse_evento_detalhe"),
+    path("admin-paroquia/financeiro/repasse/<uuid:evento_id>/gerar-pix/", views.gerar_pix_repasse_evento, name="gerar_pix_repasse_evento"),
+    path("webhooks/mp-owner/", views.mp_owner_webhook, name="mp_owner_webhook"),  # webhook só dos repasses
 ]
 
 if settings.DEBUG:
