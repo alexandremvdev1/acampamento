@@ -23,6 +23,9 @@
 
       --ok-bg:#d1e7dd; --ok-border:#badbcc; --ok-text:#0f5132;
       --err-bg:#fde2e7; --err-border:#f5c2c7; --err-text:#842029;
+
+      /* será preenchido inline quando houver imagem_2 */
+      --bg-img:none;
     }
     *{ box-sizing:border-box }
     html,body{ margin:0 }
@@ -32,6 +35,28 @@
       background:var(--bg);
       font-family:'Roboto',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
       color:var(--text);
+      position:relative;
+      overflow:hidden;
+    }
+
+    /* Background desfocado + overlay */
+    .bg-blur{
+      position:fixed; inset:-4%;           /* extrapola para evitar “bordas” do blur */
+      z-index:-2;
+      background: var(--bg-img) center/cover no-repeat;
+      filter: blur(14px) saturate(1.05);
+      transform: scale(1.04);
+      will-change: transform, filter;
+    }
+    .bg-overlay{
+      position:fixed; inset:0;
+      z-index:-1;
+      /* scrim para legibilidade */
+      background:
+        radial-gradient(1000px 600px at 10% -10%, rgba(124,58,237,.20), transparent 60%),
+        radial-gradient(900px 500px at 90% -20%, rgba(37,99,235,.20), transparent 60%),
+        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.25));
+      pointer-events:none;
     }
 
     .card{
@@ -39,9 +64,10 @@
       background:var(--card);
       border:1px solid var(--line);
       border-radius:14px;
-      box-shadow:0 10px 28px rgba(0,0,0,.06);
+      box-shadow:0 10px 28px rgba(0,0,0,.10);
       padding:22px;
       transition:transform .2s ease;
+      backdrop-filter: saturate(1.1);
     }
     .card:hover{ transform:translateY(-1px) }
 
@@ -117,10 +143,21 @@
 
     footer{
       text-align:center; color:#6b7280; font-size:12px; margin-top:6px;
+      text-shadow:0 1px 2px rgba(0,0,0,.25);
     }
   </style>
 </head>
-<body>
+<body
+  {% if politica and politica.imagem_2 %}
+    style="--bg-img: url('{{ politica.imagem_2.url }}');"
+  {% endif %}
+>
+
+  {# fundo desfocado só aparece se houver imagem_2 #}
+  {% if politica and politica.imagem_2 %}
+    <div class="bg-blur" aria-hidden="true"></div>
+    <div class="bg-overlay" aria-hidden="true"></div>
+  {% endif %}
 
   <div class="card" {% if form.errors %}aria-live="polite"{% endif %}>
     {% if politica and politica.logo %}

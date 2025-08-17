@@ -4,6 +4,7 @@ from . import views
 from django.conf import settings
 from .views import mp_config
 from django.conf.urls.static import static
+from .views import LoginComImagemView
 from .views import (
     buscar_participante_ajax,
     iniciar_pagamento
@@ -13,7 +14,7 @@ from .views import (
 app_name = 'inscricoes'  # importante para usar namespace
 
 urlpatterns = [
-    path('login/', auth_views.LoginView.as_view(template_name='inscricoes/login.html'), name='login'),
+    path("login/", LoginComImagemView.as_view(), name="login"),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('', views.home_redirect, name='home_redirect'),
     path('admin-geral/', views.admin_geral_home, name='admin_geral_home'),

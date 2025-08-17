@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from decimal import Decimal
 from urllib.parse import urljoin
 from datetime import timedelta, timezone as dt_tz
+from django.contrib.auth.views import LoginView
 
 # ——— Django
 from django.conf import settings
@@ -2942,3 +2943,11 @@ def mp_owner_webhook(request):
     except Exception:
         # Não quebrar o fluxo de callbacks
         return HttpResponse(status=200)
+
+class LoginComImagemView(LoginView):
+    template_name = "inscricoes/login.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["politica"] = PoliticaPrivacidade.objects.order_by("-id").first()
+        return ctx
