@@ -14,7 +14,7 @@
     }
     body::before{
       content:""; position:fixed; inset:0;
-      background-image:url("{{ politica.imagem_2.url }}");
+      {% if politica.imagem_2 %}background-image:url("{{ politica.imagem_2.url }}");{% endif %}
       background-size:cover; background-position:center; filter:blur(5px); opacity:.2; z-index:-1;
     }
     header{text-align:center;margin-bottom:var(--space-5);position:relative}
@@ -22,7 +22,6 @@
     header h1{font-size:1.8rem;margin:0 0 var(--space-1);color:#222}
     .info-periodos p{font-size:.95rem;margin:2px 0;color:#555;line-height:1.35}
 
-    /* Visual (o JS também normaliza o valor) */
     #id_nome, #id_endereco, #id_bairro { text-transform: capitalize; }
 
     form{
@@ -44,6 +43,10 @@
     .extra-fields{display:grid;grid-template-columns:1fr;gap:var(--space-3);margin-top:var(--space-2)}
     .extra-fields[hidden]{display:none!important}
 
+    /* cônjuge – feedback */
+    #id_cpf_conjuge[aria-invalid="true"]{ border-color:#b00020 }
+    #cpf_conjuge_feedback{ font-size:.85rem; margin-top:2px; }
+
     button{
       background:#007bff;color:#fff;padding:12px;border:none;border-radius:10px;
       font-size:1.05rem;font-weight:700;cursor:pointer;transition:background-color .25s ease;margin-top:2px;
@@ -55,7 +58,6 @@
     .politica-link a{color:#007bff;text-decoration:none}
     .politica-link a:hover{text-decoration:underline}
 
-    /* Botão flutuante com imagem */
     #whatsapp-flutuante{
       position: fixed; bottom: 20px; right: 20px; width: 64px; height: 64px;
       padding: 0; border: 0; background: transparent; border-radius: 50%;
@@ -77,33 +79,13 @@
     .modal-body{text-align:left}
     .close-modal{color:#aaa;position:absolute;right:15px;top:10px;font-size:28px;font-weight:bold;cursor:pointer}
     .close-modal:hover,.close-modal:focus{color:#000}
-      /* Botão verde do WhatsApp no modal */
     .btn-whatsapp{
-      background:#25D366;          /* verde WhatsApp */
-      color:#fff !important;
-      border:0;
-      border-radius:10px;
-      padding:12px 18px;
-      font-weight:700;
-      font-size:1rem;
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      box-shadow:0 3px 8px rgba(0,0,0,.2);
+      background:#25D366;color:#fff !important;border:0;border-radius:10px;padding:12px 18px;font-weight:700;font-size:1rem;
+      text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:0 3px 8px rgba(0,0,0,.2);
       transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
     }
-    .btn-whatsapp:hover,
-    .btn-whatsapp:focus{
-      background:#1ebe5b;          /* hover mais escuro */
-      text-decoration:none;
-      transform:translateY(-1px);
-      box-shadow:0 6px 14px rgba(0,0,0,.25);
-    }
-    .btn-whatsapp:focus-visible{
-      outline:3px solid rgba(37,211,102,.35);
-      outline-offset:2px;
-    }
+    .btn-whatsapp:hover,.btn-whatsapp:focus{background:#1ebe5b;text-decoration:none;transform:translateY(-1px);box-shadow:0 6px 14px rgba(0,0,0,.25)}
+    .btn-whatsapp:focus-visible{outline:3px solid rgba(37,211,102,.35);outline-offset:2px}
 
     @media (max-width:480px){
       body{margin:10px;padding:10px;padding-bottom:90px}
@@ -124,7 +106,6 @@
   </header>
 
   {% if form %}
-  <!-- ETAPA 1: CPF → revela demais campos quando válido -->
   <form method="post" novalidate id="form-inscricao">
     {% csrf_token %}
     {{ form.non_field_errors }}
@@ -156,6 +137,15 @@
         {{ form.email }}
         <small class="hint">Por aqui você receberá informações sobre o evento.</small>
       </div>
+
+      {% if evento.tipo == 'casais' %}
+      <div class="field" id="box-cpf-conjuge">
+        <label for="id_cpf_conjuge">CPF do cônjuge (opcional)</label>
+        <input type="text" id="id_cpf_conjuge" name="cpf_conjuge" placeholder="000.000.000-00" />
+        <small class="hint">Se o(a) cônjuge ainda não se inscreveu, deixe em branco.</small>
+        <div id="cpf_conjuge_feedback" aria-live="polite"></div>
+      </div>
+      {% endif %}
     </div>
 
     <button type="submit" id="btn-next" disabled>Próxima Etapa</button>
@@ -163,7 +153,6 @@
   {% endif %}
 
   {% if endereco_form %}
-  <!-- ETAPA 2: Endereço -->
   <form method="post" novalidate style="margin-top: var(--space-5);">
     {% csrf_token %}
     {{ endereco_form.non_field_errors }}
@@ -210,7 +199,6 @@
     Desenvolvido por Alexandre Martins Vieira
   </p>
 
-  <!-- Modal da Política -->
   <div class="modal fade" id="modalPolitica" tabindex="-1" aria-labelledby="modalPoliticaLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
@@ -224,7 +212,6 @@
     </div>
   </div>
 
-  <!-- Botão flutuante (imagem) -->
   <button id="whatsapp-flutuante" type="button" aria-label="Ajuda">
     {% if politica.imagem_ajuda %}
       <img src="{{ politica.imagem_ajuda.url }}" alt="Ajuda" width="64" height="64" loading="lazy">
@@ -233,7 +220,6 @@
     {% endif %}
   </button>
 
-  <!-- Modal de Ajuda/WhatsApp -->
   <div id="modal-whatsapp" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-whatsapp-title">
     <div class="modal-content">
       <span class="close-modal" id="fechar-whatsapp" aria-label="Fechar">&times;</span>
@@ -243,9 +229,7 @@
     </div>
   </div>
 
-  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Inputmask -->
   <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.9/dist/inputmask.min.js"></script>
 
   <script>
@@ -266,10 +250,15 @@
     const cpfErrBox     = document.getElementById("cpf_error");
     const extraBox      = document.getElementById("extra-fields");
 
-    // Máscaras
+    // NOVO: cônjuge
+    const cpfConjInput    = document.getElementById("id_cpf_conjuge");
+    const cpfConjFeedback = document.getElementById("cpf_conjuge_feedback");
+
+    // máscaras
     try{ if(cpfInput){ Inputmask("999.999.999-99").mask(cpfInput); cpfInput.placeholder='000.000.000-00'; } }catch(e){}
     try{ if(telefoneInput){ Inputmask({mask:["(99) 9999-9999","(99) 99999-9999"], keepStatic:true}).mask(telefoneInput); } }catch(e){}
     try{ if(cepInput){ Inputmask("99.999-999").mask(cepInput); } }catch(e){}
+    try{ if(cpfConjInput){ Inputmask("999.999.999-99").mask(cpfConjInput); } }catch(e){}
 
     // utils
     const onlyDigits = s => (s||"").replace(/\D/g,"");
@@ -291,21 +280,19 @@
       if(!cpfInput) return false;
       const raw=cpfInput.value||"";
       const digits=onlyDigits(raw);
-      const valid=(digits.length===11 && cpfIsValid(digits));
+      const valid=(digits.length===11 && cpfIsValid(raw));
       cpfInput.setAttribute("aria-invalid", (!valid && digits.length>0) ? "true" : "false");
       cpfErrBox.textContent = (!valid && digits.length>0) ? "CPF inválido. Verifique os dígitos." : "";
       if(btnNext) btnNext.disabled = !valid || extraBox.hidden;
       return valid;
     }
 
-    // ——— Normalizadores (preservando caret) ———
-    // Substitua sua função toTitle por esta:
-        const toTitle = (s) => (s || '')
-        .replace(/\s+/g, ' ')                // normaliza múltiplos espaços no meio
-        .split(' ')
-        .map(p => p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : '')
-        .join(' ');
-
+    // title-case helpers
+    const toTitle = (s) => (s || '')
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .map(p => p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : '')
+      .join(' ');
     function normalizeOnInput(el, formatter){
       el.addEventListener('input', () => {
         const before = el.value;
@@ -318,13 +305,11 @@
       });
       el.addEventListener('blur', () => el.value = formatter(el.value || ''));
     }
-
-    // Nome, Endereço, Bairro → Title Case em tempo real
     if(nomeInput)     normalizeOnInput(nomeInput, toTitle);
     if(enderecoInput) normalizeOnInput(enderecoInput, toTitle);
     if(bairroInput)   normalizeOnInput(bairroInput, toTitle);
 
-    // CPF input/paste → mostra/oculta extras
+    // mostra extras ao validar CPF principal
     if(cpfInput){
       const onCpfChange = () => {
         const ok = applyCpfValidation();
@@ -335,7 +320,62 @@
       cpfInput.addEventListener("paste", () => setTimeout(onCpfChange, 0));
     }
 
-    // CPF blur → AJAX (compatível com respostas antigas e novas)
+    // validação leve do CPF do cônjuge (não bloqueia)
+    function validateCpfConjuge(){
+      if(!cpfConjInput) return;
+      const raw = cpfConjInput.value || "";
+      const d   = onlyDigits(raw);
+      if(d.length===0){
+        cpfConjInput.removeAttribute("aria-invalid");
+        if(cpfConjFeedback){
+          cpfConjFeedback.textContent = "";
+          cpfConjFeedback.style.color = "";
+        }
+        return;
+      }
+      const ok = cpfIsValid(raw);
+      cpfConjInput.setAttribute("aria-invalid", ok ? "false" : "true");
+      if(cpfConjFeedback){
+        cpfConjFeedback.textContent = ok ? "" : "CPF do cônjuge inválido (opcional).";
+        cpfConjFeedback.style.color = ok ? "" : "#b00020";
+      }
+    }
+    cpfConjInput?.addEventListener("input", validateCpfConjuge);
+
+    // busca o nome (e possível inscrição) do cônjuge no blur/change
+    async function lookupConjuge(){
+      if(!cpfConjInput) return;
+      const raw = cpfConjInput.value || "";
+      const d   = onlyDigits(raw);
+      if(d.length!==11 || !cpfIsValid(raw)){
+        if(cpfConjFeedback){ cpfConjFeedback.textContent=""; cpfConjFeedback.style.color=""; }
+        return;
+      }
+      try{
+        const url = "{% url 'inscricoes:ajax_buscar_conjuge' %}" + `?cpf=${d}&evento_id={{ evento.id }}`;
+        const r = await fetch(url);
+        if(!r.ok) return;
+        const j = await r.json();
+        if(!cpfConjFeedback) return;
+
+        if(j.ok && j.nome){
+          cpfConjFeedback.innerHTML = `Cônjuge: <strong>${j.nome}</strong>`;
+          cpfConjFeedback.style.color = "#0f5132"; // verde
+          if(j.inscricao_id){
+            cpfConjFeedback.innerHTML += "<br>Inscrição do cônjuge encontrada — o vínculo será aplicado.";
+          } else {
+            cpfConjFeedback.innerHTML += "<br>Nenhuma inscrição encontrada ainda — tudo bem, o vínculo será aplicado quando ele(a) se inscrever.";
+          }
+        }else if(j.ok && !j.nome){
+          cpfConjFeedback.textContent = "Não encontramos cadastro para este CPF — sem problemas, o vínculo será aplicado quando o cadastro/inscrição for criado(a).";
+          cpfConjFeedback.style.color = "#8a6d3b"; // amarelo/aviso
+        }
+      }catch(_){}
+    }
+    cpfConjInput?.addEventListener("blur", lookupConjuge);
+    cpfConjInput?.addEventListener("change", lookupConjuge);
+
+    // busca participante pelo CPF principal (preenche nome/email/telefone se existir)
     if(cpfInput){
       cpfInput.addEventListener("blur", async () => {
         if(!applyCpfValidation()) return;
@@ -348,25 +388,18 @@
           if(!res.ok) return;
           const data = await res.json();
 
-          // NOVO formato: progresso.next_url
           if (data && data.progresso && data.progresso.next_url){
             window.location.href = data.progresso.next_url;
             return;
           }
-
-          // Antigo formato: ja_inscrito + inscricao_id
           if (data && data.ja_inscrito && data.inscricao_id){
             window.location.href = verInscricaoBase + data.inscricao_id + '/';
             return;
           }
-
-          // Formatos com status + view_url
           if (data && (data.status === 'enviada' || data.status === 'concluida')){
             const destino = data.view_url || (verInscricaoBase + (data.inscricao_id || '') + '/');
             if (destino) { window.location.href = destino; return; }
           }
-
-          // Autopreenche dados (antigo ou novo)
           if (data){
             if (data.nome && nomeInput)           nomeInput.value = toTitle(data.nome);
             if (data.email && emailInput)         emailInput.value = data.email;
@@ -378,7 +411,7 @@
       });
     }
 
-    // Submit guard
+    // submit guard
     if(form1){
       form1.addEventListener("submit",(e)=>{
         const ok = applyCpfValidation();
@@ -386,10 +419,11 @@
           e.preventDefault();
           if(cpfInput) cpfInput.focus();
         }
+        // cpf do cônjuge é opcional
       });
     }
 
-    // ViaCEP (quando estamos no form de endereço)
+    // ViaCEP
     const limpaEndereco=()=>{
       if(enderecoInput) enderecoInput.value="";
       if(bairroInput)   bairroInput.value="";
@@ -412,7 +446,7 @@
           if(enderecoInput) enderecoInput.value = toTitle(d.logradouro || "");
           if(bairroInput)   bairroInput.value   = toTitle(d.bairro || "");
           if(cidadeInput)   cidadeInput.value   = d.localidade || "";
-          if(estadoInput)   estadoInput.value   = d.uf || "";
+          if(estadoInput)   estadoInput.value   = d.uf || ""
         }catch(e){
           console.error("Erro ao buscar CEP:", e);
           alert(e.message || "Erro ao buscar CEP.");
@@ -421,7 +455,7 @@
       });
     }
 
-    // Modal Ajuda (WhatsApp)
+    // Modal ajuda
     const modal = document.getElementById("modal-whatsapp");
     const btn   = document.getElementById("whatsapp-flutuante");
     const close = document.getElementById("fechar-whatsapp");
@@ -430,7 +464,7 @@
     window.addEventListener("click", e => e.target===modal && (modal.style.display="none"));
     window.addEventListener("keydown", e => e.key==="Escape" && (modal.style.display="none"));
 
-    // Estado inicial do form 1
+    // estado inicial
     if(cpfInput){
       const startValid = applyCpfValidation();
       toggleExtraFields(startValid);

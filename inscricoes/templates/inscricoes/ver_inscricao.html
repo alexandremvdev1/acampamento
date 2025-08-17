@@ -29,6 +29,15 @@
     .pagamento-opcoes{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
 
     .info-valor{font-size:.9rem;color:#555;margin-bottom:25px;background:#fff;padding:15px 20px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);}
+    /* deixa maior apenas a 1ª linha da caixa de valor */
+.info-valor p:first-child{
+  font-size: 1rem;      /* ajuste como quiser */
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;   /* centraliza o texto */
+  margin: 0 auto;       /* opcional */
+}
+
 
     /* Link que abre o modal */
     .link-modal{
@@ -75,16 +84,25 @@
     }
     .btn-outline:hover{background:#f9fafb}
 
+    /* --------- Linha do tempo --------- */
     .linha-do-tempo{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin-bottom:30px;}
     .linha-do-tempo h2{margin-bottom:18px;font-size:1.3rem;color:#222;text-align:center;}
     .timeline-step{display:flex;align-items:center;margin-bottom:15px;font-size:1rem;color:#666;}
     .timeline-step:last-child{margin-bottom:0;}
+
+    /* bolinha vazada por padrão */
     .timeline-step::before{
-      content:attr(data-step);display:inline-flex;justify-content:center;align-items:center;width:28px;height:28px;margin-right:15px;
-      border-radius:50%;border:2px solid #999;color:#999;font-weight:700;background:transparent;
+      content:'';display:inline-flex;justify-content:center;align-items:center;
+      width:28px;height:28px;margin-right:15px;border-radius:50%;
+      border:2px solid #999;color:#999;font-weight:700;background:transparent;
     }
+
+    /* passo concluído: vira check preenchido */
     .timeline-step.active{color:#2e7d32;font-weight:700;}
-    .timeline-step.active::before{border-color:#2e7d32;background:#2e7d32;color:#fff;}
+    .timeline-step.active::before{
+      content:"✓";
+      border-color:#2e7d32;background:#2e7d32;color:#fff;
+    }
 
     .btn-ajuda{display:block;width:100%;max-width:320px;margin:0 auto 12px;color:#fff;padding:14px;font-size:1.1rem;font-weight:700;border:0;border-radius:8px;text-align:center;text-decoration:none;}
     .btn-organizacao{background:#25D366}
@@ -114,14 +132,31 @@
   <!-- Mensagem inicial -->
   <section class="mensagem" role="main" aria-labelledby="titulo-principal">
     <h1 id="titulo-principal">Parabéns! Sua inscrição foi enviada.</h1>
+
+    <!-- TEXTO AJUSTADO COM TERMOS POR TIPO -->
     <p>
-      <strong>{{ inscricao.participante.nome }}</strong>, você já é quase um
-      {% if evento.tipo == 'senior' %}campista
-      {% elif evento.tipo == 'juvenil' %}juvenilista
-      {% elif evento.tipo == 'mirim' %}mirinista
-      {% elif evento.tipo == 'servos' %}servo
-      {% else %}campista{% endif %}!
+      <strong>{{ inscricao.participante.nome }}</strong>,
+      você já é quase
+      {% if evento.tipo == 'senior' %}
+        <strong>campista sênior</strong>
+      {% elif evento.tipo == 'juvenil' %}
+        <strong>campista juvenil</strong>
+      {% elif evento.tipo == 'mirim' %}
+        <strong>campista mirim</strong>
+      {% elif evento.tipo == 'servos' %}
+        <strong>servo(a)</strong>
+      {% elif evento.tipo == 'casais' %}
+        <strong>encontrista</strong>
+      {% elif evento.tipo == 'retiro' %}
+        <strong>retirante</strong>
+      {% elif evento.tipo == 'evento' %}
+        <strong>participante</strong>
+      {% else %}
+        <strong>participante</strong>
+      {% endif %}
+      !
     </p>
+
     <p>Você já concluiu a primeira parte, aguarde e fique em oração pelo seu chamado!</p>
 
     {% if politica.imagem_1 %}
@@ -162,7 +197,7 @@
     </p>
   </section>
 
-  <!-- Modal: Política de Reembolso (SEM rotação, só scroll vertical e texto justificado) -->
+  <!-- Modal: Política de Reembolso -->
   <div id="modalReembolso" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloModalReembolso">
     <div class="modal-content">
       <button class="modal-close" type="button" aria-label="Fechar">&times;</button>
@@ -230,9 +265,9 @@
     <h2>Linha do Tempo da Inscrição</h2>
     {% for passo in passos|slice:":4" %}
       {% if forloop.counter <= inscricao_status %}
-        <div class="timeline-step active" data-step="{{ forloop.counter }}">{{ forloop.counter }}. {{ passo }}</div>
+        <div class="timeline-step active">{{ passo }}</div>
       {% else %}
-        <div class="timeline-step" data-step="{{ forloop.counter }}">{{ forloop.counter }}. {{ passo }}</div>
+        <div class="timeline-step">{{ passo }}</div>
       {% endif %}
     {% endfor %}
   </section>

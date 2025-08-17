@@ -129,6 +129,7 @@ urlpatterns = [
     path('admin-paroquia/usuarios/novo/', views.admin_paroquia_create_admin, name='admin_paroquia_create_admin'),
     path('admin-paroquia/usuarios/<int:user_id>/excluir/',views.admin_paroquia_delete_admin,name='admin_paroquia_delete_admin'),
 
+    path('ajax/buscar-conjuge/', views.ajax_buscar_conjuge, name='ajax_buscar_conjuge'),
 ]
 
 if settings.DEBUG:

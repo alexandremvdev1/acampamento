@@ -12,6 +12,7 @@ from .models import MercadoPagoConfig
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import User
+from .models import InscricaoCasais, InscricaoEvento, InscricaoRetiro
 
 class MercadoPagoConfigForm(forms.ModelForm):
     class Meta:
@@ -246,6 +247,52 @@ class InscricaoServosForm(BaseInscricaoForm):
             "medicamento_controlado", "qual_medicamento_controlado"
         ]
 
+class InscricaoCasaisForm(BaseInscricaoForm):
+    class Meta(BaseInscricaoForm.Meta):
+        model = InscricaoCasais
+        fields = [
+            "data_nascimento", "batizado", "estado_civil", "casado_na_igreja", "nome_conjuge",
+            "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
+            "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
+            "altura", "peso", "problema_saude", "qual_problema_saude",
+            "medicamento_controlado", "qual_medicamento_controlado",
+            "protocolo_administracao", "mobilidade_reduzida", "qual_mobilidade_reduzida",
+            "alergia_alimento", "qual_alergia_alimento",
+            "alergia_medicamento", "qual_alergia_medicamento",
+            "tipo_sanguineo", "informacoes_extras",
+        ]
+
+
+class InscricaoEventoForm(BaseInscricaoForm):
+    class Meta(BaseInscricaoForm.Meta):
+        model = InscricaoEvento
+        fields = [
+            "data_nascimento", "batizado", "estado_civil", "casado_na_igreja", "nome_conjuge",
+            "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
+            "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
+            "altura", "peso", "problema_saude", "qual_problema_saude",
+            "medicamento_controlado", "qual_medicamento_controlado",
+            "protocolo_administracao", "mobilidade_reduzida", "qual_mobilidade_reduzida",
+            "alergia_alimento", "qual_alergia_alimento",
+            "alergia_medicamento", "qual_alergia_medicamento",
+            "tipo_sanguineo", "informacoes_extras",
+        ]
+
+
+class InscricaoRetiroForm(BaseInscricaoForm):
+    class Meta(BaseInscricaoForm.Meta):
+        model = InscricaoRetiro
+        fields = [
+            "data_nascimento", "batizado", "estado_civil", "casado_na_igreja", "nome_conjuge",
+            "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
+            "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
+            "altura", "peso", "problema_saude", "qual_problema_saude",
+            "medicamento_controlado", "qual_medicamento_controlado",
+            "protocolo_administracao", "mobilidade_reduzida", "qual_mobilidade_reduzida",
+            "alergia_alimento", "qual_alergia_alimento",
+            "alergia_medicamento", "qual_alergia_medicamento",
+            "tipo_sanguineo", "informacoes_extras",
+        ]
 
 class EventoForm(forms.ModelForm):
     class Meta:
@@ -524,6 +571,13 @@ class PastoralMovimentoForm(forms.ModelForm):
         }
 
 class InscricaoForm(forms.ModelForm):
+    # Campo extra para vincular (cônjuge)
+    inscricao_pareada = forms.ModelChoiceField(
+        queryset=Inscricao.objects.none(),
+        required=False,
+        label="Vincular com outra inscrição (cônjuge)"
+    )
+
     class Meta:
         model = Inscricao
         fields = [
@@ -533,6 +587,9 @@ class InscricaoForm(forms.ModelForm):
             'foi_selecionado',
             'pagamento_confirmado',
             'inscricao_concluida',
+            # NOVO:
+            'inscricao_pareada',
+            # contatos/responsáveis
             'responsavel_1_nome',
             'responsavel_1_telefone',
             'responsavel_1_grau_parentesco',
@@ -546,6 +603,64 @@ class InscricaoForm(forms.ModelForm):
             'evento': forms.HiddenInput(),
             'paroquia': forms.HiddenInput(),
         }
+
+    def __init__(self, *args, **kwargs):
+        # você pode passar `evento=...` ao instanciar o form, mas se não vier,
+        # usamos `self.instance.evento`
+        evento = kwargs.pop('evento', None)
+        super().__init__(*args, **kwargs)
+
+        ev = evento or getattr(self.instance, 'evento', None)
+        qs = Inscricao.objects.none()
+        if ev:
+            qs = Inscricao.objects.filter(evento=ev)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+        self.fields['inscricao_pareada'].queryset = qs
+
+        # se já houver pareamento (de qualquer lado), pré-carrega no campo
+        if self.instance and self.instance.pk:
+            par = getattr(self.instance, 'inscricao_pareada', None) or getattr(self.instance, 'pareada_por', None)
+            if par and (not self.initial.get('inscricao_pareada')):
+                self.initial['inscricao_pareada'] = par.pk
+
+    def clean_inscricao_pareada(self):
+        par = self.cleaned_data.get('inscricao_pareada')
+        if not par:
+            return par
+
+        # não pode parear consigo mesmo
+        if self.instance and self.instance.pk and par.pk == self.instance.pk:
+            raise ValidationError("Não é possível parear com a própria inscrição.")
+
+        # deve ser do mesmo evento
+        ev_id = (self.instance.evento_id if self.instance and self.instance.pk else None) or \
+                (self.cleaned_data.get('evento').id if self.cleaned_data.get('evento') else None) or \
+                (self.initial.get('evento').id if self.initial.get('evento') else None)
+        if ev_id and par.evento_id != ev_id:
+            raise ValidationError("A inscrição pareada deve ser do mesmo evento.")
+
+        return par
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        par = self.cleaned_data.get('inscricao_pareada')
+
+        if commit:
+            obj.save()
+
+            # espelha o vínculo nas duas pontas se seu modelo tiver helpers
+            if hasattr(obj, 'set_pareada') and hasattr(obj, 'desparear'):
+                if par:
+                    obj.set_pareada(par)
+                else:
+                    obj.desparear()
+            else:
+                # fallback simples (apenas um lado) – ainda funciona com a prop `par`
+                obj.inscricao_pareada = par
+                obj.save(update_fields=['inscricao_pareada'])
+
+        return obj
 
 from .models import Participante
 
