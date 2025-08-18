@@ -93,38 +93,21 @@
       padding:8px 12px; text-align:center; font-weight:700;
     }
 
-    /* Coluna oculta por toggle */
     .is-hidden{ display:none !important; }
-
-    /* Cabeçalho exclusivo para impressão */
     #printHeader{ display:none; }
 
-    /* ===== Impressão: MOSTRA nome do evento + SOMENTE DADOS da tabela ===== */
     @media print {
       body{ background:#fff; }
-
-      /* esconde tudo */
       body *{ visibility:hidden; }
-
-      /* mostra o cabeçalho de impressão */
       #printHeader, #printHeader *{ visibility:visible; }
       #printHeader{
         display:block; position:absolute; left:0; top:0; width:100%;
         text-align:center; font-weight:700; font-size:14px; padding:8px 0;
       }
-
-      /* mostra só a tabela (e o que está dentro dela) */
       #tRelatorio, #tRelatorio *{ visibility:visible; }
-      /* posiciona a tabela abaixo do cabeçalho */
       #tRelatorio{ position:absolute; left:0; top:36px; width:100%; }
-
-      /* oculta cabeçalho e rodapé da tabela */
       #tRelatorio thead, #tRelatorio tfoot{ display:none !important; }
-
-      /* compacta linhas pra caber mais por página */
       #tRelatorio td{ padding:6px 8px; font-size:12px; }
-
-      /* qualquer coisa marcada como no-print some */
       .no-print{ display:none !important; }
     }
   </style>
@@ -134,7 +117,6 @@
   <h2>Relatório de Inscritos</h2>
   <div class="subtitle">{{ evento.nome }}</div>
 
-  <!-- Cabeçalho que aparece APENAS na impressão -->
   <div id="printHeader">Relatório de Inscritos — {{ evento.nome }}</div>
 
   <!-- Filtros -->
@@ -219,29 +201,15 @@
 
             {% with inscricao=inscricoes_dict|get_item:p.id %}
               {% if inscricao %}
-                {% if inscricao.inscricao_concluida %}
-                  {% if inscricao.inscricaosenior %}
-                    <td class="col-camisa">{{ inscricao.inscricaosenior.tamanho_camisa }}</td>
-                    <td class="col-nasc">{{ inscricao.inscricaosenior.data_nascimento|date:"d/m/Y" }}</td>
-                  {% elif inscricao.inscricaojuvenil %}
-                    <td class="col-camisa">{{ inscricao.inscricaojuvenil.tamanho_camisa }}</td>
-                    <td class="col-nasc">{{ inscricao.inscricaojuvenil.data_nascimento|date:"d/m/Y" }}</td>
-                  {% elif inscricao.inscricaomirim %}
-                    <td class="col-camisa">{{ inscricao.inscricaomirim.tamanho_camisa }}</td>
-                    <td class="col-nasc">{{ inscricao.inscricaomirim.data_nascimento|date:"d/m/Y" }}</td>
-                  {% elif inscricao.inscricaoservos %}
-                    <td class="col-camisa">{{ inscricao.inscricaoservos.tamanho_camisa }}</td>
-                    <td class="col-nasc">{{ inscricao.inscricaoservos.data_nascimento|date:"d/m/Y" }}</td>
-                  {% else %}
-                    <td class="col-camisa">-</td>
-                    <td class="col-nasc">-</td>
-                  {% endif %}
-                  <td class="col-status">Concluída</td>
-                {% else %}
-                  <td class="col-camisa">-</td>
-                  <td class="col-nasc">-</td>
-                  <td class="col-status">Pendente</td>
-                {% endif %}
+                {# Camisa e Nascimento vindos da view (sem underscore) #}
+                <td class="col-camisa">{{ inscricao.camisa|default:"-" }}</td>
+                <td class="col-nasc">
+                  {% if inscricao.nasc %}{{ inscricao.nasc|date:"d/m/Y" }}{% else %}-{% endif %}
+                </td>
+
+                <td class="col-status">
+                  {% if inscricao.inscricao_concluida %}Concluída{% else %}Pendente{% endif %}
+                </td>
                 <td class="col-selecionado">
                   {% if inscricao.foi_selecionado %}Sim{% else %}Não{% endif %}
                 </td>
@@ -271,20 +239,20 @@
 
   <!-- Quantidade de camisas (apenas na tela) -->
   <div class="shirts no-print" aria-label="Quantidade de camisas por tamanho">
-    <div class="chip">PP: {{ quantidades_camisas.pp|default_if_none:0 }}</div>
-    <div class="chip">P:  {{ quantidades_camisas.p|default_if_none:0 }}</div>
-    <div class="chip">M:  {{ quantidades_camisas.m|default_if_none:0 }}</div>
-    <div class="chip">G:  {{ quantidades_camisas.g|default_if_none:0 }}</div>
-    <div class="chip">GG: {{ quantidades_camisas.gg|default_if_none:0 }}</div>
-    <div class="chip">XG: {{ quantidades_camisas.xg|default_if_none:0 }}</div>
-    <div class="chip">XXG:{{ quantidades_camisas.xxg|default_if_none:0 }}</div>
+    <div class="chip">PP:  {{ quantidades_camisas.pp|default_if_none:0 }}</div>
+    <div class="chip">P:   {{ quantidades_camisas.p|default_if_none:0 }}</div>
+    <div class="chip">M:   {{ quantidades_camisas.m|default_if_none:0 }}</div>
+    <div class="chip">G:   {{ quantidades_camisas.g|default_if_none:0 }}</div>
+    <div class="chip">GG:  {{ quantidades_camisas.gg|default_if_none:0 }}</div>
+    <div class="chip">XG:  {{ quantidades_camisas.xg|default_if_none:0 }}</div>
+    <div class="chip">XGG: {{ quantidades_camisas.xgg|default_if_none:0 }}</div>
   </div>
 
   <!-- Ações gerais -->
   <div class="actions no-print" style="margin-top:12px">
     <a class="btn" href="javascript:history.back()"><i class="fa fa-arrow-left"></i> Voltar</a>
     <a class="btn" href="{% url 'inscricoes:relatorios_evento' evento.id %}">
-    <i class="fa fa-arrow-left"></i> Voltar para Relatórios
+      <i class="fa fa-arrow-left"></i> Voltar para Relatórios
     </a>
     <button class="btn btn-green" id="btnImprimir2"><i class="fa fa-print"></i> Imprimir</button>
     <button class="btn" id="btnExcel2"><i class="fa fa-file-excel"></i> Baixar Excel (CSV)</button>
@@ -303,7 +271,7 @@
     'col-idx','col-nome','col-cidade','col-estado','col-telefone',
     'col-email','col-camisa','col-nasc','col-status','col-selecionado'
   ];
-  const defaultCols = ['col-nome','col-cidade'];
+  const defaultCols = ['col-nome','col-cidade','col-camisa','col-nasc','col-status'];
 
   function applyColumns(active){
     const toHide = allCols.filter(c => !active.includes(c));
@@ -367,16 +335,10 @@
       .map((th, idx) => ({ idx, hidden: th.classList.contains('is-hidden'), label: th.textContent.trim() }))
       .filter(x => !x.hidden);
 
-    // monta as linhas
     const rows = [];
-
-    // linha de título
     rows.push(['Relatório de Inscritos — {{ evento.nome|escapejs }}']);
-
-    // cabeçalho
     rows.push(visibleIndices.map(x => x.label));
 
-    // corpo
     const trs = Array.from(table.querySelectorAll('tbody tr'));
     trs.forEach(tr => {
       const tds = Array.from(tr.children);
@@ -384,15 +346,13 @@
       rows.push(line);
     });
 
-    // CSV com BOM para Excel (UTF-8)
     const BOM = "\uFEFF";
     const csv = rows.map(line =>
       line.map(v => {
-        // força aspas se tiver separador, aspas ou quebra de linha
         const needsQuotes = /[",;\n]/.test(v);
         let out = String(v).replace(/"/g,'""');
         return needsQuotes ? `"${out}"` : out;
-      }).join(';')           // usa ; (Excel PT-BR costuma separar por ;)
+      }).join(';')
     ).join('\n');
 
     const blob = new Blob([BOM + csv], {type:'text/csv;charset=utf-8;'});
@@ -420,7 +380,6 @@
 })();
 </script>
 
-<!-- Font Awesome (ícones dos botões) -->
 <link rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
       integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfSLzLQvWQ2zYlH3xZkS2VJKJQGXrCM1/MrZ8Dq03+4T6pG8Y2LRp5kw=="

@@ -143,6 +143,7 @@
     tbody tr:hover{ background: var(--row-hover) }
 
     .td-name{ min-width: 220px }
+    .td-age{ width: 72px; text-align:center; white-space:nowrap }
     .td-actions{ white-space:nowrap; width: 360px }
     .td-pay{ text-align:center; width:60px }
     .td-check{ text-align:center; width:160px }
@@ -246,7 +247,11 @@
             <thead>
               <tr>
                 <th>Nome</th>
-                <th class="td-pay" title="Status do pagamento"><i class="fa-solid fa-dollar-sign" aria-hidden="true"></i><span class="sr-only">Pagamento</span></th>
+                <th class="td-age">Idade</th>
+                <th class="td-pay" title="Status do pagamento">
+                  <i class="fa-solid fa-dollar-sign" aria-hidden="true"></i>
+                  <span class="sr-only">Pagamento</span>
+                </th>
                 <th class="td-check">Selecionado</th>
                 <th class="td-actions"><i class="fa-solid fa-toolbox" aria-hidden="true"></i> Ações</th>
               </tr>
@@ -254,7 +259,17 @@
             <tbody>
               {% for inscricao in participantes %}
               <tr>
-                <td class="td-name">{{ inscricao.participante.nome }}</td>
+                <td class="td-name">
+                  {{ inscricao.participante.nome }}
+                </td>
+
+                <td class="td-age">
+                  {% if inscricao.idade is not None %}
+                    {{ inscricao.idade }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
 
                 <td class="td-pay">
                   {% if inscricao.pagamento_confirmado %}
@@ -300,7 +315,7 @@
               </tr>
               {% empty %}
               <tr>
-                <td colspan="4" style="text-align:center; color:var(--muted); padding:20px;">Nenhum participante inscrito.</td>
+                <td colspan="5" style="text-align:center; color:var(--muted); padding:20px;">Nenhum participante inscrito.</td>
               </tr>
               {% endfor %}
             </tbody>

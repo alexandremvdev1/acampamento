@@ -60,6 +60,7 @@ from .models import (
     InscricaoRetiro,
     Repasse,
     MercadoPagoOwnerConfig,
+    BaseInscricao
 )
 
 from .forms import (
@@ -491,8 +492,72 @@ def evento_participantes(request, evento_id):
     elif not request.user.is_admin_geral():
         return HttpResponseForbidden("Acesso negado.")
 
-    participantes = Inscricao.objects.filter(evento=evento).select_related('participante')
+    # Inclui os relacionamentos dos subtipos para evitar N+1 e permitir pegar a data de nascimento
+    participantes = (
+        Inscricao.objects
+        .filter(evento=evento)
+        .select_related(
+            'participante',
+            'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
+            'inscricaocasais', 'inscricaoevento', 'inscricaoretiro'
+        )
+    )
     total_participantes = participantes.count()  # Contagem dos participantes
+
+    # ===== Cálculo da idade (anota na própria inscrição) =====
+    from datetime import date
+
+    # Data de referência: início do evento ou hoje
+    ref_date = getattr(evento, 'data_inicio', None) or timezone.localdate()
+
+    attr_by_tipo = {
+        'senior':  'inscricaosenior',
+        'juvenil': 'inscricaojuvenil',
+        'mirim':   'inscricaomirim',
+        'servos':  'inscricaoservos',
+        'casais':  'inscricaocasais',
+        'evento':  'inscricaoevento',
+        'retiro':  'inscricaoretiro',
+    }
+
+    def _calc_age(nasc, ref):
+        if not nasc:
+            return None
+        # garante 'date'
+        if hasattr(nasc, 'date'):
+            nasc = nasc.date()
+        if hasattr(ref, 'date'):
+            ref = ref.date()
+        # anos completos
+        return ref.year - nasc.year - ((ref.month, ref.day) < (nasc.month, nasc.day))
+
+    def _get_birth(insc):
+        # tenta primeiro o subtipo do próprio evento
+        tipo = (getattr(insc.evento, 'tipo', '') or '').lower()
+        nomes = []
+        pref = attr_by_tipo.get(tipo)
+        if pref:
+            nomes.append(pref)
+        # fallback por segurança (cobre dados antigos)
+        nomes += [
+            'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
+            'inscricaocasais', 'inscricaoevento', 'inscricaoretiro'
+        ]
+        seen = set()
+        for name in [n for n in nomes if n and n not in seen]:
+            seen.add(name)
+            rel = getattr(insc, name, None)
+            if rel:
+                dn = getattr(rel, 'data_nascimento', None)
+                if dn:
+                    return dn
+        # último fallback: Participante (se existir no seu modelo)
+        return getattr(insc.participante, 'data_nascimento', None)
+
+    # Avalia o queryset e anota a idade
+    for insc in participantes:
+        dn = _get_birth(insc)
+        insc.idade = _calc_age(dn, ref_date)  # <- disponível no template como {{ inscricao.idade }}
 
     if request.method == "POST":
         inscricao_id = request.POST.get('inscricao_id')
@@ -514,6 +579,7 @@ def evento_participantes(request, evento_id):
         'total_participantes': total_participantes,  # Adiciona ao contexto
     }
     return render(request, 'inscricoes/evento_participantes.html', context)
+
 
 
 def inscricao_evento_publico(request, slug):
@@ -655,24 +721,46 @@ def ficha_inscricao(request, pk):
     inscricao = get_object_or_404(Inscricao, pk=pk)
     evento = inscricao.evento
 
-    # Determina qual modelo de inscrição base usar
-    if evento.tipo == 'senior':
-        inscricao_base = get_object_or_404(InscricaoSenior, inscricao=inscricao)
-    elif evento.tipo == 'juvenil':
-        inscricao_base = get_object_or_404(InscricaoJuvenil, inscricao=inscricao)
-    elif evento.tipo == 'mirim':
-        inscricao_base = get_object_or_404(InscricaoMirim, inscricao=inscricao)
-    else:  # 'servos'
-        inscricao_base = get_object_or_404(InscricaoServos, inscricao=inscricao)
+    # Mapeia tipo -> nome do related OneToOne na Inscricao
+    rel_por_tipo = {
+        'senior':  'inscricaosenior',
+        'juvenil': 'inscricaojuvenil',
+        'mirim':   'inscricaomirim',
+        'servos':  'inscricaoservos',
+        'casais':  'inscricaocasais',
+        'evento':  'inscricaoevento',
+        'retiro':  'inscricaoretiro',
+    }
 
-    # Adiciona a data de nascimento ao contexto
-    data_nascimento = inscricao_base.data_nascimento
+    # tenta primeiro a relação "preferida" pelo tipo do evento; depois faz fallback em todas
+    tipo = (getattr(evento, 'tipo', '') or '').lower()
+    nomes = []
+    preferida = rel_por_tipo.get(tipo)
+    if preferida:
+        nomes.append(preferida)
+    nomes += [
+        'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
+        'inscricaocasais', 'inscricaoevento', 'inscricaoretiro'
+    ]
+
+    base = None
+    seen = set()
+    for name in [n for n in nomes if n and n not in seen]:
+        seen.add(name)
+        obj = getattr(inscricao, name, None)
+        if obj:
+            base = obj
+            break
+
+    # Data de nascimento (com fallback no Participante, se existir lá)
+    data_nascimento = getattr(base, 'data_nascimento', None) or getattr(inscricao.participante, 'data_nascimento', None)
 
     return render(request, 'inscricoes/ficha_inscricao.html', {
         'inscricao': inscricao,
-        'inscricao_base': inscricao_base,  # Passa a instância do modelo base
-        'data_nascimento': data_nascimento,  # Passa a data de nascimento
+        'inscricao_base': base,           # pode ser None se ainda não preencheram a ficha
+        'data_nascimento': data_nascimento,
     })
+
 
 @login_required
 def imprimir_cracha(request, pk):
@@ -1307,14 +1395,15 @@ def relatorio_fichas_sorteio(request, evento_id):
 @login_required
 def relatorio_inscritos(request, evento_id):
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
+
     cidade_filtro      = request.GET.get('cidade', '')
     status_filtro      = request.GET.get('status', '')
     selecionado_filtro = request.GET.get('selecionado', '')
 
-    # 1) Buscar as inscrições para o evento
+    # 1) Inscrições do evento
     inscricoes = Inscricao.objects.filter(evento=evento)
 
-    # 2) Aplicar filtros de cidade, status e seleção
+    # 2) Filtros
     if cidade_filtro:
         inscricoes = inscricoes.filter(participante__cidade=cidade_filtro)
     if status_filtro == 'concluida':
@@ -1326,35 +1415,82 @@ def relatorio_inscritos(request, evento_id):
     elif selecionado_filtro == 'nao':
         inscricoes = inscricoes.filter(foi_selecionado=False)
 
-    # 3) Extrair participantes distintos
+    # 3) Participantes e cidades
     participantes = Participante.objects.filter(inscricao__in=inscricoes).distinct()
-
-    # 4) Lista de cidades
     cidades = participantes.values_list('cidade', flat=True).distinct().order_by('cidade')
 
-    # 5) Buscar de fato as inscrições (para carregamento de OneToOne)
-    inscricoes_qs = inscricoes.select_related(
-        'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos'
+    # 4) Carrega todas as possíveis OneToOne para evitar N+1
+    inscricoes_qs = (
+        inscricoes
+        .select_related(
+            'participante',
+            'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
+            'inscricaocasais', 'inscricaoevento', 'inscricaoretiro'
+        )
     )
 
-    # 6) Montar dict para lookup no template
-    inscricoes_dict = { i.participante_id: i for i in inscricoes_qs }
+    # Mapeia o tipo do evento para o nome da relação OneToOne
+    attr_by_tipo = {
+        'senior':  'inscricaosenior',
+        'juvenil': 'inscricaojuvenil',
+        'mirim':   'inscricaomirim',
+        'servos':  'inscricaoservos',
+        'casais':  'inscricaocasais',
+        'evento':  'inscricaoevento',
+        'retiro':  'inscricaoretiro',
+    }
 
-    # 7) Contagem de camisas
-    # chaves devem bater com o template (minúsculas)
-    tamanhos = ['PP','P','M','G','GG','XG','XGG']
+    def get_base_rel(i: Inscricao):
+        """
+        Retorna o objeto BaseInscricao do tipo CORRETO conforme i.evento.tipo.
+        Se não existir, tenta fallback nas outras relações, sem quebrar.
+        """
+        nomes = []
+        tipo = (getattr(i.evento, 'tipo', '') or '').lower()
+        preferida = attr_by_tipo.get(tipo)
+        if preferida:
+            nomes.append(preferida)
+        # fallback: percorre todas (cobre dados antigos/inconsistências)
+        nomes += [
+            'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
+            'inscricaocasais', 'inscricaoevento', 'inscricaoretiro'
+        ]
+        seen = set()
+        for name in [n for n in nomes if n and n not in seen]:
+            seen.add(name)
+            try:
+                return getattr(i, name)
+            except ObjectDoesNotExist:
+                continue
+        return None
+
+    # 5) Prepara dados prontos para o template
+    inscricoes_dict = {}
+    for i in inscricoes_qs:
+        rel = get_base_rel(i)
+        camisa = (getattr(rel, 'tamanho_camisa', '') or '').upper()
+        nasc   = getattr(rel, 'data_nascimento', None)
+
+        # (Opcional) fallback: se você guardar data no Participante
+        if not nasc and hasattr(i.participante, 'data_nascimento'):
+            nasc = i.participante.data_nascimento
+
+        # >>>>>>>  MUDE AQUI: sem underscore  <<<<<<<
+        i.camisa = camisa
+        i.nasc   = nasc
+        inscricoes_dict[i.participante_id] = i
+
+    # 6) Contagem por tamanho — usa as choices do seu modelo (inclui XGG)
+    tamanhos = [t for (t, _) in BaseInscricao.TAMANHO_CAMISA_CHOICES]
     quantidades_camisas = { t.lower(): 0 for t in tamanhos }
 
-    for inscr in inscricoes_qs:
-        # para cada tipo, tenta buscar o objeto relacionado
-        for rel in ('inscricaosenior','inscricaojuvenil','inscricaomirim','inscricaoservos'):
-            obj = getattr(inscr, rel, None)
-            if obj:
-                size = (obj.tamanho_camisa or '').upper()
-                key = size.lower()
-                if key in quantidades_camisas:
-                    quantidades_camisas[key] += 1
-                break  # não precisa verificar as outras relações
+    for i in inscricoes_qs:
+        rel = get_base_rel(i)
+        if rel:
+            size = (getattr(rel, 'tamanho_camisa', '') or '').upper()
+            key = size.lower()
+            if key in quantidades_camisas:
+                quantidades_camisas[key] += 1
 
     return render(request, 'inscricoes/relatorio_inscritos.html', {
         'evento': evento,
@@ -1365,7 +1501,9 @@ def relatorio_inscritos(request, evento_id):
         'status_filtro': status_filtro,
         'selecionado_filtro': selecionado_filtro,
         'quantidades_camisas': quantidades_camisas,
+        'now': timezone.now(),
     })
+
 
 
 # Relatório Financeiro
