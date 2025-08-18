@@ -45,14 +45,16 @@ class Paroquia(models.Model):
         ('inativa', 'Inativa'),
     ]
 
-    nome = models.CharField(max_length=255)
-    cidade = models.CharField(max_length=100)
-    estado = models.CharField(max_length=2)
-    responsavel = models.CharField(max_length=255)
-    email = models.EmailField()
+    nome = models.CharField(max_length=255)  # único obrigatório
+
+    cidade = models.CharField(max_length=100, blank=True)
+    estado = models.CharField(max_length=2, blank=True)
+    responsavel = models.CharField(max_length=255, blank=True)
+    email = models.EmailField(blank=True)
 
     telefone = models.CharField(
         max_length=20,
+        blank=True,  # <- opcional
         help_text="Telefone no formato E.164 BR: +55DDDNÚMERO (ex.: +5563920013103)",
         validators=[
             RegexValidator(
@@ -62,7 +64,12 @@ class Paroquia(models.Model):
         ],
     )
 
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ativa')
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='ativa',
+        blank=True,   # opcional no formulário; o default cobre no banco
+    )
     logo = CloudinaryField(null=True, blank=True, verbose_name="Logo da Paróquia")
 
     def __str__(self):
@@ -84,7 +91,6 @@ class Paroquia(models.Model):
             if norm:
                 self.telefone = norm
         super().save(*args, **kwargs)
-
 
 class PastoralMovimento(models.Model):
     nome = models.CharField(max_length=200)
