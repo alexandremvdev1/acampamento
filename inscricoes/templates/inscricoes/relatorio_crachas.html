@@ -2,269 +2,239 @@
 
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Relatório de Crachás</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+  <meta charset="UTF-8" />
+  <title>Crachás — {{ evento.nome }}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
         integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        /* Estilos CSS (movidos para um arquivo style.css para melhor organização) */
-        @media print {
-            .page-break {
-                page-break-after: always;
-            }
+  <style>
+    @media print{
+      .page-break{ page-break-after: always }
+      body{ margin:0 }
+      .no-print{ display:none }
+      .cracha-container{ padding:8mm }
+      .cracha-wrapper{
+        width: 100%;
+        height: 520px;            /* ↑ mais alto na impressão */
+        border: 1px dashed #000;
+        margin: 2mm 0;
+        position: relative;
+      }
+      .cracha{ position:absolute; inset:0; padding:0; border:0; }
+    }
 
-            body {
-                margin: 0;
-            }
+    :root{
+      --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --panel:#fff;
+      --shadow:0 8px 30px rgba(2,6,23,.08);
+      --brand1:#1e3a8a; /* azul escuro */
+      --brand2:#0ea5e9; /* azul claro */
+    }
 
-            .no-print {
-                display: none;
-            }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:#f7f8fb; color:var(--ink); margin:0
+    }
 
-            .cracha-container {
-                padding: 10mm; /* Garante que o contorno não fique muito na borda da página */
-            }
+    /* Filtro */
+    .filter-form{ margin:20px auto 10px; text-align:center }
+    .filter-form label{ font-weight:600; color:var(--ink) }
+    .filter-form select,.filter-form button{
+      padding:10px 14px; border-radius:10px; border:1px solid var(--line);
+      background:#fff; font-size:15px; margin-left:6px
+    }
+    .filter-form button{
+      background:linear-gradient(135deg, var(--brand2), var(--brand1)); color:#fff; border:0; cursor:pointer
+    }
 
-            .cracha-wrapper {
-                width: 100%;
-                height: 413px;
-                position: relative;
-                box-sizing: border-box;
-                border: 1px dashed #000; /* Contorno para corte */
-                margin: 2mm;
-            }
+    /* Grade de crachás (4 por linha na tela) */
+    .cracha-container{ display:flex; flex-wrap:wrap; gap:10px; padding:10px }
+    .cracha-wrapper{
+      width: calc(25% - 10px);
+      height: 520px;              /* ↑ mais alto na tela */
+      border:1px dashed #cbd5e1;
+      border-radius:12px;
+      background:#fff;
+      position:relative;
+      box-sizing:border-box;
+    }
 
-            .cracha {
-                width: 100%;
-                height: 100%;
-                padding: 5mm;
-                box-sizing: border-box;
-                position: absolute;
-                top: 0;
-                left: 0;
-                background-size: cover;
-                background-position: center;
-                border: none; /* Remove a borda do crachá interno */
-            }
-        }
+    /* Crachá com fundo gradiente azul */
+    .cracha{
+      position:absolute; inset:0; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;
+      background:
+        radial-gradient(120% 80% at 50% -20%, rgba(255,255,255,.15), transparent 50%),
+        linear-gradient(180deg, var(--brand2) 0%, var(--brand1) 100%);
+    }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f6f9;
-            color: #334155;
-        }
+    /* TOPO: banner do evento (com fallback em gradiente azul) */
+    .topo{
+      height: 130px;              /* ↑ topo maior para o banner aparecer */
+      position:relative;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+      background: linear-gradient(135deg, var(--brand2), var(--brand1)); /* fallback se não houver imagem */
+    }
+    .topo img{
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit:cover; z-index:0; filter:brightness(0.95) saturate(1.05);
+    }
+    .topo::after{
+      content:""; position:absolute; inset:0; z-index:1;
+      background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.28));
+    }
 
-        .filter-form {
-            margin: 20px 0;
-            text-align: center;
-        }
+    /* Paróquia (logo abaixo do banner) */
+    .paroquia{
+      padding:10px 10px 0; text-align:center;
+    }
+    .paroquia > span{
+      display:inline-block; padding:6px 12px; border-radius:12px;
+      color:#fff; font-weight:900; letter-spacing:.2px;
+      background: rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.35);
+      text-shadow: 0 1px 1px rgba(0,0,0,.25);
+      backdrop-filter: blur(2px);
+      max-width: 92%;
+    }
 
-        .filter-form label {
-            font-size: 16px;
-            color: #334155;
-            margin-right: 10px;
-            font-weight: 500;
-        }
+    /* Miolo com foto e textos */
+    .miolo{
+      padding: 56px 12px 0;       /* ↑ espaço para a foto “invadir” sem cobrir a paróquia */
+      display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px;
+      flex:1;
+    }
+    .avatar{
+      width:136px; height:136px;  /* ligeiramente maior */
+      border-radius:50%;
+      object-fit:cover;
+      border:3px solid #fff;
+      box-shadow:0 8px 24px rgba(2,6,23,.24);
+      margin-top:-54px;           /* invade o banner, mas não cobre a paróquia */
+      background:#e5e7eb;
+    }
 
-        .filter-form select {
-            padding: 10px 14px;
-            font-size: 15px;
-            margin: 0 5px;
-            border-radius: 6px;
-            border: 1px solid #cbd5e0;
-            color: #4b5563;
-            background-color: #f9fafb;
-        }
+    .nome{
+      margin-top:0;
+      font-size:1.08rem; font-weight:900; line-height:1.2;
+      color:#fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.35);
+      word-break:break-word; max-width:92%;
+    }
 
-        .filter-form button {
-            padding: 10px 16px;
-            font-size: 15px;
-            margin: 0 5px;
-            border-radius: 6px;
-            background-color: #4338ca;
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+    .nasc{
+      font-size:.94rem; font-weight:800; letter-spacing:.2px;
+      color:#0b1220;
+      background: linear-gradient(135deg, rgba(255,255,255,.95), rgba(255,255,255,.85));
+      border:1px solid rgba(255,255,255,.9);
+      padding:6px 12px; border-radius:999px;
+      box-shadow: 0 2px 10px rgba(2,6,23,.18), inset 0 0 0 1px rgba(15,23,42,.05);
+    }
 
-        .filter-form button:hover {
-            background-color: #312e81;
-        }
+    /* Rodapé com QR */
+    .rodape{
+      padding: 14px 12px 16px; display:flex; justify-content:center; align-items:center;
+    }
+    .qr-wrap{
+      background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px;
+      box-shadow: 0 4px 16px rgba(2,6,23,.12), inset 0 0 0 1px #f1f5f9;
+    }
+    .qr{ width:108px; height:108px; display:block; } /* um pouco maior para a nova altura */
 
-        .cracha-container {
-            display: flex;
-            flex-wrap: wrap;
-            width: 100%;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-
-        .cracha-wrapper {
-            width: 25%;
-            height: 413px;
-            box-sizing: border-box;
-            position: relative;
-            margin: 5px;
-            border: 1px dashed #ccc; /* Contorno para visualização na tela */
-        }
-
-        .cracha {
-            width: 100%;
-            height: 100%;
-            box-sizing: border-box;
-            position: absolute;
-            top: 0;
-            left: 0;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-        }
-
-        .cracha-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-
-        .cracha .foto {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 10px;
-            border: 2px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .nome {
-            word-break: break-word;
-            white-space: normal;
-            font-size: 1.1rem;
-            color: #fff;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-            margin: 8px 0;
-            font-weight: 500;
-        }
-
-        .nascimento {
-            font-size: 0.9rem;
-            color: #fff;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-        }
-
-        .print-button {
-            display: inline-block;
-            margin: 20px auto;
-            padding: 12px 24px;
-            font-size: 1rem;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .print-button:hover {
-            background-color: #218838;
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .cracha-wrapper {
-                width: 50%;
-                height: 350px;
-            }
-
-            .filter-form label {
-                font-size: 14px;
-                margin-right: 5px;
-            }
-
-            .filter-form select,
-            .filter-form button {
-                font-size: 14px;
-                padding: 8px 12px;
-            }
-        }
-    </style>
+    /* Responsivo */
+    @media (max-width: 1024px){
+      .cracha-wrapper{ width: calc(33.333% - 10px) }
+    }
+    @media (max-width: 768px){
+      .cracha-wrapper{ width: calc(50% - 10px) }
+    }
+    @media (max-width: 480px){
+      .cracha-wrapper{ width: 100% }
+    }
+  </style>
 </head>
-
 <body>
 
-    <!-- filtro por cidade -->
-    <form method="get" class="filter-form no-print">
-        <label for="cidade"><i class="fas fa-filter"></i> Filtrar por cidade:</label>
-        <select name="cidade" id="cidade">
-            <option value="">Todas as cidades</option>
-            {% for cidade in cidades %}
-            <option value="{{ cidade }}" {% if cidade == cidade_selecionada %}selected{% endif %}>
-                {{ cidade }}
-            </option>
-            {% endfor %}
-        </select>
-        <button type="submit"><i class="fas fa-search"></i> Filtrar</button>
-    </form>
+  <!-- Filtro -->
+  <form method="get" class="filter-form no-print">
+    <label for="cidade"><i class="fas fa-filter"></i> Filtrar por cidade:</label>
+    <select name="cidade" id="cidade">
+      <option value="">Todas as cidades</option>
+      {% for cidade in cidades %}
+        <option value="{{ cidade }}" {% if cidade == cidade_selecionada %}selected{% endif %}>{{ cidade }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit"><i class="fas fa-search"></i> Filtrar</button>
+  </form>
 
-    <!-- container de crachás -->
-    <div class="cracha-container">
-        {% for inscricao in inscricoes %}
-        <div class="cracha-wrapper">
-            <div class="cracha" style="background: url('{{ cracha_template.imagem_fundo.url }}') no-repeat center/cover;">
-                <div class="cracha-inner">
-                    <!-- Foto -->
-                    {% if inscricao.participante.foto %}
-                    <img class="foto" src="{{ inscricao.participante.foto.url }}" alt="Foto">
-                    {% else %}
-                    <img class="foto" src="{% static 'default-user.png' %}" alt="Foto">
-                    {% endif %}
+  <!-- Crachás -->
+  <div class="cracha-container">
+    {% for inscricao in inscricoes %}
+      <div class="cracha-wrapper">
+        <div class="cracha">
+          <!-- TOPO: banner do evento (ou gradiente azul se não houver imagem) -->
+          <div class="topo">
+            {% if evento.banner %}
+              <img src="{{ evento.banner.url }}" alt="Banner do evento {{ evento.nome }}">
+            {% endif %}
+          </div>
 
-                    <!-- Nome -->
-                    <div class="nome">
-                        {{ inscricao.participante.nome }}
-                    </div>
+          <!-- Paróquia -->
+          <div class="paroquia">
+            <span>{{ inscricao.paroquia.nome|default:evento.paroquia.nome }}</span>
+          </div>
 
-                    <!-- Data de nascimento conforme tipo -->
-                    <div class="nascimento">
-                        {% if evento.tipo == 'senior' %}
-                        {{ inscricao.inscricaosenior.data_nascimento|date:"d/m/Y" }}
-                        {% elif evento.tipo == 'juvenil' %}
-                        {{ inscricao.inscricaojuvenil.data_nascimento|date:"d/m/Y" }}
-                        {% elif evento.tipo == 'mirim' %}
-                        {{ inscricao.inscricaomirim.data_nascimento|date:"d/m/Y" }}
-                        {% elif evento.tipo == 'servos' %}
-                        {{ inscricao.inscricaoservos.data_nascimento|date:"d/m/Y" }}
-                        {% endif %}
-                    </div>
-                </div>
+          <!-- Miolo -->
+          <div class="miolo">
+            {% if inscricao.participante.foto %}
+              <img class="avatar" src="{{ inscricao.participante.foto.url }}" alt="Foto de {{ inscricao.participante.nome }}">
+            {% else %}
+              <img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">
+            {% endif %}
+
+            <div class="nome">{{ inscricao.participante.nome }}</div>
+
+            <div class="nasc">
+              {% if evento.tipo == 'senior' and inscricao.inscricaosenior %}
+                {{ inscricao.inscricaosenior.data_nascimento|date:"d/m/Y" }}
+              {% elif evento.tipo == 'juvenil' and inscricao.inscricaojuvenil %}
+                {{ inscricao.inscricaojuvenil.data_nascimento|date:"d/m/Y" }}
+              {% elif evento.tipo == 'mirim' and inscricao.inscricaomirim %}
+                {{ inscricao.inscricaomirim.data_nascimento|date:"d/m/Y" }}
+              {% elif evento.tipo == 'servos' and inscricao.inscricaoservos %}
+                {{ inscricao.inscricaoservos.data_nascimento|date:"d/m/Y" }}
+              {% elif inscricao.participante.data_nascimento %}
+                {{ inscricao.participante.data_nascimento|date:"d/m/Y" }}
+              {% else %}
+                Data de nascimento não informada
+              {% endif %}
             </div>
+          </div>
+
+          <!-- Rodapé: QR Code -->
+          <div class="rodape">
+            <div class="qr-wrap">
+              <img class="qr"
+                   src="{% url 'inscricoes:qr_code_png' inscricao.participante.qr_token %}"
+                   alt="QR do participante {{ inscricao.participante.nome }}">
+            </div>
+          </div>
         </div>
+      </div>
 
-        {% if forloop.counter|divisibleby:4 and not forloop.last %}
+      {% if forloop.counter|divisibleby:4 and not forloop.last %}
         <div class="page-break"></div>
-        {% endif %}
-        {% empty %}
-        <p style="text-align:center;">Nenhuma inscrição concluída encontrada.</p>
-        {% endfor %}
-    </div>
+      {% endif %}
+    {% empty %}
+      <p style="text-align:center; width:100%;">Nenhuma inscrição concluída encontrada.</p>
+    {% endfor %}
+  </div>
 
-    <!-- botão imprimir -->
-    <div class="no-print" style="text-align:center;">
-        <button class="print-button" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
-    </div>
+  <div class="no-print" style="text-align:center;">
+    <button class="print-button" onclick="window.print()">
+      <i class="fas fa-print"></i> Imprimir
+    </button>
+  </div>
 
 </body>
-
 </html>
