@@ -1,355 +1,181 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <title>Painel do Administrador Geral</title>
+  <meta charset="utf-8" />
+  <title>Admin Geral • Painel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
   <style>
-    /* ========= Tokens (mesmo set usado nas telas anteriores) ========= */
     :root{
-      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
-      --g1:#7c3aed; --g2:#2563eb; --g3:#14b8a6;
-      --focus:0 0 0 3px rgba(37,99,235,.25);
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px;
+    }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
 
-      --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b;
-      --pill-back:#4b5563; --pill-accent:#0ea5e9; --pill-danger:#ef4444;
-      --row-hover: rgba(37,99,235,.06);
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    .kpi{
+      background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem;
     }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow:0 10px 40px rgba(0,0,0,.45);
-        --pill-back:#6b7280; --pill-accent:#0284c7; --pill-danger:#dc2626;
-        --row-hover: rgba(59,130,246,.08);
-      }
+    .kpi .small{ color:var(--muted); font-size:.8rem; }
+    .kpi .fs-4{ font-size:1.15rem !important; }
+    .kpi .fw-bold{ font-weight:700 !important; }
+
+    .card-clean{
+      border:none; box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease; border-radius:.9rem; background:#fff;
+      border:1px solid #e5e7eb;
+    }
+    .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+    .text-muted-2{ color:var(--muted); }
+
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
     }
 
-    *{ box-sizing:border-box }
-    html,body{ margin:0; padding:0 }
-    body{
-      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.35;
+    .list-simple .item{
+      display:flex; align-items:center; gap:.6rem; padding:.65rem 0; border-bottom:1px solid #e5e7eb;
     }
-    .container{ max-width:1100px; margin:20px auto 32px; padding:0 16px }
+    .list-simple .item:last-child{ border-bottom:none }
+    .list-ico{
+      width:32px; height:32px; border-radius:.6rem; display:flex; align-items:center; justify-content:center;
+      background:#eef2f7; color:#334155;
+    }
 
-    /* ========= HERO ========= */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(18px,4vw,26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        var(--hero-image, radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25))),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      backdrop-filter: blur(2px);
-      margin-bottom:18px;
-    }
-    .hero-head{
-      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;
-    }
-    .left{ display:flex; align-items:center; gap:12px; min-width:0 }
-    .hero-title{
-      margin:0; font-weight:800; letter-spacing:.3px;
-      font-size: clamp(1.1rem,3vw,1.9rem);
-    }
-    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
-
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
-      color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12);
-      transition: transform .12s ease, background .2s ease, opacity .2s ease;
-    }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
-    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
-    .pill.-back   { background: linear-gradient(135deg, var(--pill-back), #374151) }
-    .pill.-accent { background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
-    .pill.-danger { background: linear-gradient(135deg, #f87171, var(--pill-danger)) }
-
-    /* ========= PAINEL GENÉRICO ========= */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(14px,2vw,18px); margin-bottom:16px;
-    }
-    .panel h2{
-      margin:0 0 12px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
-      display:flex; align-items:center; gap:8px;
-    }
-    .panel h2 i{ opacity:.6 }
-
-    /* ========= Ações principais ========= */
-    .quick{
-      display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:12px;
-    }
-    @media (max-width: 900px){ .quick{ grid-template-columns: repeat(2,1fr); } }
-    @media (max-width: 520px){ .quick{ grid-template-columns: 1fr; } }
-
-    .card{
-      position:relative; overflow:hidden; border-radius:16px; padding:16px;
-      background: radial-gradient(60% 120% at 100% -10%, rgba(124,58,237,.07), transparent 60%), var(--panel);
-      border:1px solid var(--line); box-shadow:var(--shadow);
-      transition: transform .12s ease, filter .2s ease, border-color .2s ease, box-shadow .2s ease;
-    }
-    .card:hover{ transform:translateY(-2px); border-color: rgba(99,102,241,.35); filter:brightness(1.02) }
-    .card .ttl{ font-weight:800; margin:0 0 6px; font-size:1rem }
-    .card .desc{ color:var(--muted); margin:0 0 12px; font-size:.95rem }
-    .card .row{ display:flex; gap:8px; flex-wrap:wrap }
-    .cta{
-      display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; color:#fff; text-decoration:none;
-      border:1px solid rgba(255,255,255,.12); box-shadow:var(--shadow);
-      transition: transform .12s ease, filter .2s ease;
-    }
-    .cta:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-    .-purple{ background: linear-gradient(135deg, #a78bfa, #7c3aed) }
-    .-orange{ background: linear-gradient(135deg, #ffb26b, #f59e0b) ; color:#111827 }
-    .-teal  { background: linear-gradient(135deg, #2ec4b6, #16a085) }
-    .-blue  { background: linear-gradient(135deg, #60a5fa, #2563eb) }
-    .-rose  { background: linear-gradient(135deg, #f87171, #ef4444) }
-    .-green { background: linear-gradient(135deg, #34d399, #22c55e) }
-
-    /* ========= Métricas ========= */
-    .stats{
-      display:grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap:12px;
-    }
-    .stat{
-      border:1px solid var(--line); border-radius:16px; padding:16px; background:var(--panel); box-shadow:var(--shadow);
-      display:flex; flex-direction:column; gap:6px; align-items:flex-start;
-      transition: transform .12s ease, border-color .2s ease;
-    }
-    .stat:hover{ transform:translateY(-2px); border-color: rgba(37,99,235,.35) }
-    .stat .name{ color:var(--muted); font-weight:700; font-size:.92rem }
-    .stat .val{ font-size:1.6rem; font-weight:800 }
-
-    /* ========= Listas ========= */
-    .list .item{
-      display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--line);
-    }
-    .list .item:last-child{ border-bottom:none }
-    .list .icon{ width:28px; height:28px; display:grid; place-items:center; border-radius:8px; color:#fff }
-    .-i-purple{ background: linear-gradient(135deg, #a78bfa, #7c3aed) }
-    .-i-blue{ background: linear-gradient(135deg, #60a5fa, #2563eb) }
-    .-i-green{ background: linear-gradient(135deg, #34d399, #22c55e) }
-
-    /* ========= Links extras ========= */
-    .links{ display:flex; gap:8px; flex-wrap:wrap }
-    .ext{
-      display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; color:#fff; text-decoration:none;
-      border:1px solid rgba(255,255,255,.12); background: linear-gradient(135deg, #94a3b8, #64748b);
-      transition: transform .12s ease, filter .2s ease;
-    }
-    .ext:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-
-    footer{ text-align:center; color:var(--muted); margin:12px 0 0 }
+    .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
+    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
+    footer small{ color:var(--muted); }
   </style>
 </head>
-
 <body>
-  <div class="container">
-    <!-- HERO -->
-    <header class="hero">
-      <div class="hero-head">
-        <div class="left">
-          <div>
-            <h1 class="hero-title">Painel do Administrador Geral</h1>
-            <p class="hero-sub">Gerencie paróquias, usuários, políticas e relatórios do sistema.</p>
-          </div>
-        </div>
 
-        <div style="display:flex; gap:10px; align-items:center;">
-          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema claro/escuro">
-            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-          </button>
-          <form method="POST" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="pill -danger"><i class="fa-solid fa-right-from-bracket"></i><span>Sair</span></button>
-          </form>
-        </div>
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
+      <a class="btn btn-sm btn-light" href="http://localhost:8000/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
+      <form method="POST" action="{% url 'logout' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-danger">Sair</button>
+      </form>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  <!-- HEADER -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Painel do Administrador Geral</h1>
+        <div class="small text-muted-2">Gerencie paróquias, usuários, políticas e relatórios do sistema.</div>
       </div>
-    </header>
-
-    <!-- AÇÕES PRINCIPAIS -->
-    <section class="panel" aria-labelledby="ttl-quick">
-      <h2 id="ttl-quick"><i class="fa-solid fa-bolt"></i> Ações principais</h2>
-      <div class="quick">
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-church"></i> Paróquias</p>
-          <p class="desc">Gerencie as paróquias cadastradas.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="cta -purple"><i class="fa-solid fa-arrow-right"></i> Abrir</a>
-          </div>
-        </div>
-
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-users"></i> Usuários</p>
-          <p class="desc">Controle acessos e perfis de usuários.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:admin_geral_list_usuarios' %}" class="cta -blue"><i class="fa-solid fa-arrow-right"></i> Abrir</a>
-          </div>
-        </div>
-
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-file-lines"></i> Política</p>
-          <p class="desc">Edite a política de privacidade/uso exibida ao público.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:alterar_politica' %}" class="cta -orange"><i class="fa-solid fa-pen"></i> Alterar</a>
-          </div>
-        </div>
-
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-clipboard-list"></i> Logs de ações</p>
-          <p class="desc">Auditoria dos eventos administrativos.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:ver_logs_lista' %}" class="cta -teal"><i class="fa-solid fa-arrow-right"></i> Ver logs</a>
-          </div>
-        </div>
-
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-hand-holding-heart"></i> Pastorais e Movimentos</p>
-          <p class="desc">Mantenha a lista de pastorais e movimentos.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:listar_pastorais_movimentos' %}" class="cta -green"><i class="fa-solid fa-arrow-right"></i> Abrir</a>
-          </div>
-        </div>
-
-        <div class="card">
-          <p class="ttl"><i class="fa-solid fa-chart-column"></i> Financeiro (geral)</p>
-          <p class="desc">Visão consolidada das receitas e pendências.</p>
-          <div class="row">
-            <a href="{% url 'inscricoes:financeiro_geral' %}" class="cta -blue"><i class="fa-solid fa-arrow-right"></i> Abrir</a>
-          </div>
-        </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-primary btn-sm">Paróquias</a>
+        <a href="{% url 'inscricoes:admin_geral_list_usuarios' %}" class="btn btn-secondary btn-sm">Usuários</a>
+        <a href="{% url 'inscricoes:alterar_politica' %}" class="btn btn-outline-dark btn-sm">Política</a>
       </div>
-    </section>
-
-    <!-- MÉTRICAS -->
-    <section class="panel" aria-labelledby="ttl-stats">
-      <h2 id="ttl-stats"><i class="fa-solid fa-chart-pie"></i> Visão geral</h2>
-      <div class="stats">
-        <div class="stat">
-          <span class="name">Paróquias</span>
-          <span class="val">{{ total_paroquias|default:"0" }}</span>
-        </div>
-        <div class="stat">
-          <span class="name">Eventos</span>
-          <span class="val">{{ total_eventos|default:"0" }}</span>
-        </div>
-        <div class="stat">
-          <span class="name">Inscrições</span>
-          <span class="val">{{ total_inscricoes|default:"0" }}</span>
-        </div>
-        <div class="stat">
-          <span class="name">Confirmadas</span>
-          <span class="val">{{ total_inscricoes_confirmadas|default:"0" }}</span>
-        </div>
-        <div class="stat">
-          <span class="name">Usuários</span>
-          <span class="val">{{ total_usuarios|default:"0" }}</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ÚLTIMAS PARÓQUIAS -->
-    <section class="panel list" aria-labelledby="ttl-paroquias">
-      <h2 id="ttl-paroquias"><i class="fa-solid fa-church"></i> Últimas paróquias</h2>
-      {% if ultimas_paroquias %}
-        {% for paroquia in ultimas_paroquias %}
-        <div class="item">
-          <div class="icon -i-purple"><i class="fa-solid fa-location-dot"></i></div>
-          <div><strong>{{ paroquia.nome }}</strong> — {{ paroquia.cidade }}/{{ paroquia.estado }}</div>
-        </div>
-        {% endfor %}
-      {% else %}
-        <p style="color:var(--muted); margin:0;">Nenhuma paróquia cadastrada.</p>
-      {% endif %}
-    </section>
-
-    <!-- PRÓXIMOS EVENTOS -->
-    <section class="panel list" aria-labelledby="ttl-eventos">
-      <h2 id="ttl-eventos"><i class="fa-solid fa-calendar-days"></i> Próximos eventos</h2>
-      {% if proximos_eventos %}
-        {% for evento in proximos_eventos %}
-        <div class="item">
-          <div class="icon -i-blue"><i class="fa-solid fa-calendar-day"></i></div>
-          <div><strong>{{ evento.nome }}</strong> ({{ evento.get_tipo_display }}) — {{ evento.data_inicio }}</div>
-        </div>
-        {% endfor %}
-      {% else %}
-        <p style="color:var(--muted); margin:0;">Sem eventos futuros.</p>
-      {% endif %}
-    </section>
-
-    <!-- INSCRIÇÕES RECENTES -->
-    <section class="panel list" aria-labelledby="ttl-inscricoes">
-      <h2 id="ttl-inscricoes"><i class="fa-solid fa-clipboard-check"></i> Inscrições recentes</h2>
-      {% if inscricoes_recentes %}
-        {% for inscricao in inscricoes_recentes %}
-        <div class="item">
-          <div class="icon -i-green"><i class="fa-solid fa-user-check"></i></div>
-          <div>{{ inscricao.participante.nome }} — {{ inscricao.evento.nome }} em {{ inscricao.data_inscricao }}</div>
-        </div>
-        {% endfor %}
-      {% else %}
-        <p style="color:var(--muted); margin:0;">Sem inscrições recentes.</p>
-      {% endif %}
-    </section>
-
-    <!-- LINKS EXTRAS -->
-    <section class="panel" aria-labelledby="ttl-extras">
-      <h2 id="ttl-extras"><i class="fa-solid fa-link"></i> Links úteis</h2>
-      <div class="links">
-        <a href="http://localhost:8000/admin/" target="_blank" rel="noopener noreferrer" class="ext">
-          <i class="fa-solid fa-gear"></i> Admin Django
-        </a>
-        <a href="https://console.neon.tech/app/org-green-math-42653053/projects" target="_blank" rel="noopener noreferrer" class="ext">
-          <i class="fa-solid fa-database"></i> Neon Console
-        </a>
-        <a href="https://console.cloudinary.com/app/c-1796ace1f92c1472bcb319a576f851/home/dashboard" target="_blank" rel="noopener noreferrer" class="ext">
-          <i class="fa-solid fa-cloud"></i> Cloudinary
-        </a>
-        <a href="https://github.com/alexandremvdev1/acampamento" target="_blank" rel="noopener noreferrer" class="ext">
-          <i class="fa-brands fa-github"></i> GitHub
-        </a>
-      </div>
-    </section>
-
-    <footer>&copy; {{ current_year }} Admin Geral — Todos os direitos reservados</footer>
+    </div>
   </div>
 
-  <script>
-    // Toggle de tema com persistência (mesmo key usado nas outras páginas)
-    (function themeToggle(){
-      const KEY='relatorios-theme';
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
-      }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next);
-        apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
-      });
-    })();
-  </script>
+  <!-- KPIs -->
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="kpi"><div class="small">Paróquias</div><div class="fs-4 fw-bold">{{ total_paroquias|default:"0" }}</div></div></div>
+    <div class="col-6 col-md-3"><div class="kpi"><div class="small">Eventos</div><div class="fs-4 fw-bold">{{ total_eventos|default:"0" }}</div></div></div>
+    <div class="col-6 col-md-3"><div class="kpi"><div class="small">Inscrições</div><div class="fs-4 fw-bold">{{ total_inscricoes|default:"0" }}</div></div></div>
+    <div class="col-6 col-md-3"><div class="kpi"><div class="small">Confirmadas</div><div class="fs-4 fw-bold">{{ total_inscricoes_confirmadas|default:"0" }}</div></div></div>
+  </div>
+
+  <!-- AÇÕES PRINCIPAIS -->
+  <section class="mb-3">
+    <h2 class="sec-title">Ações principais</h2>
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-4"><div class="card-clean p-3 h-100"><div class="d-flex align-items-center justify-content-between"><h3 class="h6 m-0">Paróquias</h3><div class="list-ico"><i class="fa-solid fa-church"></i></div></div><p class="text-muted-2 mb-3">Gerencie as paróquias cadastradas.</p><a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-primary btn-sm">Abrir</a></div></div>
+      <div class="col-12 col-md-6 col-xl-4"><div class="card-clean p-3 h-100"><div class="d-flex align-items-center justify-content-between"><h3 class="h6 m-0">Usuários</h3><div class="list-ico"><i class="fa-solid fa-users"></i></div></div><p class="text-muted-2 mb-3">Controle acessos e perfis de usuários.</p><a href="{% url 'inscricoes:admin_geral_list_usuarios' %}" class="btn btn-secondary btn-sm">Abrir</a></div></div>
+      <div class="col-12 col-md-6 col-xl-4"><div class="card-clean p-3 h-100"><div class="d-flex align-items-center justify-content-between"><h3 class="h6 m-0">Política</h3><div class="list-ico"><i class="fa-solid fa-file-lines"></i></div></div><p class="text-muted-2 mb-3">Edite a política de privacidade/uso.</p><a href="{% url 'inscricoes:alterar_politica' %}" class="btn btn-dark btn-sm">Alterar</a></div></div>
+      <div class="col-12 col-md-6 col-xl-4"><div class="card-clean p-3 h-100"><div class="d-flex align-items-center justify-content-between"><h3 class="h6 m-0">Logs de ações</h3><div class="list-ico"><i class="fa-solid fa-clipboard-list"></i></div></div><p class="text-muted-2 mb-3">Auditoria dos eventos administrativos.</p><a href="{% url 'inscricoes:ver_logs_lista' %}" class="btn btn-info btn-sm">Ver logs</a></div></div>
+      <div class="col-12 col-md-6 col-xl-4"><div class="card-clean p-3 h-100"><div class="d-flex align-items-center justify-content-between"><h3 class="h6 m-0">Pastorais e Movimentos</h3><div class="list-ico"><i class="fa-solid fa-hand-holding-heart"></i></div></div><p class="text-muted-2 mb-3">Mantenha a lista de pastorais e movimentos.</p><a href="{% url 'inscricoes:listar_pastorais_movimentos' %}" class="btn btn-success btn-sm">Abrir</a></div></div>
+      <div class="col-12 col-md-6 col-xl-4"><div class="card-clean p-3 h-100"><div class="d-flex align-items-center justify-content-between"><h3 class="h6 m-0">Financeiro (geral)</h3><div class="list-ico"><i class="fa-solid fa-chart-column"></i></div></div><p class="text-muted-2 mb-3">Visão consolidada das receitas e pendências.</p><a href="{% url 'inscricoes:financeiro_geral' %}" class="btn btn-primary btn-sm">Abrir</a></div></div>
+    </div>
+  </section>
+
+  <!-- Últimas Paróquias -->
+  <section class="mb-3">
+    <h2 class="sec-title">Últimas paróquias</h2>
+    <div class="card-clean p-3">
+      {% if ultimas_paroquias %}
+        <div class="list-simple">
+          {% for paroquia in ultimas_paroquias %}
+          <div class="item"><div class="list-ico"><i class="fa-solid fa-location-dot"></i></div><div><strong>{{ paroquia.nome }}</strong> — {{ paroquia.cidade }}/{{ paroquia.estado }}</div></div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-muted-2">Nenhuma paróquia cadastrada.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Próximos Eventos -->
+  <section class="mb-3">
+    <h2 class="sec-title">Próximos eventos</h2>
+    <div class="card-clean p-3">
+      {% if proximos_eventos %}
+        <div class="list-simple">
+          {% for evento in proximos_eventos %}
+          <div class="item"><div class="list-ico"><i class="fa-solid fa-calendar-day"></i></div><div><strong>{{ evento.nome }}</strong> ({{ evento.get_tipo_display }}) — {{ evento.data_inicio }}</div></div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-muted-2">Sem eventos futuros.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Inscrições Recentes -->
+  <section class="mb-4">
+    <h2 class="sec-title">Inscrições recentes</h2>
+    <div class="card-clean p-3">
+      {% if inscricoes_recentes %}
+        <div class="list-simple">
+          {% for inscricao in inscricoes_recentes %}
+          <div class="item"><div class="list-ico"><i class="fa-solid fa-user-check"></i></div><div>{{ inscricao.participante.nome }} — {{ inscricao.evento.nome }} em {{ inscricao.data_inscricao }}</div></div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-muted-2">Sem inscrições recentes.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Links Úteis -->
+  <section class="mb-3">
+    <h2 class="sec-title">Links úteis</h2>
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-3"><div class="card-clean p-3 h-100 d-flex justify-content-between"><div><div class="small text-muted-2 mb-1">Infra</div><div class="fw-semibold">Admin Django</div></div><a href="http://localhost:8000/admin/" target="_blank" rel="noopener" class="btn btn-outline-dark btn-sm align-self-end">Abrir</a></div></div>
+      <div class="col-12 col-md-6 col-xl-3"><div class="card-clean p-3 h-100 d-flex justify-content-between"><div><div class="small text-muted-2 mb-1">DB</div><div class="fw-semibold">Neon Console</div></div><a href="https://console.neon.tech/app/org-green-math-42653053/projects" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm align-self-end">Abrir</a></div></div>
+      <div class="col-12 col-md-6 col-xl-3"><div class="card-clean p-3 h-100 d-flex justify-content-between"><div><div class="small text-muted-2 mb-1">Mídia</div><div class="fw-semibold">Cloudinary</div></div><a href="https://console.cloudinary.com/app/c-1796ace1f92c1472bcb319a576f851/home/dashboard" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm align-self-end">Abrir</a></div></div>
+      <div class="col-12 col-md-6 col-xl-3"><div class="card-clean p-3 h-100 d-flex justify-content-between"><div><div class="small text-muted-2 mb-1">Código</div><div class="fw-semibold">GitHub</div></div><a href="https://github.com/alexandremvdev1/acampamento" target="_blank" rel="noopener" class="btn btn-outline-dark btn-sm align-self-end">Abrir</a></div></div>
+    </div>
+  </section>
+
+  <footer class="py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
+      <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+    </div>
+  </footer>
+</main>
+
 </body>
 </html>

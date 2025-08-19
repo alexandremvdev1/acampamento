@@ -1,222 +1,200 @@
 {% load custom_filters %}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <title>Incluir Pagamento – {{ inscricao.participante.nome }}</title>
+  <meta charset="utf-8" />
+  <title>Incluir Pagamento — {{ inscricao.participante.nome }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Font Awesome -->
   <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfSLzLQvWQ2zYlH3xZkS2VJKJQGXrCM1/MrZ8Dq03+4T6pG8Y2LRp5kw=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <style>
     :root{
-      --page:#f6f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --accent:#2563eb; --accent-2:#1d4ed8; --ok:#16a34a; --warn:#f59e0b; --danger:#ef4444;
-      --shadow:0 10px 32px rgba(16,24,40,.08); --radius:16px; --chip:#e2e8f0;
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px; --line:#e5e7eb;
     }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0c1116; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --accent:#1d4ed8; --accent-2:#1e40af; --chip:#1f2937; --shadow:0 18px 48px rgba(0,0,0,.55);
-      }
-    }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
 
-    *{box-sizing:border-box}
-    html,body{margin:0}
-    body{
-      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.6; padding:20px;
+    /* NAVBAR */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    /* Topbar fixa com ações */
+    .sticky-topbar{
+      position: sticky; top: 0; z-index: 20;
+      background:#ffffffd6; backdrop-filter: blur(6px);
+      border:1px solid var(--line); border-radius:.9rem;
     }
 
-    .wrap{max-width:860px;margin:0 auto}
-
-    /* HERO */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(16px,3vw,26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow); border:1px solid rgba(255,255,255,.18); margin-bottom:14px;
-      display:grid; gap:10px;
+    /* Card clean padrão do painel */
+    .card-clean{
+      border:1px solid var(--line); border-radius:.9rem; background:#fff;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
     }
-    .hero-row{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
-    .hero-title{margin:0; font-weight:800; font-size: clamp(1.1rem,3vw,1.6rem)}
-    .hero-sub{margin:2px 0 0; opacity:.92}
-    .actions{display:flex; gap:10px; flex-wrap:wrap}
-    .pill{
-      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px;
-      font-weight:800; text-decoration:none; color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12); transition:transform .12s ease, background .2s ease; cursor:pointer;
+    .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700; display:flex; align-items:center; gap:.5rem;
     }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .text-muted-2{ color:var(--muted); }
 
-    /* CARDS / PAINÉIS */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(14px,2vw,18px); margin-bottom:12px;
+    /* Inputs “padrão painel” sem widget tweaks */
+    .card-clean select,
+    .card-clean textarea,
+    .card-clean input[type="text"],
+    .card-clean input[type="email"],
+    .card-clean input[type="number"],
+    .card-clean input[type="tel"],
+    .card-clean input[type="file"]{
+      width:100%; padding:.6rem .75rem; border:1px solid var(--line); border-radius:.6rem;
+      background:#fff; color:var(--ink); font-size:.95rem;
     }
-    .panel h2{margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:800; display:flex; gap:8px; align-items:center}
+    .card-clean textarea{ min-height:150px; resize:vertical; }
+    .form-label{ font-weight:600; color:var(--muted); }
+    .form-text{ color:var(--muted); }
 
-    .summary{
-      display:grid; grid-template-columns:1fr 1fr; gap:12px;
-    }
-    .summary div{
-      background:linear-gradient(0deg, rgba(148,163,184,.08), rgba(148,163,184,.08));
-      border:1px dashed var(--line); border-radius:12px; padding:10px 12px;
-    }
-    .summary b{display:block; color:var(--muted); font-size:.9rem; margin-bottom:4px}
-    .summary span{font-weight:800}
+    .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
 
-    /* MENSAGENS */
-    .messages{margin:12px 0 0; display:grid; gap:8px}
-    .msg{
-      padding:10px 12px; border-radius:12px; font-weight:700; display:flex; gap:10px; align-items:center;
-      border:1px solid transparent;
-    }
-    .msg.success{ background:rgba(22,163,74,.08); color:#16a34a; border-color:rgba(22,163,74,.25) }
-    .msg.error{ background:rgba(239,68,68,.08); color:#ef4444; border-color:rgba(239,68,68,.25) }
-
-    /* FORM */
-    form{margin:0}
-    .form-grid{display:grid; gap:14px; grid-template-columns: repeat(12,1fr)}
-    .col-12{grid-column:span 12}.col-6{grid-column:span 6}
-    @media (max-width: 820px){ .col-6{grid-column:span 12} }
-
-    .field{display:flex; flex-direction:column; gap:6px}
-    label{font-weight:800; color:var(--muted)}
-    input[type="number"], select, input[type="file"]{
-      width:100%; padding:12px; border:1px solid var(--line); border-radius:12px; background:transparent; color:var(--ink); font-size:1rem;
-      outline:none;
-    }
-    input[type="number"]:focus, select:focus, input[type="file"]:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.12) }
-
-    .help{font-size:.9rem; color:var(--muted)}
-    .errorlist{ list-style:none; margin:6px 0 0; padding:0 }
-    .errorlist li{ background:rgba(239,68,68,.08); color:#ef4444; border:1px solid rgba(239,68,68,.25); padding:8px 10px; border-radius:10px; font-size:.9rem }
-
-    /* FILE PREVIEW */
-    .file-preview{ display:grid; grid-auto-flow:column; grid-auto-columns:130px; gap:10px; margin-top:4px; overflow:auto }
+    /* Preview do arquivo */
+    .file-preview{ display:flex; gap:.5rem; overflow:auto }
     .file-preview__item{
-      border:1px solid var(--line); border-radius:10px; background:linear-gradient(180deg, rgba(148,163,184,.08), transparent);
-      display:grid; place-items:center; padding:8px; min-height:96px; font-size:.85rem; color:var(--muted)
+      border:1px solid var(--line); border-radius:.6rem; background:#f8fafc;
+      min-width:130px; min-height:96px; display:flex; align-items:center; justify-content:center; padding:.5rem;
+      color:var(--muted); font-size:.9rem;
     }
-    .file-preview__item img{ width:100%; height:100%; object-fit:cover; border-radius:8px }
-
-    /* PAGAMENTO ATUAL */
-    .kv{ display:grid; grid-template-columns: 1fr 1fr; gap:8px }
-    .kv div{ background:linear-gradient(0deg, rgba(148,163,184,.06), rgba(148,163,184,.06)); border:1px solid var(--line); border-radius:10px; padding:10px 12px }
-    .kv b{ display:block; color:var(--muted); font-size:.9rem; margin-bottom:4px }
-
-    /* AÇÕES */
-    .actions-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:10px }
-    .btn{
-      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
-      padding:12px 16px; border-radius:12px; font-weight:800; color:#fff; text-decoration:none;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .12s ease, filter .2s ease;
-    }
-    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-    .btn-ok{ background: linear-gradient(135deg, #10b981, #0ea5e9) }
-    .btn-ghost{ background:transparent; color:var(--ink); border:1px solid var(--line) }
-
-    /* MODAL */
-    .modal{ position:fixed; inset:0; display:none; place-items:center; padding:16px; background:rgba(0,0,0,.5); z-index:1000 }
-    .modal.open{ display:grid }
-    .modal-card{
-      background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow);
-      padding:16px; width:min(900px, 96vw); max-height:86vh; display:grid; grid-template-rows:auto 1fr; gap:10px;
-    }
-    .modal-head{ display:flex; align-items:center; justify-content:space-between; gap:10px }
-    .modal-title{ margin:0; font-size:1rem; color:var(--muted); font-weight:800 }
-    .modal-close{ border:none; background:transparent; color:var(--muted); font-size:1.4rem; cursor:pointer }
-    .modal-body{ overflow:auto; border:1px solid var(--line); border-radius:12px; padding:8px; background:linear-gradient(180deg, rgba(148,163,184,.06), transparent) }
-    .modal-body iframe, .modal-body img{ width:100%; height:auto; border-radius:10px }
-
-    footer{ text-align:center; margin:16px auto 6px; color:var(--muted); font-size:.95rem }
+    .file-preview__item img{ width:100%; height:100%; object-fit:cover; border-radius:.5rem }
   </style>
 </head>
 <body>
-  <div class="wrap">
 
-    <!-- HERO -->
-    <header class="hero">
-      <div class="hero-row">
-        <div>
-          <h1 class="hero-title">Incluir Pagamento</h1>
-          <p class="hero-sub">{{ inscricao.participante.nome }}</p>
-        </div>
-        <div class="actions">
-          <a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}" class="pill"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
-          <button id="themeToggle" type="button" class="pill" aria-label="Alternar tema"><i class="fa-solid fa-circle-half-stroke"></i> Tema</button>
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold"
+       href="{% url 'inscricoes:admin_paroquia_painel' paroquia_id=inscricao.evento.paroquia_id %}">
+      Painel da Paróquia
+    </a>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">
+        ← Participantes
+      </a>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  <!-- HEADER FIXO (com ações) -->
+  <div class="sticky-topbar p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Incluir Pagamento</h1>
+        <div class="small text-muted-2">
+          {{ inscricao.participante.nome }} • Evento: <strong>{{ inscricao.evento.nome }}</strong>
         </div>
       </div>
-    </header>
+      <div class="d-flex gap-2">
+        <a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}"
+           class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+        </a>
+        <button form="payForm" type="submit" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-floppy-disk me-1"></i> Salvar
+        </button>
+      </div>
+    </div>
+  </div>
 
-    <!-- RESUMO -->
-    <section class="panel">
-      <div class="summary">
-        <div>
-          <b>Evento</b>
-          <span>{{ inscricao.evento.nome }}</span>
-        </div>
-        <div>
-          <b>Valor da Inscrição</b>
-          <span>R$ {{ inscricao.evento.valor_inscricao|floatformat:2 }}</span>
+  <!-- RESUMO + MENSAGENS -->
+  <section class="mb-3">
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <div class="card-clean p-3">
+          <div class="sec-title m-0">Evento</div>
+          <div class="fw-bold">{{ inscricao.evento.nome }}</div>
         </div>
       </div>
+      <div class="col-12 col-md-6">
+        <div class="card-clean p-3">
+          <div class="sec-title m-0">Valor da inscrição</div>
+          <div class="fw-bold">R$ {{ inscricao.evento.valor_inscricao|floatformat:2 }}</div>
+        </div>
+      </div>
+    </div>
 
-      {% if messages %}
-      <div class="messages">
+    {% if messages %}
+      <div class="mt-3">
         {% for message in messages %}
-          <div class="msg {% if 'error' in message.tags %}error{% elif 'success' in message.tags %}success{% endif %}">
-            <i class="fa-solid {% if 'error' in message.tags %}fa-triangle-exclamation{% else %}fa-check-circle{% endif %}"></i>
-            <span>{{ message }}</span>
+          <div class="alert {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% else %}alert-info{% endif %} mb-2" role="alert">
+            {{ message }}
           </div>
         {% endfor %}
       </div>
-      {% endif %}
-    </section>
-
-    {% if pagamento %}
-    <!-- PAGAMENTO ATUAL -->
-    <section class="panel">
-      <h2><i class="fa-solid fa-receipt"></i> Pagamento Atual</h2>
-      <div class="kv" style="margin-top:6px">
-        <div><b>Valor</b><span>R$ {{ pagamento.valor|floatformat:2 }}</span></div>
-        <div><b>Método</b><span>{{ pagamento.get_metodo_display }}</span></div>
-        <div><b>Status</b><span>{{ pagamento.get_status_display }}</span></div>
-        <div><b>Data</b><span>{{ pagamento.data_pagamento|date:"d/m/Y H:i" }}</span></div>
-      </div>
-      {% if pagamento.comprovante %}
-        <div class="actions-row" style="margin-top:10px">
-          <button type="button" id="btnAbrirModal" class="btn btn-ghost"><i class="fa-solid fa-image"></i> Visualizar Comprovante</button>
-        </div>
-      {% endif %}
-    </section>
     {% endif %}
+  </section>
 
-    <!-- FORM -->
-    <form method="post" enctype="multipart/form-data" class="panel" novalidate>
+  {% if pagamento %}
+  <!-- PAGAMENTO ATUAL -->
+  <section class="mb-3">
+    <div class="card-clean p-3 p-md-4">
+      <h2 class="sec-title"><i class="fa-solid fa-receipt me-1"></i> Pagamento atual</h2>
+      <div class="row g-3">
+        <div class="col-12 col-sm-6 col-lg-3">
+          <div class="small text-muted-2">Valor</div>
+          <div class="fw-bold">R$ {{ pagamento.valor|floatformat:2 }}</div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+          <div class="small text-muted-2">Método</div>
+          <div class="fw-bold">{{ pagamento.get_metodo_display }}</div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+          <div class="small text-muted-2">Status</div>
+          <div class="fw-bold">{{ pagamento.get_status_display }}</div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+          <div class="small text-muted-2">Data</div>
+          <div class="fw-bold">{{ pagamento.data_pagamento|date:"d/m/Y H:i" }}</div>
+        </div>
+      </div>
+
+      {% if pagamento.comprovante %}
+        <div class="mt-3">
+          <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalComprovante">
+            <i class="fa-solid fa-image me-1"></i> Visualizar comprovante
+          </button>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- FORM: NOVO PAGAMENTO -->
+  <section class="mb-4">
+    <form method="post" enctype="multipart/form-data" class="card-clean p-3 p-md-4" id="payForm" novalidate>
       {% csrf_token %}
-      <h2><i class="fa-solid fa-circle-plus"></i> Novo Pagamento</h2>
+      <h2 class="sec-title"><i class="fa-solid fa-circle-plus me-1"></i> Novo pagamento</h2>
 
-      <div class="form-grid" style="margin-top:8px">
-        <div class="field col-6">
-          <label for="valor">Valor (R$)</label>
-          <input type="number" name="valor" id="valor" step="0.01" min="0" required value="{{ valor_default|floatformat:2 }}" autocomplete="off" />
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label for="valor" class="form-label">Valor (R$)</label>
+          <input type="number" name="valor" id="valor" step="0.01" min="0" required
+                 value="{{ valor_default|floatformat:2 }}" autocomplete="off">
         </div>
 
-        <div class="field col-6">
-          <label for="metodo">Método de Pagamento</label>
+        <div class="col-12 col-md-6">
+          <label for="metodo" class="form-label">Método de Pagamento</label>
           <select name="metodo" id="metodo" required autocomplete="off">
             <option value="" disabled {% if not metodo_selecionado %}selected{% endif %}>Selecione</option>
             {% for codigo, nome in metodo_choices %}
@@ -225,96 +203,92 @@
           </select>
         </div>
 
-        <div class="field col-12">
-          <label for="comprovante">Comprovante (imagem ou PDF)</label>
-          <input type="file" name="comprovante" id="comprovante" accept="image/*,application/pdf" />
-          <div class="file-preview" id="preview-comprovante" aria-live="polite"></div>
-          <div class="help">Arquivos aceitos: JPG, PNG ou PDF.</div>
+        <div class="col-12">
+          <label for="comprovante" class="form-label">Comprovante (imagem ou PDF)</label>
+          <input type="file" name="comprovante" id="comprovante" accept="image/*,application/pdf">
+          <div class="file-preview mt-2" id="preview-comprovante" aria-live="polite"></div>
+          <div class="form-text">Arquivos aceitos: JPG, PNG ou PDF.</div>
         </div>
       </div>
 
-      <div class="actions-row">
-        <a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}" class="btn btn-ghost"><i class="fa-solid fa-xmark"></i> Cancelar</a>
-        <button type="submit" class="btn btn-ok"><i class="fa-solid fa-floppy-disk"></i> Salvar Pagamento</button>
+      <div class="d-flex gap-2 justify-content-end mt-3">
+        <a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}" class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-xmark me-1"></i> Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-floppy-disk me-1"></i> Salvar pagamento
+        </button>
       </div>
     </form>
+  </section>
 
-    <!-- MODAL -->
-    <div id="modalComprovante" class="modal" aria-hidden="true" role="dialog" aria-labelledby="modalTitulo">
-      <div class="modal-card">
-        <div class="modal-head">
-          <h3 id="modalTitulo" class="modal-title"><i class="fa-solid fa-file-invoice-dollar"></i> Comprovante de Pagamento</h3>
-          <button class="modal-close" id="fecharModal" aria-label="Fechar">&times;</button>
-        </div>
-        <div class="modal-body">
-          {% if pagamento.comprovante %}
-            {% if pagamento.comprovante.url|tem_pdf %}
-              <iframe src="{{ pagamento.comprovante.url }}" width="100%" height="520" frameborder="0"></iframe>
-            {% else %}
-              <img src="{{ pagamento.comprovante.url }}" alt="Comprovante de pagamento" />
-            {% endif %}
+  <footer class="pb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <small>© {{ current_year }} — Todos os direitos reservados</small>
+      <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+    </div>
+  </footer>
+</main>
+
+<!-- MODAL COMPROVANTE -->
+<div class="modal fade" id="modalComprovante" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa-solid fa-file-invoice-dollar me-2"></i>Comprovante de Pagamento
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        {% if pagamento.comprovante %}
+          {% if pagamento.comprovante.url|tem_pdf %}
+            <iframe src="{{ pagamento.comprovante.url }}" width="100%" height="520" frameborder="0"></iframe>
           {% else %}
-            <p class="help">Nenhum comprovante disponível.</p>
+            <img src="{{ pagamento.comprovante.url }}" alt="Comprovante de pagamento" class="img-fluid rounded">
           {% endif %}
-        </div>
+        {% else %}
+          <p class="text-muted">Nenhum comprovante disponível.</p>
+        {% endif %}
       </div>
     </div>
-
-    <footer>&copy; {{ current_year }} – Todos os direitos reservados</footer>
   </div>
+</div>
 
-  <script>
-    // Tema com persistência
-    (function themeToggle(){
-      const KEY='ui-theme', btn=document.getElementById('themeToggle'), root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Pré-visualização do arquivo selecionado -->
+<script>
+  (function () {
+    const input = document.getElementById('comprovante');
+    const box = document.getElementById('preview-comprovante');
+    if (!input || !box) return;
+
+    function isImg(type){ return /^image\//.test(type); }
+
+    input.addEventListener('change', () => {
+      box.innerHTML = '';
+      const files = Array.from(input.files || []);
+      if (!files.length){
+        box.innerHTML = '<div class="file-preview__item">Nenhum arquivo</div>';
+        return;
       }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next); apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
+      files.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'file-preview__item';
+        if (isImg(f.type)) {
+          const img = document.createElement('img'); img.alt = f.name; item.appendChild(img);
+          const reader = new FileReader();
+          reader.onload = e => img.src = e.target.result;
+          reader.readAsDataURL(f);
+        } else {
+          item.innerHTML = '<i class="fa-solid fa-file-pdf me-2"></i>' + f.name;
+        }
+        box.appendChild(item);
       });
-    })();
-
-    // Modal comprovante
-    (function modal(){
-      const openBtn=document.getElementById('btnAbrirModal');
-      const modal=document.getElementById('modalComprovante');
-      const closeBtn=document.getElementById('fecharModal');
-      openBtn?.addEventListener('click', ()=>{ modal.classList.add('open'); modal.setAttribute('aria-hidden','false'); });
-      function close(){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
-      closeBtn?.addEventListener('click', close);
-      window.addEventListener('click', e=>{ if(e.target===modal) close(); });
-      window.addEventListener('keydown', e=>{ if(e.key==='Escape' && modal.classList.contains('open')) close(); });
-    })();
-
-    // Pré-visualização do arquivo selecionado
-    (function filePreview(){
-      const input = document.getElementById('comprovante');
-      const box = document.getElementById('preview-comprovante');
-      if(!input || !box) return;
-      function isImg(type){ return /^image\//.test(type) }
-      input.addEventListener('change', ()=>{
-        box.innerHTML='';
-        const files = Array.from(input.files||[]);
-        if(!files.length){ box.innerHTML='<div class="file-preview__item">Nenhum arquivo</div>'; return; }
-        files.forEach(f=>{
-          const item=document.createElement('div'); item.className='file-preview__item';
-          if(isImg(f.type)){
-            const img=document.createElement('img'); img.alt=f.name; item.appendChild(img);
-            const reader=new FileReader(); reader.onload=e=> img.src=e.target.result; reader.readAsDataURL(f);
-          }else{
-            item.innerHTML = '<i class="fa-solid fa-file-pdf"></i>&nbsp; '+ f.name;
-          }
-          box.appendChild(item);
-        });
-      });
-    })();
-  </script>
+    });
+  })();
+</script>
 </body>
 </html>

@@ -1,150 +1,86 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
   <title>Login • Sistema</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Fontes / Ícones -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Font Awesome -->
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfAmGNh9H2PS9e0m9QF0S/3VQG8H1m2HNp6f5p2l+Z8Y3GfP2vLQdESA=="
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfSLzLQvWQ2zYlH3xZkS2VJKJQGXrCM1/MrZ8Dq03+4T6pG8Y2LRp5kw=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <style>
+    /* ===== Tema igual ao “Participantes do Evento” ===== */
     :root{
-      --bg:#f4f7f9;
-      --card:#ffffff;
-      --text:#0f172a;
-      --muted:#6b7280;
-      --line:#e5e7eb;
-      --primary:#3498db;
-      --primary-600:#207ac2;
-      --danger:#e11d48;
-
-      --ok-bg:#d1e7dd; --ok-border:#badbcc; --ok-text:#0f5132;
-      --err-bg:#fde2e7; --err-border:#f5c2c7; --err-text:#842029;
-
-      /* será preenchido inline quando houver imagem_2 */
-      --bg-img:none;
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;             /* navbar gradiente */
+      --line:#e5e7eb; --panel:#fff;
+      --base-font:14px;
+      --bg-img:none;                           /* preenchido inline se tiver imagem_2 */
     }
-    *{ box-sizing:border-box }
-    html,body{ margin:0 }
-    body{
-      min-height:100vh; display:flex; flex-direction:column; gap:16px;
-      align-items:center; justify-content:center; padding:24px;
-      background:var(--bg);
-      font-family:'Roboto',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-      color:var(--text);
-      position:relative;
-      overflow:hidden;
-    }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); margin:0; }
 
-    /* Background desfocado + overlay */
+    /* Navbar */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    /* Fundo desfocado opcional (se houver imagem de política) */
     .bg-blur{
-      position:fixed; inset:-4%;           /* extrapola para evitar “bordas” do blur */
-      z-index:-2;
+      position:fixed; inset:-4%;
       background: var(--bg-img) center/cover no-repeat;
       filter: blur(14px) saturate(1.05);
       transform: scale(1.04);
-      will-change: transform, filter;
+      z-index:-2;
     }
     .bg-overlay{
-      position:fixed; inset:0;
-      z-index:-1;
-      /* scrim para legibilidade */
+      position:fixed; inset:0; z-index:-1;
       background:
         radial-gradient(1000px 600px at 10% -10%, rgba(124,58,237,.20), transparent 60%),
         radial-gradient(900px 500px at 90% -20%, rgba(37,99,235,.20), transparent 60%),
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.25));
+        linear-gradient(180deg, rgba(3,7,18,.35), rgba(3,7,18,.20));
       pointer-events:none;
     }
 
-    .card{
-      width:100%; max-width:420px;
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:14px;
-      box-shadow:0 10px 28px rgba(0,0,0,.10);
-      padding:22px;
-      transition:transform .2s ease;
-      backdrop-filter: saturate(1.1);
+    /* Cartões / layout */
+    .card-clean{
+      border:1px solid var(--line); border-radius:.9rem; background:#fff;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
     }
-    .card:hover{ transform:translateY(-1px) }
-
-    .logo{
-      max-width:120px; height:auto; display:block; margin:0 auto 8px;
-      border-radius:10px;
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+    .text-muted-2{ color:var(--muted); }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
     }
 
-    h1{
-      margin:6px 0 14px; text-align:center; font-size:22px; font-weight:700; color:#1f2937;
+    /* Campo com ícone (não depende de add_class no Django) */
+    .input-field{
+      display:flex; align-items:center; gap:.5rem;
+      border:1px solid var(--line); border-radius:.6rem; background:#fff;
+      padding:.55rem .75rem;
+      transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
     }
-
-    /* Mensagens */
-    .messages{ list-style:none; margin:0 0 12px; padding:0 }
-    .msg{ border-radius:10px; padding:12px 14px; border:1px solid transparent; font-weight:500; margin-bottom:10px }
-    .error{ background:var(--err-bg); border-color:var(--err-border); color:var(--err-text) }
-    .success{ background:var(--ok-bg); border-color:var(--ok-border); color:var(--ok-text) }
-
-    label{ display:block; font-weight:500; color:#374151; margin:10px 0 6px }
-
-    .field{
-      position:relative;
-      background:#f9fafb;
-      border:1px solid var(--line);
-      border-radius:10px;
-      padding:8px 12px;
-      display:flex; align-items:center; gap:8px;
-      transition:border-color .2s, box-shadow .2s, background .2s;
+    .input-field:focus-within{ border-color:#cdd6e3; box-shadow:0 0 0 .2rem var(--ring); background:#fff; }
+    .input-field i{ color:#7b8694; }
+    .input-field input{
+      flex:1; min-width:0; border:0; outline:0; background:transparent; font-size:1rem; color:var(--ink);
     }
-    .field:focus-within{ border-color:var(--primary); box-shadow:0 0 0 3px rgba(52,152,219,.15); background:#fff }
-    .field i{ color:#7b8694 }
-
-    .field input{
-      flex:1; min-width:0; border:0; outline:0;
-      background:transparent; font-size:15px; color:var(--text);
-      padding:6px 0;
-    }
-
-    .eye{
-      border:none; background:transparent; cursor:pointer;
-      font-size:18px; color:#7b8694; padding:4px 6px; border-radius:8px;
-    }
+    .eye{ border:0; background:transparent; cursor:pointer; font-size:1rem; color:#7b8694; padding:.2rem .4rem; border-radius:.4rem; }
     .eye:hover{ background:#eef2f7 }
 
-    .errorlist{ margin:6px 0 0 0; padding-left:18px; color:var(--err-text); font-size:13px }
+    /* Mensagens */
+    .alert{ border-radius:.6rem; }
 
-    .btn{
-      width:100%;
-      appearance:none; border:0; border-radius:10px;
-      padding:12px 16px; font-weight:700; font-size:16px;
-      background:var(--primary); color:#fff; cursor:pointer;
-      box-shadow:0 6px 16px rgba(52,152,219,.25);
-      transition:filter .2s, transform .03s ease-in;
-      margin-top:8px;
-    }
-    .btn:hover{ filter:brightness(.97) }
-    .btn:active{ transform:translateY(1px) }
-    .btn[disabled]{ opacity:.7; cursor:not-allowed }
-
-    .support{
-      display:flex; justify-content:center; gap:10px; flex-wrap:wrap;
-      width:100%; max-width:420px;
-    }
-    .support a{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 14px; border-radius:10px; color:#fff; text-decoration:none; font-weight:600;
-      box-shadow:0 6px 16px rgba(0,0,0,.08); transition:filter .2s;
-    }
-    .wa{ background:#25d366 }
-    .wa:hover{ filter:brightness(.95) }
-    .mail{ background:#2563eb }
-    .mail:hover{ filter:brightness(.95) }
-
-    footer{
-      text-align:center; color:#6b7280; font-size:12px; margin-top:6px;
-      text-shadow:0 1px 2px rgba(0,0,0,.25);
-    }
+    /* Impressão */
+    @media print{ .no-print{ display:none !important } }
   </style>
 </head>
 <body
@@ -153,108 +89,123 @@
   {% endif %}
 >
 
-  {# fundo desfocado só aparece se houver imagem_2 #}
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark no-print">
+  <div class="container-fluid">
+    <span class="navbar-brand fw-bold"><i class="fa-solid fa-lock me-2"></i>Sistema</span>
+    {% if politica and politica.logo %}
+      <img src="{{ politica.logo.url }}" alt="Logo" class="rounded" style="height:28px">
+    {% endif %}
+  </div>
+</nav>
+
+<main class="container py-4 d-flex flex-column align-items-center justify-content-center" style="min-height: calc(100vh - 56px);">
   {% if politica and politica.imagem_2 %}
     <div class="bg-blur" aria-hidden="true"></div>
     <div class="bg-overlay" aria-hidden="true"></div>
   {% endif %}
 
-  <div class="card" {% if form.errors %}aria-live="polite"{% endif %}>
-    {% if politica and politica.logo %}
-      <img src="{{ politica.logo.url }}" alt="Logo" class="logo">
-    {% endif %}
-
-    <h1>Login</h1>
+  <section class="card-clean p-3 p-md-4" style="width:100%; max-width:420px;" {% if form.errors %}aria-live="polite"{% endif %}>
+    <div class="text-center mb-2">
+      <h1 class="h6 m-0">Login</h1>
+      <div class="small text-muted-2">Acesse com seu usuário e senha</div>
+    </div>
 
     {% if form.errors %}
-      <div class="msg error"><i class="fa-solid fa-circle-exclamation"></i> Usuário ou senha inválidos.</div>
+      <div class="alert alert-danger d-flex align-items-center py-2" role="alert">
+        <i class="fa-solid fa-circle-exclamation me-2"></i>
+        Usuário ou senha inválidos.
+      </div>
     {% endif %}
 
     {% if messages %}
-      <ul class="messages">
-        {% for message in messages %}
-          <li class="msg {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</li>
-        {% endfor %}
-      </ul>
+      {% for message in messages %}
+        <div class="alert {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% else %}alert-info{% endif %} py-2" role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
     {% endif %}
 
     <form method="post" class="login-form" novalidate>
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next }}"/>
 
-      <label for="{{ form.username.id_for_label }}">Usuário</label>
-      <div class="field">
+      <label for="{{ form.username.id_for_label }}" class="form-label small text-muted">Usuário</label>
+      <div class="input-field">
         <i class="fa-regular fa-user"></i>
         {{ form.username }}
       </div>
       {% if form.username.errors %}
-        <ul class="errorlist">
-          {% for error in form.username.errors %}<li>{{ error }}</li>{% endfor %}
-        </ul>
+        <div class="text-danger small mt-1">
+          {% for error in form.username.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+        </div>
       {% endif %}
 
-      <label for="{{ form.password.id_for_label }}">Senha</label>
-      <div class="field">
+      <label for="{{ form.password.id_for_label }}" class="form-label small text-muted mt-2">Senha</label>
+      <div class="input-field">
         <i class="fa-solid fa-key"></i>
         {{ form.password }}
         <button type="button" class="eye" data-eye="id_password" aria-label="Mostrar/ocultar senha">👁️</button>
       </div>
       {% if form.password.errors %}
-        <ul class="errorlist">
-          {% for error in form.password.errors %}<li>{{ error }}</li>{% endfor %}
-        </ul>
+        <div class="text-danger small mt-1">
+          {% for error in form.password.errors %}{{ error }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+        </div>
       {% endif %}
 
-      <button type="submit" class="btn" id="btnSubmit">Entrar</button>
+      <button type="submit" class="btn btn-primary w-100 mt-3" id="btnSubmit">
+        <i class="fa-solid fa-right-to-bracket me-1"></i> Entrar
+      </button>
     </form>
+  </section>
+
+  <div class="d-flex gap-2 mt-3 flex-wrap justify-content-center no-print" aria-label="Canais de suporte" style="max-width:420px;">
+    <a href="https://wa.me/5563920013103" class="btn btn-success btn-sm" target="_blank" rel="noopener">
+      <i class="fa-brands fa-whatsapp me-1"></i> Suporte WhatsApp
+    </a>
+    <a href="mailto:alexandremv.dev@gmail.com" class="btn btn-info btn-sm text-white">
+      <i class="fa-solid fa-envelope me-1"></i> Suporte E-mail
+    </a>
   </div>
 
-  <div class="support" aria-label="Canais de suporte">
-    <a href="https://wa.me/5563920013103" class="wa" target="_blank" rel="noopener">
-      <i class="fa-brands fa-whatsapp"></i> Suporte WhatsApp
-    </a>
-    <a href="mailto:alexandremv.dev@gmail.com" class="mail">
-      <i class="fa-solid fa-envelope"></i> Suporte E-mail
-    </a>
-  </div>
+  <p class="text-center text-muted small my-3">&copy; {{ now|date:"Y" }}Sistema Desenvolvido por Alexandre Martins Vieira</p>
+</main>
 
-  <footer>
-    Sistema eismeaqui.app — desenvolvido por Alexandre Martins Vieira
-  </footer>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script>
-    // Acessibilidade / UX: sugere autocomplete apropriado
-    const u = document.getElementById('{{ form.username.id_for_label }}'.replace('id_', 'id_')) || document.getElementById('id_username');
-    const p = document.getElementById('{{ form.password.id_for_label }}'.replace('id_', 'id_')) || document.getElementById('id_password');
+<script>
+  // Acessibilidade / UX
+  const u = document.getElementById('{{ form.username.id_for_label }}'.replace('id_', 'id_')) || document.getElementById('id_username');
+  const p = document.getElementById('{{ form.password.id_for_label }}'.replace('id_', 'id_')) || document.getElementById('id_password');
+  if(u){ u.setAttribute('autocomplete','username'); u.setAttribute('autocapitalize','none'); u.setAttribute('spellcheck','false'); }
+  if(p){ p.setAttribute('autocomplete','current-password'); }
 
-    if(u){ u.setAttribute('autocomplete','username'); u.setAttribute('autocapitalize','none'); u.setAttribute('spellcheck','false'); }
-    if(p){ p.setAttribute('autocomplete','current-password'); }
-
-    // Mostrar/ocultar senha
-    document.querySelectorAll('[data-eye]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const id = btn.getAttribute('data-eye');
-        const input = document.getElementById(id) || document.querySelector('input[name="password"]');
-        if(!input) return;
-        const isPwd = input.type === 'password';
-        input.type = isPwd ? 'text' : 'password';
-        btn.textContent = isPwd ? '🙈' : '👁️';
-        input.focus({preventScroll:true});
-      });
+  // Mostrar/ocultar senha
+  document.querySelectorAll('[data-eye]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-eye');
+      const input = document.getElementById(id) || document.querySelector('input[name="password"]');
+      if(!input) return;
+      const isPwd = input.type === 'password';
+      input.type = isPwd ? 'text' : 'password';
+      btn.textContent = isPwd ? '🙈' : '👁️';
+      input.focus({preventScroll:true});
     });
+  });
 
-    // Evitar duplo envio
-    (function(){
-      const form = document.querySelector('.login-form');
-      if(!form) return;
-      form.addEventListener('submit', ()=>{
-        const btn = document.getElementById('btnSubmit');
-        if(btn){ btn.textContent = 'Entrando…'; btn.setAttribute('disabled','disabled'); }
-      });
-    })();
+  // Evita duplo envio
+  (function(){
+    const form = document.querySelector('.login-form');
+    if(!form) return;
+    form.addEventListener('submit', ()=>{
+      const btn = document.getElementById('btnSubmit');
+      if(btn){ btn.textContent = 'Entrando…'; btn.setAttribute('disabled','disabled'); }
+    });
+  })();
 
-    // Auto foco amigável
-    if(u && !u.value){ u.focus(); } else if(p && !p.value){ p.focus(); }
-  </script>
+  // Foco inicial
+  if(u && !u.value){ u.focus(); } else if(p && !p.value){ p.focus(); }
+</script>
 </body>
 </html>

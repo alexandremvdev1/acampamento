@@ -1,188 +1,263 @@
 {% load cloudinary %}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Ficha Farmácia – {{ evento.nome }}</title>
+  <title>Ficha Farmácia — {{ evento.nome }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfSLzLQvWQ2zYlH3xZkS2VJKJQGXrCM1/MrZ8Dq03+4T6pG8Y2LRp5kw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <style>
-    body { margin:0; padding:0; font-family:Arial, sans-serif; }
-    /* Container do botão */
-    .print-container {
-      text-align: center;
-      margin: 20px 0;
+    /* ===== Tema igual ao “Participantes do Evento” ===== */
+    :root{
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a; /* navbar gradiente */
+      --line:#e5e7eb; --panel:#fff;
+      --base-font:14px;
     }
-    .print-container button {
-      padding: 8px 16px;
-      background: #007bff;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+
+    /* Navbar */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    /* Cartões e títulos (mesmos do “Participantes”) */
+    .card-clean{
+      border:1px solid var(--line); border-radius:.9rem; background:#fff;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
     }
-    @media print {
-      .print-container,
-      .filter-form { display: none; }
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
+    }
+    .text-muted-2{ color:var(--muted); }
+
+    /* ===== Impressão ===== */
+    @page{ size: A4 portrait; margin: 10mm; }
+    @media print{
+      .no-print{ display:none !important; }
+      body{ background:#fff; }
+      .card-clean,.page{ box-shadow:none !important; border-color:#ddd; }
     }
 
-    .filter-form { margin: 0 20px 20px; }
-    .filter-form select { padding:6px; font-size:1rem; }
+    /* ===== Página e grid (2 fichas por página) ===== */
+    .page{
+      width:210mm; margin:0 auto 14px; padding:12mm; background:#fff;
+      page-break-after:always; border:1px solid var(--line); border-radius:.9rem;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+    }
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
 
-    .page {
-      width: 210mm;  /* A4 retrato */
-      padding: 15mm;
-      box-sizing: border-box;
-      page-break-after: always;
+    /* ===== Ficha ===== */
+    .ficha{
+      border:1px solid var(--line); border-radius:.9rem; background:#fff; padding:14px;
+      box-shadow:0 8px 24px rgba(2,6,23,.06);
     }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    .ficha {
-      border: 1px solid #444;
-      padding: 12px;
-      border-radius: 6px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .header {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      margin-bottom:10px;
-    }
-    .header .texts {
-      line-height:1.2;
-    }
-    .header .texts .title { font-size:1.1rem; font-weight:bold; }
-    .header img {
-      width:70px; height:70px;
-      object-fit:cover;
-      border-radius:50%;
-      background:#eee;
+    .header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .header .texts{ line-height:1.2 }
+    .header .title{ font-weight:800; font-size:1rem; letter-spacing:.2px }
+    .header .sub{ color:var(--muted); font-size:.9rem }
+    .header img{
+      width:72px; height:72px; object-fit:cover; border-radius:50%;
+      background:#eef2f7; border:1px solid var(--line);
     }
 
-    /* Força colunas fixas dentro do colgroup */
-    .ficha table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.7rem;
-      table-layout: fixed;
-    }
-    .ficha table th, .ficha table td {
-      padding: 4px 6px;
-      border: 1px solid #666;
-      vertical-align: top;
-      word-wrap: break-word;
-    }
-    .ficha table th {
-      background: #f5f5f5;
-      text-align: left;
+    /* Chips/indicadores iguais ao padrão */
+    .chip{
+      display:inline-flex; align-items:center; gap:.35rem;
+      padding:.4rem .7rem; border-radius:999px; border:1px solid var(--line); background:#fff;
+      font-weight:700; font-size:.85rem;
     }
 
+    /* Tabela (mantém escala do tema: ~1rem) */
+    table{ width:100%; border-collapse:collapse; table-layout:fixed; font-size:1rem; }
+    th,td{ border:1px solid #cbd5e1; padding:6px 8px; vertical-align:top; word-wrap:break-word; }
+    th{
+      background:#f8fafc; text-align:left; color:#334155; font-weight:700;
+      border-bottom:1px solid var(--line);
+      position:sticky; top:0; /* ajuda em telas pequenas ao rolar */
+    }
+    col.w-50{ width:50%; }
   </style>
 </head>
 <body>
 
-  <!-- Botão imprimir centralizado -->
-  <div class="print-container">
-    <button onclick="window.print()">🖨️ Imprimir</button>
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark no-print">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:relatorios_evento' evento.id %}">
+      <i class="fa-solid fa-arrow-left me-2"></i> Relatórios
+    </a>
+    <span class="navbar-text text-white-50 d-none d-md-inline">{{ evento.nome }}</span>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <button class="btn btn-light btn-sm" onclick="window.print()">
+        <i class="fa-solid fa-print me-1"></i> Imprimir
+      </button>
+    </div>
   </div>
+</nav>
 
-  <!-- Filtro por cidade -->
-  <form class="filter-form" method="get">
-    Filtrar por cidade:
-    <select name="cidade" onchange="this.form.submit()">
-      <option value="">Todas</option>
-      {% for c in cidades %}
-        <option value="{{ c }}" {% if c == cidade_sel %}selected{% endif %}>{{ c }}</option>
-      {% endfor %}
-    </select>
-  </form>
+<main class="container py-3 py-lg-4">
+  <!-- Header / Filtros -->
+  <section class="card-clean p-3 p-md-4 mb-3 no-print">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div>
+        <h1 class="h6 m-0">Fichas de Farmácia</h1>
+        <div class="small text-muted-2">{{ evento.nome }}</div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="history.back()">
+          <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">
+          <i class="fa-solid fa-print me-1"></i> Imprimir
+        </button>
+      </div>
+    </div>
 
-  <!-- Geração das fichas em grades 2x1 por página -->
+    <div class="mt-3">
+      <form class="row g-2 align-items-end" method="get">
+        <div class="col-12 col-md-6 col-lg-4">
+          <label for="cidade" class="form-label small text-muted">Filtrar por cidade</label>
+          <select id="cidade" name="cidade" class="form-select" onchange="this.form.submit()">
+            <option value="">Todas</option>
+            {% for c in cidades %}
+              <option value="{{ c }}" {% if c == cidade_sel %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-auto">
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-filter me-1"></i> Filtrar
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Fichas (2 por página) -->
   {% for bloco in fichas %}
     {% if forloop.first or forloop.counter0|divisibleby:"2" %}
-      <div class="page">
-        <div class="grid">
+      <div class="page"><div class="grid">
     {% endif %}
 
-      <div class="ficha">
+      <article class="ficha">
         <div class="header">
           <div class="texts">
             <div class="title">Ficha Farmácia</div>
-            <div>{{ evento.nome }}</div>
-            <div>{{ bloco.inscricao.participante.cidade }}/{{ bloco.inscricao.participante.estado }}</div>
+            <div class="sub">
+              {{ evento.nome }} • {{ bloco.inscricao.participante.cidade }}/{{ bloco.inscricao.participante.estado }}
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              {% if bloco.base.medicamento_controlado == "sim" %}
+                <span class="chip"><i class="fa-solid fa-triangle-exclamation"></i> Med. controlado</span>
+              {% endif %}
+              {% if bloco.base.alergia_medicamento == "sim" %}
+                <span class="chip"><i class="fa-solid fa-notes-medical"></i> Alergia a medicamento</span>
+              {% endif %}
+              {% if bloco.base.protocolo_administracao %}
+                <span class="chip"><i class="fa-solid fa-prescription-bottle-medical"></i> Protocolo</span>
+              {% endif %}
+            </div>
           </div>
+
           {% if bloco.inscricao.participante.foto %}
-            {% cloudinary bloco.inscricao.participante.foto width=70 height=70 crop="thumb" %}
+            {% cloudinary bloco.inscricao.participante.foto width=72 height=72 crop="thumb" %}
           {% else %}
-            <div style="width:70px;height:70px;background:#ddd;border-radius:50%;"></div>
+            <div style="width:72px;height:72px;background:#eef2f7;border:1px solid var(--line);border-radius:50%;"></div>
           {% endif %}
         </div>
-        <table>
-          <colgroup>
-            <col style="width: 150%;">
-            <col style="width: 150%;">
-          </colgroup>
-          <tr><th>Nome</th>
-              <td>{{ bloco.inscricao.participante.nome|default:"Não informado" }}</td></tr>
-          <tr><th>CPF</th>
-              <td>{{ bloco.inscricao.participante.cpf|default:"Não informado" }}</td></tr>
-          <tr><th>Nasc.</th>
-              <td>{{ bloco.base.data_nascimento|date:"d/m/Y"|default:"Não informado" }}</td></tr>
-          <tr><th>Altura (m)</th>
-              <td>{{ bloco.base.altura|default:"Não informado" }}</td></tr>
-          <tr><th>Peso (kg)</th>
-              <td>{{ bloco.base.peso|default:"Não informado" }}</td></tr>
-          <tr><th>Tipo Sanguíneo</th>
-              <td>{{ bloco.base.tipo_sanguineo|default:"Não informado" }}</td></tr>
-          <tr><th>Problema Saúde?</th>
-              <td>{{ bloco.base.problema_saude|default:"Não informado" }}</td></tr>
-          {% if bloco.base.problema_saude == "sim" %}
-          <tr><th>Qual?</th>
-              <td>{{ bloco.base.qual_problema_saude|default:"Não informado" }}</td></tr>
-          {% endif %}
-          <tr><th>Med. Controlado?</th>
-              <td>{{ bloco.base.medicamento_controlado|default:"Não informado" }}</td></tr>
-          {% if bloco.base.medicamento_controlado == "sim" %}
-          <tr><th>Qual?</th>
-              <td>{{ bloco.base.qual_medicamento_controlado|default:"Não informado" }}</td></tr>
-          <tr><th>Protocolo</th>
-              <td>{{ bloco.base.protocolo_administracao|default:"Não informado" }}</td></tr>
-          {% endif %}
-          <tr><th>Mobilidade?</th>
-              <td>{{ bloco.base.mobilidade_reduzida|default:"Não informado" }}</td></tr>
-          {% if bloco.base.mobilidade_reduzida == "sim" %}
-          <tr><th>Detalhe</th>
-              <td>{{ bloco.base.qual_mobilidade_reduzida|default:"Não informado" }}</td></tr>
-          {% endif %}
-          <tr><th>Alergia Alim.?</th>
-              <td>{{ bloco.base.alergia_alimento|default:"Não informado" }}</td></tr>
-          {% if bloco.base.alergia_alimento == "sim" %}
-          <tr><th>Qual?</th>
-              <td>{{ bloco.base.qual_alergia_alimento|default:"Não informado" }}</td></tr>
-          {% endif %}
-          <tr><th>Alergia Med.?</th>
-              <td>{{ bloco.base.alergia_medicamento|default:"Não informado" }}</td></tr>
-          {% if bloco.base.alergia_medicamento == "sim" %}
-          <tr><th>Qual?</th>
-              <td>{{ bloco.base.qual_alergia_medicamento|default:"Não informado" }}</td></tr>
-          {% endif %}
-          {% if bloco.base.informacoes_extras %}
-          <tr><th>Extras</th>
-              <td>{{ bloco.base.informacoes_extras|default:"Não informado" }}</td></tr>
-          {% endif %}
-        </table>
-      </div>
+
+        <div class="table-responsive">
+          <table class="table mb-0" style="border-collapse:collapse;">
+            <colgroup><col class="w-50"><col class="w-50"></colgroup>
+            <thead>
+              <tr>
+                <th>Campo</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th>Nome</th>
+                  <td>{{ bloco.inscricao.participante.nome|default:"Não informado" }}</td></tr>
+              <tr><th>CPF</th>
+                  <td>{{ bloco.inscricao.participante.cpf|default:"Não informado" }}</td></tr>
+              <tr><th>Nascimento</th>
+                  <td>{{ bloco.base.data_nascimento|date:"d/m/Y"|default:"Não informado" }}</td></tr>
+
+              <tr><th>Altura (m)</th>
+                  <td>{{ bloco.base.altura|default:"Não informado" }}</td></tr>
+              <tr><th>Peso (kg)</th>
+                  <td>{{ bloco.base.peso|default:"Não informado" }}</td></tr>
+              <tr><th>Tipo Sanguíneo</th>
+                  <td>{{ bloco.base.tipo_sanguineo|default:"Não informado" }}</td></tr>
+
+              <tr><th>Problema de Saúde?</th>
+                  <td>{{ bloco.base.problema_saude|default:"Não informado" }}</td></tr>
+              {% if bloco.base.problema_saude == "sim" %}
+              <tr><th>Qual?</th>
+                  <td>{{ bloco.base.qual_problema_saude|default:"Não informado" }}</td></tr>
+              {% endif %}
+
+              <tr><th>Medicamento Controlado?</th>
+                  <td>{{ bloco.base.medicamento_controlado|default:"Não informado" }}</td></tr>
+              {% if bloco.base.medicamento_controlado == "sim" %}
+              <tr><th>Qual(is)?</th>
+                  <td>{{ bloco.base.qual_medicamento_controlado|default:"Não informado" }}</td></tr>
+              <tr><th>Protocolo de Administração</th>
+                  <td>{{ bloco.base.protocolo_administracao|default:"Não informado" }}</td></tr>
+              {% endif %}
+
+              <tr><th>Mobilidade Reduzida?</th>
+                  <td>{{ bloco.base.mobilidade_reduzida|default:"Não informado" }}</td></tr>
+              {% if bloco.base.mobilidade_reduzida == "sim" %}
+              <tr><th>Detalhe</th>
+                  <td>{{ bloco.base.qual_mobilidade_reduzida|default:"Não informado" }}</td></tr>
+              {% endif %}
+
+              <tr><th>Alergia Alimentar?</th>
+                  <td>{{ bloco.base.alergia_alimento|default:"Não informado" }}</td></tr>
+              {% if bloco.base.alergia_alimento == "sim" %}
+              <tr><th>Qual(is)?</th>
+                  <td>{{ bloco.base.qual_alergia_alimento|default:"Não informado" }}</td></tr>
+              {% endif %}
+
+              <tr><th>Alergia a Medicamento?</th>
+                  <td>{{ bloco.base.alergia_medicamento|default:"Não informado" }}</td></tr>
+              {% if bloco.base.alergia_medicamento == "sim" %}
+              <tr><th>Qual(is)?</th>
+                  <td>{{ bloco.base.qual_alergia_medicamento|default:"Não informado" }}</td></tr>
+              {% endif %}
+
+              {% if bloco.base.informacoes_extras %}
+              <tr><th>Informações Extras</th>
+                  <td>{{ bloco.base.informacoes_extras }}</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </article>
 
     {% if forloop.counter|divisibleby:"2" or forloop.last %}
-        </div>
-      </div>
+      </div></div>
     {% endif %}
   {% endfor %}
+</main>
 
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

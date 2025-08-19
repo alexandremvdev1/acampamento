@@ -1,402 +1,285 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
   <title>Painel da Paróquia — {{ paroquia.nome }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+
+  <!-- Bootstrap + Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
         integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <style>
-    /* ========= Tokens (compatível com as outras telas) ========= */
     :root{
-      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
-      --g1:#7c3aed; --g2:#2563eb; --g3:#14b8a6;
-      --focus:0 0 0 3px rgba(37,99,235,.25);
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px;
+    }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
 
-      --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b;
-      --pill-back:#4b5563; --pill-accent:#0ea5e9; --pill-danger:#ef4444;
-    }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow:0 10px 40px rgba(0,0,0,.45);
-        --pill-back:#6b7280; --pill-accent:#0284c7; --pill-danger:#dc2626;
-      }
-    }
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
 
-    *{ box-sizing:border-box }
-    html,body{ margin:0; padding:0 }
-    body{
-      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.35;
+    .card-clean{
+      border:none; box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease; border-radius:.9rem; background:#fff;
+      border:1px solid #e5e7eb;
     }
-    .container{ max-width:1100px; margin:20px auto 32px; padding:0 16px }
+    .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+    .text-muted-2{ color:var(--muted); }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
+    }
+    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
 
-    /* ========= HERO ========= */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(18px,4vw,26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        var(--hero-image, radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25))),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      backdrop-filter: blur(2px);
-      margin-bottom:18px;
+    .avatar-logo{
+      width:42px; height:42px; border-radius:.6rem; object-fit:cover; border:1px solid #e5e7eb; background:#fff;
     }
-    .hero-head{
-      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;
-    }
-    .left{
-      display:flex; align-items:center; gap:12px; min-width:0;
-    }
-    .logo{
-      width:44px; height:44px; border-radius:10px; object-fit:cover;
-      border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.15);
-    }
-    .title-wrap{ min-width:0 }
-    .hero-title{
-      margin:0; font-weight:800; letter-spacing:.3px;
-      font-size: clamp(1.1rem,3vw,1.8rem);
-    }
-    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem; }
-
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
-      color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12);
-      transition: transform .12s ease, background .2s ease, opacity .2s ease;
-    }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
-    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
-    .pill.-back   { background: linear-gradient(135deg, var(--pill-back), #374151) }
-    .pill.-accent { background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
-    .pill.-danger { background: linear-gradient(135deg, #f87171, var(--pill-danger)) }
-
-    /* ========= PAINÉIS ========= */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(14px,2vw,18px); margin-bottom:16px;
-    }
-    .panel h2{
-      margin:0 0 12px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
-      display:flex; align-items:center; gap:8px;
-    }
-    .panel h2 i{ opacity:.6 }
-
-    /* ========= Card “Portal do Participante” ========= */
-    .portal{
-      display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center;
-    }
-    .portal .info{ color:var(--muted); font-size:.95rem }
     .linkbox{
-      border:1px dashed var(--line); border-radius:12px; padding:12px; background:linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,.2));
-      word-break: break-all;
+      border:1px dashed #e5e7eb; border-radius:.7rem; padding:.65rem .8rem; background:#fff; word-break:break-all;
     }
-    .portal-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end }
-    .btn{
-      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px; color:#fff; text-decoration:none;
-      border:1px solid rgba(255,255,255,.12); box-shadow:var(--shadow); transition: transform .12s ease, filter .2s ease;
+    .list-ico{
+      width:32px; height:32px; border-radius:.6rem; display:flex; align-items:center; justify-content:center;
+      background:#eef2f7; color:#334155;
     }
-    .btn:hover{ transform: translateY(-1px); filter: brightness(1.05) }
-    .btn.-open{ background: linear-gradient(135deg, #34d399, #22c55e) }
-    .btn.-copy{ background: linear-gradient(135deg, #60a5fa, #2563eb) }
-
-    /* ========= Ações rápidas ========= */
-    .quick{
-      display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px;
-    }
-    @media (max-width: 900px){ .quick{ grid-template-columns: repeat(2,1fr); } }
-    @media (max-width: 480px){ .quick{ grid-template-columns: 1fr; } }
-
-    .card{
-      position:relative; overflow:hidden; border-radius:16px; padding:16px;
-      background: radial-gradient(60% 120% at 100% -10%, rgba(124,58,237,.07), transparent 60%), var(--panel);
-      border:1px solid var(--line); box-shadow:var(--shadow);
-      transition: transform .12s ease, filter .2s ease, border-color .2s ease, box-shadow .2s ease;
-    }
-    .card:hover{ transform:translateY(-2px); border-color: rgba(99,102,241,.35); filter:brightness(1.02) }
-    .card .ttl{ font-weight:800; margin:0 0 6px; font-size:1rem }
-    .card .desc{ color:var(--muted); margin:0 0 12px; font-size:.95rem }
-    .card .row{ display:flex; gap:8px; flex-wrap:wrap }
-    .card .cta{
-      display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; color:#fff; text-decoration:none;
-      border:1px solid rgba(255,255,255,.12); box-shadow:var(--shadow);
-      background: linear-gradient(135deg, #ffe082, #ffc107); color:#1f2937;
-      transition: transform .12s ease, filter .2s ease;
-    }
-    .card .cta:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-    .card .cta.-blue{ background: linear-gradient(135deg, #60a5fa, #2563eb); color:#fff }
-    .card .cta.-teal{ background: linear-gradient(135deg, #2ec4b6, #16a085); color:#fff }
-
-    /* ========= Grid de eventos ========= */
-    .grid{
-      display:grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap:14px;
-    }
-    .event{
-      border:1px solid var(--line); border-radius:16px; padding:14px; background:var(--panel); box-shadow:var(--shadow);
-      transition: transform .12s ease, border-color .2s ease;
-    }
-    .event:hover{ transform:translateY(-2px); border-color:rgba(37,99,235,.35) }
-    .event .name{ font-weight:800; margin:0 0 6px; font-size:1rem }
-    .event .meta{ color:var(--muted); font-size:.93rem; line-height:1.35; margin-bottom:10px }
-    .event .link{ font-size:.92rem; margin-bottom:10px; word-break: break-all }
-    .event .link a{ color:#2563eb; text-decoration:none }
-    .event .link a:hover{ text-decoration:underline }
-    .event .actions{ display:flex; gap:8px; flex-wrap:wrap }
-    .event .btn{
-      padding:9px 12px; border-radius:10px; font-weight:700; font-size:.92rem; text-decoration:none; color:#fff;
-      border:1px solid rgba(255,255,255,.12);
-    }
-    .-edit{ background: linear-gradient(135deg, #60a5fa, #2563eb) }
-    .-del { background: linear-gradient(135deg, #f87171, #ef4444) }
-    .-view{ background: linear-gradient(135deg, #34d399, #22c55e) }
-
-    /* ========= Acessibilidade ========= */
-    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-
-    /* ========= ALERTA DE PARÓQUIA INATIVA ========= */
-    .alert{
-      background: linear-gradient(135deg, #fef2f2, #ffe4e6);
-      border:1px solid #fecaca;
-      color:#7f1d1d;
-      border-radius:16px;
-      box-shadow:var(--shadow);
-      padding:20px;
-      text-align:center;
-      font-weight:700;
-    }
-    @media (prefers-color-scheme: dark){
-      .alert{
-        background: linear-gradient(135deg, rgba(127,29,29,.15), rgba(190,18,60,.18));
-        border-color: rgba(254,202,202,.35);
-        color:#fecaca;
-      }
-    }
+    .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
   </style>
 </head>
-
 <body>
-  <div class="container">
 
-    {# ===== NOVO: se a paróquia estiver inativa, mostra só a mensagem e NÃO renderiza o resto ===== #}
-    {% if paroquia.status == 'inativa' %}
-      <section class="panel">
-        <div class="alert">
-          <i class="fa-solid fa-triangle-exclamation"></i>
-          &nbsp;Esta paróquia está <strong>INATIVA</strong>. Nenhum conteúdo do painel é exibido.
-        </div>
-      </section>
-      {% comment %} Opcional: se o usuário for admin geral, um botão para voltar {% endcomment %}
+<!-- NAVBAR (padrão painel) -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
+      <a class="btn btn-sm btn-light" href="http://localhost:8000/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
+      <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-danger">Sair</button>
+      </form>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  {# ===== Paróquia INATIVA ===== #}
+  {% if paroquia.status == 'inativa' %}
+    <div class="card-clean p-4 mb-3 text-center">
+      <div class="fs-5 fw-semibold text-danger mb-2">
+        <i class="fa-solid fa-triangle-exclamation"></i> Esta paróquia está INATIVA.
+      </div>
+      <div class="text-muted-2 mb-3">Nenhum conteúdo do painel é exibido.</div>
       {% if is_admin_geral %}
-      <div style="margin-top:10px; display:flex; justify-content:center;">
-        <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="pill -back">
-          <i class="fa-solid fa-arrow-left"></i><span>Voltar para Paróquias</span>
+        <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-arrow-left"></i> Voltar para Paróquias
         </a>
-      </div>
       {% endif %}
-    {% else %}
-    {# ===== A partir daqui está TODO o seu conteúdo original do painel ===== #}
+    </div>
+  {% else %}
 
-    <!-- HERO -->
-    <header class="hero"
-      {% if paroquia.banner %}style="--hero-image: url('{{ paroquia.banner.url }}') center/cover no-repeat;"{% endif %}>
-      <div class="hero-head">
-        <div class="left">
-          {% if paroquia.logo %}
-            <img class="logo" src="{{ paroquia.logo.url }}" alt="Logo da {{ paroquia.nome }}">
-          {% endif %}
-          <div class="title-wrap">
-            <h1 class="hero-title">{{ paroquia.nome }}</h1>
-            <p class="hero-sub">Bem-vindo(a), {{ user.get_full_name|default:user.username }}.</p>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:10px; align-items:center;">
-          {% if is_admin_geral %}
-          <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="pill -back" aria-label="Voltar para lista de paróquias">
-            <i class="fa-solid fa-arrow-left"></i><span>Voltar</span>
-          </a>
-          {% endif %}
-
-          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema claro/escuro">
-            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-          </button>
-
-          <form method="POST" action="{% url 'inscricoes:logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="pill -danger" title="Sair">
-              <i class="fa-solid fa-right-from-bracket"></i><span>Sair</span>
-            </button>
-          </form>
+  <!-- HEADER -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-2">
+        {% if paroquia.logo %}
+          <img class="avatar-logo" src="{{ paroquia.logo.url }}" alt="Logo {{ paroquia.nome }}">
+        {% else %}
+          <div class="list-ico"><i class="fa-solid fa-church"></i></div>
+        {% endif %}
+        <div>
+          <h1 class="h6 m-0">{{ paroquia.nome }}</h1>
+          <div class="small text-muted-2">Bem-vindo(a), {{ user.get_full_name|default:user.username }}.</div>
         </div>
       </div>
-    </header>
 
-    <!-- PAINEL: ações rápidas -->
-    <section class="panel" aria-labelledby="ttl-quick">
-      <h2 id="ttl-quick"><i class="fa-solid fa-bolt"></i> Ações rápidas</h2>
-<div class="quick">
-  <div class="card">
-    <p class="ttl"><i class="fa-solid fa-calendar-plus"></i> Novo Evento</p>
-    <p class="desc">Crie um novo evento e configure inscrições, datas e políticas.</p>
-    <div class="row">
-      <a href="{% url 'inscricoes:evento_novo' %}" class="cta -blue"><i class="fa-solid fa-plus"></i> Criar evento</a>
+      <div class="d-flex gap-2">
+        {% if is_admin_geral %}
+          <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left"></i> Paróquias
+          </a>
+        {% endif %}
+        <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-sm">
+            <i class="fa-solid fa-right-from-bracket"></i> Sair
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <p class="ttl"><i class="fa-solid fa-credit-card"></i> Pagamentos</p>
-    <p class="desc">Configure as chaves do Mercado Pago para receber inscrições.</p>
-    <div class="row">
-      <a href="{% url 'inscricoes:mp_config' %}" class="cta -teal"><i class="fa-solid fa-gear"></i> Configurar MP</a>
+  <!-- AÇÕES RÁPIDAS -->
+  <section class="mb-3">
+    <h2 class="sec-title">Ações rápidas</h2>
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="card-clean p-3 h-100">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="h6 m-0">Novo Evento</div>
+            <div class="list-ico"><i class="fa-solid fa-calendar-plus"></i></div>
+          </div>
+          <div class="text-muted-2 mb-3">Crie um novo evento e configure inscrições, datas e políticas.</div>
+          <a href="{% url 'inscricoes:evento_novo' %}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-plus"></i> Criar evento
+          </a>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="card-clean p-3 h-100">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="h6 m-0">Pagamentos</div>
+            <div class="list-ico"><i class="fa-solid fa-credit-card"></i></div>
+          </div>
+          <div class="text-muted-2 mb-3">Configure as chaves do Mercado Pago para receber inscrições.</div>
+          <a href="{% url 'inscricoes:mp_config' %}" class="btn btn-info btn-sm text-white">
+            <i class="fa-solid fa-gear"></i> Configurar MP
+          </a>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="card-clean p-3 h-100">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="h6 m-0">Usuários da Paróquia</div>
+            <div class="list-ico"><i class="fa-solid fa-user-shield"></i></div>
+          </div>
+          <div class="text-muted-2 mb-3">Cadastre um novo administrador vinculado a esta paróquia.</div>
+          <a href="{% url 'inscricoes:admin_paroquia_create_admin' %}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-user-plus"></i> Novo Usuário
+          </a>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="card-clean p-3 h-100">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="h6 m-0">Repasses</div>
+            <div class="list-ico"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+          </div>
+          <div class="text-muted-2 mb-3">Consulte o valor a repassar ao sistema por evento.</div>
+          <a href="{% url 'inscricoes:repasse_lista_eventos' %}" class="btn btn-success btn-sm">
+            <i class="fa-solid fa-wallet"></i> Ver Repasses
+          </a>
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
 
-<div class="card">
-  <p class="ttl"><i class="fa-solid fa-user-shield"></i> Usuários da Paróquia</p>
-  <p class="desc">Cadastre um novo administrador vinculado a esta paróquia.</p>
-  <div class="row">
-    <a href="{% url 'inscricoes:admin_paroquia_create_admin' %}" class="cta -blue">
-      <i class="fa-solid fa-user-plus"></i> Novo Usuário
-    </a>
-  </div>
-</div>
-
-<div class="card">
-  <p class="ttl"><i class="fa-solid fa-hand-holding-dollar"></i> Repasses</p>
-  <p class="desc">Consulte o valor a repassar ao sistema por evento.</p>
-  <div class="row">
-    <a href="{% url 'inscricoes:repasse_lista_eventos' %}" class="cta -teal">
-      <i class="fa-solid fa-wallet"></i> Ver Repasses
-    </a>
-  </div>
-</div>
-
-    </section>
-
-    <!-- PAINEL: link público -->
-    <section class="panel" aria-labelledby="ttl-portal">
-      <h2 id="ttl-portal"><i class="fa-solid fa-link"></i> Link público do Portal do Participante</h2>
-      <div class="portal">
-        <div>
-          <p class="info">Envie este link para que o participante acesse com CPF e efetue o pagamento:</p>
+  <!-- PORTAL DO PARTICIPANTE -->
+  <section class="mb-3">
+    <h2 class="sec-title">Portal do Participante</h2>
+    <div class="card-clean p-3">
+      <div class="row g-3 align-items-center">
+        <div class="col-12 col-lg">
+          <div class="small text-muted-2 mb-1">Envie este link para o participante acessar com CPF e efetuar o pagamento:</div>
           <div class="linkbox" id="portal-link">
-            <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" target="_blank" rel="noopener noreferrer">
+            <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" target="_blank" rel="noopener">
               {{ request.scheme }}://{{ request.get_host }}{% url 'inscricoes:minhas_inscricoes_por_cpf' %}
             </a>
           </div>
         </div>
-        <div class="portal-actions">
-          <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" class="btn -open" target="_blank" rel="noopener noreferrer">
+        <div class="col-12 col-lg-auto d-flex gap-2 justify-content-end">
+          <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" class="btn btn-success btn-sm" target="_blank" rel="noopener">
             <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir portal
           </a>
-          <button class="btn -copy" onclick="copyPortalLink(event)">
+          <button class="btn btn-primary btn-sm" onclick="copyPortalLink(event)">
             <i class="fa-solid fa-clipboard"></i> Copiar link
           </button>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- PAINEL: eventos recentes -->
-    <section class="panel" aria-labelledby="ttl-events">
-      <h2 id="ttl-events"><i class="fa-solid fa-clock-rotate-left"></i> Eventos recentes</h2>
+  <!-- EVENTOS RECENTES -->
+  <section class="mb-4">
+    <h2 class="sec-title">Eventos recentes</h2>
 
-      {% if eventos %}
-      <div class="grid">
+    {% if eventos %}
+      <div class="row g-3">
         {% for evento in eventos %}
-        <div class="event">
-          <p class="name">{{ evento.nome }}</p>
-          <p class="meta">
-            Tipo: {{ evento.get_tipo_display }}<br>
-            Início: {{ evento.data_inicio }}<br>
-            Inscrições: {{ evento.status_inscricao }}
-          </p>
-          <div class="link">
-            Link público:
-            <a href="{{ evento.link_inscricao }}" target="_blank" rel="noopener noreferrer">
-              {{ request.scheme }}://{{ request.get_host }}{{ evento.link_inscricao }}
-            </a>
-          </div>
-          <div class="actions">
-            <a href="{% url 'inscricoes:evento_editar' evento.id %}" class="btn -edit"><i class="fa-solid fa-pen"></i> Editar</a>
-            <a href="{% url 'inscricoes:evento_deletar' evento.id %}" class="btn -del"
-               onclick="return confirm('Tem certeza que deseja excluir?');">
-               <i class="fa-solid fa-trash"></i> Excluir
-            </a>
-            <a href="{% url 'inscricoes:evento_participantes' evento.id %}" class="btn -view">
-              <i class="fa-solid fa-eye"></i> Detalhes
-            </a>
-            <a href="{% url 'inscricoes:editar_politica_reembolso' evento.id %}" class="btn -edit">
-            <i class="fa-solid fa-file-contract"></i> Política de Reembolso
-          </a>
+        <div class="col-12 col-md-6 col-xl-4">
+          <div class="card-clean p-3 h-100 d-flex flex-column">
+            <div class="h6 m-0 mb-2">{{ evento.nome }}</div>
+            <div class="small text-muted-2 mb-2">
+              Tipo: {{ evento.get_tipo_display }}<br>
+              Início: {{ evento.data_inicio }}<br>
+              Inscrições: {{ evento.status_inscricao }}
+            </div>
+            <div class="mb-3">
+              <div class="small text-muted-2">Link público:</div>
+              <a href="{{ evento.link_inscricao }}" target="_blank" rel="noopener">
+                {{ request.scheme }}://{{ request.get_host }}{{ evento.link_inscricao }}
+              </a>
+            </div>
+            <div class="mt-auto d-flex flex-wrap gap-2">
+              <a href="{% url 'inscricoes:evento_editar' evento.id %}" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-pen"></i> Editar
+              </a>
+              <a href="{% url 'inscricoes:evento_deletar' evento.id %}" class="btn btn-danger btn-sm"
+                 onclick="return confirm('Tem certeza que deseja excluir?');">
+                 <i class="fa-solid fa-trash"></i> Excluir
+              </a>
+              <a href="{% url 'inscricoes:evento_participantes' evento.id %}" class="btn btn-success btn-sm">
+                <i class="fa-solid fa-eye"></i> Detalhes
+              </a>
+              <a href="{% url 'inscricoes:editar_politica_reembolso' evento.id %}" class="btn btn-dark btn-sm">
+                <i class="fa-solid fa-file-contract"></i> Política de Reembolso
+              </a>
+            </div>
           </div>
         </div>
         {% endfor %}
       </div>
-      {% else %}
-        <p style="color:var(--muted); margin:0;">Sem eventos cadastrados.</p>
-      {% endif %}
-    </section>
+    {% else %}
+      <div class="card-clean p-3">
+        <div class="text-muted-2">Sem eventos cadastrados.</div>
+      </div>
+    {% endif %}
+  </section>
 
-    {% endif %} {# fecha o "paroquia.status != 'inativa'" #}
-  </div>
+  {% endif %} {# fecha status != 'inativa' #}
 
-  <script>
-    // Copiar link do portal (com fallback)
-    function copyPortalLink(e){
-      e?.preventDefault?.();
-      const a = document.querySelector('#portal-link a');
-      if(!a) return;
-      const url = a.href;
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(url).then(() => flashCopyBtn(e?.currentTarget));
-      } else {
-        const ta = document.createElement('textarea');
-        ta.value = url; document.body.appendChild(ta); ta.select();
-        try { document.execCommand('copy'); flashCopyBtn(e?.currentTarget); }
-        finally { document.body.removeChild(ta); }
-      }
+  <footer class="py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
+      <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+    </div>
+  </footer>
+</main>
+
+<script>
+  // Copiar link do portal (com fallback)
+  function copyPortalLink(e){
+    e?.preventDefault?.();
+    const a = document.querySelector('#portal-link a');
+    if(!a) return;
+    const url = a.href;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).then(() => flashCopyBtn(e?.currentTarget));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = url; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); flashCopyBtn(e?.currentTarget); }
+      finally { document.body.removeChild(ta); }
     }
-    function flashCopyBtn(btn){
-      if(!btn) return;
-      const old = btn.innerHTML;
-      btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
-      setTimeout(()=> btn.innerHTML = old, 1600);
-    }
-
-    // Toggle de tema com persistência (igual às outras telas)
-    (function themeToggle(){
-      const KEY='relatorios-theme'; // mesmo key para persistir entre páginas
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
-      }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next);
-        apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
-      });
-    })();
-  </script>
+  }
+  function flashCopyBtn(btn){
+    if(!btn) return;
+    const old = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
+    setTimeout(()=> btn.innerHTML = old, 1400);
+  }
+</script>
 </body>
 </html>

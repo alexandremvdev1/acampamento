@@ -1,206 +1,162 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>Atividades dos Usuários</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <style>
-    /* ===== Design tokens (coerentes com as outras telas) ===== */
-    :root{
-      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
-      --focus:0 0 0 3px rgba(37,99,235,.25);
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
 
-      --accent:#2563eb; --accent-2:#1d4ed8;
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px;
+      --line:#e5e7eb; --panel:#fff;
+
       --ok:#16a34a; --warn:#f59e0b; --err:#ef4444; --info:#0891b2;
       --chip:#111827; --chip-2:#374151;
     }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow:0 10px 40px rgba(0,0,0,.45);
-        --accent:#1d4ed8; --accent-2:#1e40af;
-        --chip:#374151; --chip-2:#111827;
-      }
-    }
+    html{ font-size:var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+    .text-muted-2{ color:var(--muted); }
 
-    *{ box-sizing:border-box }
-    html,body{ margin:0; padding:0 }
-    body{
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.42;
-    }
-    .container{ max-width:900px; margin:20px auto 32px; padding:0 16px }
+    /* Navbar catálogo */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar-brand{ font-size:1rem; }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
 
-    /* ===== HERO ===== */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(18px,4vw,26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      margin-bottom:18px;
-    }
-    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
-    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.2rem,3vw,1.9rem); letter-spacing:.3px }
-    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
-    .actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
-      color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12);
-      transition: transform .12s ease, background .2s ease; cursor:pointer;
-    }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
-    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
+    /* Header compacto */
+    .sticky-topbar{ position:sticky; top:0; z-index:20; background:#ffffffd6; backdrop-filter:blur(6px); }
 
-    /* ===== Painéis e controles ===== */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(14px,2vw,18px); margin-bottom:14px;
+    /* Painel limpo */
+    .card-clean{
+      background:var(--panel); border:1px solid var(--line); border-radius:.9rem;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
     }
-    .panel h2{
-      margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:800; letter-spacing:.2px;
-      display:flex; align-items:center; gap:8px;
-    }
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
 
-    .filters{ display:grid; gap:10px; grid-template-columns: 1fr auto; align-items:center }
-    @media (max-width:720px){ .filters{ grid-template-columns: 1fr } }
-
-    .search{
-      display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
-      border-radius:12px; padding:10px 12px;
+    /* Inputs padrão catálogo */
+    .form-control{
+      border-radius:.8rem; border-color:var(--line); padding:.6rem .8rem; font-size:.95rem; background:#fff;
     }
-    .search input{
-      border:none; outline:none; width:100%; background:transparent; color:var(--ink); font-size:1rem;
+    .form-control:focus{
+      border-color:#93c5fd; box-shadow:0 0 0 .25rem var(--ring);
     }
+    .btn.btn-sm, .btn-sm{ font-size:.85rem; padding:.45rem .65rem; }
 
-    .chips{ display:flex; gap:8px; flex-wrap:wrap }
+    /* Chips */
+    .chips{ display:flex; gap:.5rem; flex-wrap:wrap }
     .chip{
-      display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
+      display:inline-flex; align-items:center; gap:.45rem; padding:.4rem .7rem; border-radius:999px;
       background:linear-gradient(135deg, var(--chip), var(--chip-2)); color:#fff; border:1px solid rgba(255,255,255,.12);
-      cursor:pointer; user-select:none; font-weight:700; font-size:.92rem; transition:transform .12s ease, filter .2s ease;
+      cursor:pointer; user-select:none; font-weight:700; font-size:.86rem; transition:transform .12s ease, filter .2s ease;
     }
     .chip:hover{ transform:translateY(-1px); filter:brightness(1.05) }
     .chip[data-active="false"]{ opacity:.55 }
 
-    .btn{
-      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
-      padding:10px 12px; border-radius:12px; font-weight:800; color:#fff; text-decoration:none;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      transition: transform .12s ease, filter .2s ease;
-    }
-    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-    .btn.-ghost{ color:var(--ink); background:transparent; border:1px solid var(--line) }
-
-    .stats{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px }
+    /* Stats pills */
+    .stats{ display:flex; gap:.5rem; flex-wrap:wrap }
     .stat{
-      display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:10px; font-weight:700;
-      border:1px solid var(--line); background:rgba(0,0,0,.02);
+      display:inline-flex; align-items:center; gap:.5rem; padding:.35rem .6rem; border-radius:.6rem; font-weight:700;
+      border:1px solid var(--line); background:#fff; box-shadow:0 1px 2px rgba(16,24,40,.04);
     }
     .dot{ width:8px; height:8px; border-radius:50% }
     .-login{ background:var(--ok) } .-logout{ background:#4b5563 } .-acesso{ background:var(--info) } .-erro{ background:var(--err) }
 
-    /* ===== Timeline ===== */
-    .timeline{ position:relative; padding-left:22px; margin:0 }
-    .timeline::before{
-      content:""; position:absolute; left:10px; top:0; bottom:0; width:2px; background:var(--line);
-    }
+    /* Timeline */
+    .timeline{ position:relative; padding-left:22px; margin:0; list-style:none }
+    .timeline::before{ content:""; position:absolute; left:10px; top:0; bottom:0; width:2px; background:var(--line); }
     .item{
-      position:relative; list-style:none; margin:0 0 12px 0; padding:0;
-      background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow);
+      position:relative; margin:0 0 .75rem 0; background:#fff; border:1px solid var(--line); border-radius:.9rem; box-shadow:0 6px 20px rgba(17,24,39,.06);
     }
     .marker{
-      position:absolute; left:-2px; top:14px; width:12px; height:12px; border-radius:50%;
-      border:2px solid #fff;
+      position:absolute; left:-2px; top:14px; width:12px; height:12px; border-radius:50%; border:2px solid #fff;
     }
-    .row{
-      display:grid; grid-template-columns: 1fr auto; gap:8px; padding:12px 12px 10px 16px;
-      align-items:flex-start;
+    .row-evt{
+      display:grid; grid-template-columns: 1fr auto; gap:.5rem; padding:.75rem .75rem .5rem .95rem; align-items:flex-start;
     }
-    .title{ margin:0; font-weight:800; display:flex; gap:8px; align-items:center; }
-    .meta{ color:var(--muted); font-size:.92rem; display:flex; flex-wrap:wrap; gap:10px; align-items:center }
-    .meta code{ background:rgba(0,0,0,.06); padding:2px 6px; border-radius:6px; border:1px solid var(--line) }
-    .badg{ display:inline-flex; gap:6px; align-items:center; font-weight:800; padding:4px 8px; border-radius:999px; color:#fff }
+    .title{ margin:0; font-weight:800; display:flex; gap:.5rem; align-items:center; font-size:.98rem }
+    .badg{ display:inline-flex; gap:.4rem; align-items:center; font-weight:800; padding:.25rem .5rem; border-radius:999px; color:#fff; font-size:.8rem }
     .b-login{ background:var(--ok) } .b-logout{ background:#4b5563 } .b-acesso{ background:var(--info) } .b-erro{ background:var(--err) }
-
+    .meta{ color:var(--muted); font-size:.9rem; display:flex; flex-wrap:wrap; gap:.6rem; align-items:center }
+    .meta code{ background:#f1f5f9; padding:2px 6px; border-radius:6px; border:1px solid var(--line); font-size:.84rem }
     .ip{ cursor:pointer; border-bottom:1px dotted currentColor }
-    .msg{ margin:8px 16px 14px; color:var(--muted) }
+    .msg{ margin:.35rem .95rem .85rem; color:var(--muted); font-size:.95rem }
 
-    .empty{ text-align:center; color:var(--muted); padding:24px; border:1px dashed var(--line); border-radius:12px; background:var(--panel) }
+    /* Empty */
+    .empty{ text-align:center; color:var(--muted); padding:24px; border:1px dashed var(--line); border-radius:12px; background:#fff }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- HERO -->
-    <header class="hero">
-      <div class="hero-head">
-        <div>
-          <h1 class="hero-title">Atividades dos Usuários</h1>
-          <p class="hero-sub">Veja logins, logouts, acessos e erros em tempo real. Filtre e exporte quando precisar.</p>
-        </div>
-        <div class="actions">
-          <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="pill">
-            <i class="fa-solid fa-arrow-left"></i><span>Dashboard</span>
-          </a>
-          <button id="themeToggle" type="button" class="pill" aria-label="Alternar tema">
-            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-          </button>
+
+<!-- NAVBAR catálogo -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-outline-light" href="{% url 'inscricoes:admin_geral_dashboard' %}">← Dashboard</a>
+      <button id="themeToggle" type="button" class="btn btn-sm btn-light" aria-label="Alternar tema">Tema</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  <!-- Topbar com título + ações -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Atividades dos Usuários</h1>
+        <div class="small text-muted-2">Logins, logouts, acessos e erros. Filtre e exporte conforme necessário.</div>
+      </div>
+      <div class="d-flex gap-2">
+        <button id="clear" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-eraser"></i> Limpar</button>
+        <button id="exportCsv" class="btn btn-primary btn-sm"><i class="fa-solid fa-file-export"></i> Exportar CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros & Busca -->
+  <section class="card-clean p-3 p-lg-4 mb-3">
+    <h2 class="h6 text-muted-2 mb-3"><i class="fa-solid fa-sliders"></i> Filtros & Ações</h2>
+
+    <div class="row g-2 align-items-center">
+      <div class="col-12 col-lg-8">
+        <div class="input-group">
+          <span class="input-group-text bg-white">🔎</span>
+          <input id="q" type="search" class="form-control" placeholder="Buscar por usuário, IP, caminho ou mensagem…" autocomplete="off">
         </div>
       </div>
-    </header>
-
-    <!-- CONTROLES -->
-    <section class="panel">
-      <h2><i class="fa-solid fa-sliders"></i> Filtros & Ações</h2>
-
-      <div class="filters">
-        <div class="search" role="search">
-          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-          <input id="q" type="search" placeholder="Buscar por usuário, IP, caminho ou mensagem…" autocomplete="off" />
-        </div>
-
-        <div class="actions" style="justify-content:flex-end;">
-          <button id="clear" class="btn -ghost"><i class="fa-solid fa-eraser"></i> Limpar</button>
-          <button id="exportCsv" class="btn"><i class="fa-solid fa-file-export"></i> Exportar CSV</button>
+      <div class="col-12 col-lg-4">
+        <div class="d-flex justify-content-lg-end gap-2">
+          <button id="clear2" class="btn btn-outline-secondary btn-sm d-none d-lg-inline">Limpar</button>
+          <button id="exportCsv2" class="btn btn-primary btn-sm d-none d-lg-inline">Exportar CSV</button>
         </div>
       </div>
+    </div>
 
-      <div class="chips" style="margin-top:10px">
-        <button class="chip" data-type="login"  data-active="true"><span class="dot -login"></span> Login</button>
-        <button class="chip" data-type="logout" data-active="true"><span class="dot -logout"></span> Logout</button>
-        <button class="chip" data-type="acesso" data-active="true"><span class="dot -acesso"></span> Acesso</button>
-        <button class="chip" data-type="erro"   data-active="true"><span class="dot -erro"></span> Erro</button>
-      </div>
+    <div class="chips mt-3">
+      <button class="chip" data-type="login"  data-active="true"><span class="dot -login"></span> Login</button>
+      <button class="chip" data-type="logout" data-active="true"><span class="dot -logout"></span> Logout</button>
+      <button class="chip" data-type="acesso" data-active="true"><span class="dot -acesso"></span> Acesso</button>
+      <button class="chip" data-type="erro"   data-active="true"><span class="dot -erro"></span> Erro</button>
+    </div>
 
-      <div class="stats" id="stats" aria-live="polite" aria-atomic="true" style="margin-top:10px">
-        <div class="stat"><span class="dot -login"></span> Logins: <strong id="c-login">0</strong></div>
-        <div class="stat"><span class="dot -logout"></span> Logouts: <strong id="c-logout">0</strong></div>
-        <div class="stat"><span class="dot -acesso"></span> Acessos: <strong id="c-acesso">0</strong></div>
-        <div class="stat"><span class="dot -erro"></span> Erros: <strong id="c-erro">0</strong></div>
-        <div class="stat"><i class="fa-regular fa-list-alt"></i> Total visível: <strong id="c-total">0</strong></div>
-      </div>
-    </section>
+    <div class="stats mt-3" id="stats" aria-live="polite" aria-atomic="true">
+      <div class="stat"><span class="dot -login"></span> Logins: <strong id="c-login">0</strong></div>
+      <div class="stat"><span class="dot -logout"></span> Logouts: <strong id="c-logout">0</strong></div>
+      <div class="stat"><span class="dot -acesso"></span> Acessos: <strong id="c-acesso">0</strong></div>
+      <div class="stat"><span class="dot -erro"></span> Erros: <strong id="c-erro">0</strong></div>
+      <div class="stat"><i class="fa-regular fa-list-alt"></i> Total visível: <strong id="c-total">0</strong></div>
+    </div>
+  </section>
 
-    <!-- TIMELINE -->
+  <!-- Timeline -->
+  <section class="card-clean p-3 p-lg-4">
     {% if eventos %}
       <ol class="timeline" id="list">
         {% for evento in eventos %}
-          {% comment %} classes b-*** para badge e marcador coloridos {% endcomment %}
           <li class="item"
               data-tipo="{{ evento.tipo|lower }}"
               data-user="{{ evento.usuario }}"
@@ -209,7 +165,7 @@
               data-msg="{{ evento.mensagem|default:'' }}">
             <span class="marker {% if evento.tipo == 'login' %}-login{% elif evento.tipo == 'logout' %}-logout{% elif evento.tipo == 'acesso' %}-acesso{% else %}-erro{% endif %}"></span>
 
-            <div class="row">
+            <div class="row-evt">
               <div>
                 <h3 class="title">
                   <span class="badg
@@ -226,7 +182,7 @@
                   <span>— <strong>{{ evento.usuario }}</strong></span>
                 </h3>
 
-                <div class="meta">
+                <div class="meta mt-1">
                   <span><i class="fa-regular fa-clock"></i> {{ evento.hora }}</span>
 
                   {% if evento.ip %}
@@ -240,10 +196,8 @@
                   {% endif %}
                 </div>
               </div>
-
-              <!-- espaço para ações futuras -->
               <div class="meta" style="justify-self:end">
-                <!-- reservado -->
+                <!-- reservado para ações futuras -->
               </div>
             </div>
 
@@ -258,137 +212,150 @@
         <i class="fa-regular fa-face-smile-beam"></i> Nenhuma atividade encontrada.
       </div>
     {% endif %}
-  </div>
+  </section>
 
-  <script>
-    // ===== Tema com persistência (mesma chave das outras telas) =====
-    (function themeToggle(){
-      const KEY='relatorios-theme';
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
-      }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next); apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
+  <footer class="py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center text-muted-2 small">
+      <div>© {% now "Y" %} Admin Geral — Todos os direitos reservados</div>
+      <div>Interface no padrão do Catálogo • Bootstrap 5</div>
+    </div>
+  </footer>
+</main>
+
+<script>
+  // Tema com persistência (mesma chave das outras telas)
+  (function themeToggle(){
+    const KEY='relatorios-theme';
+    const btn=document.getElementById('themeToggle');
+    const root=document.documentElement;
+    function apply(theme){
+      if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+      else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+      else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+    }
+    apply(localStorage.getItem(KEY) || 'auto');
+    btn?.addEventListener('click', ()=>{
+      const cur=localStorage.getItem(KEY)||'auto';
+      const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+      localStorage.setItem(KEY,next); apply(next);
+      btn.setAttribute('aria-label',`Tema: ${next}`);
+    });
+  })();
+
+  // Filtros, busca, contadores e exportação
+  (function logUI(){
+    const list = document.getElementById('list');
+    const q = document.getElementById('q');
+    const chips = Array.from(document.querySelectorAll('.chip'));
+    const clearBtn = document.getElementById('clear');
+    const clearBtn2 = document.getElementById('clear2');
+    const exportBtn = document.getElementById('exportCsv');
+    const exportBtn2 = document.getElementById('exportCsv2');
+
+    const countEls = {
+      login: document.getElementById('c-login'),
+      logout: document.getElementById('c-logout'),
+      acesso: document.getElementById('c-acesso'),
+      erro: document.getElementById('c-erro'),
+      total: document.getElementById('c-total')
+    };
+
+    if(!list) return;
+    const items = Array.from(list.querySelectorAll('.item'));
+
+    // Copiar IP ao clicar
+    list.addEventListener('click', (e)=>{
+      const el = e.target.closest('.ip');
+      if(!el) return;
+      const txt = el.textContent.trim();
+      navigator.clipboard.writeText(txt).then(()=>{
+        const old = el.textContent;
+        el.textContent = txt + ' ✓';
+        setTimeout(()=> el.textContent = old, 900);
       });
-    })();
+    });
 
-    // ===== Filtros, busca, contadores e exportação =====
-    (function logUI(){
-      const list = document.getElementById('list');
-      if(!list) return;
+    function activeTypes(){
+      const map = {};
+      chips.forEach(c => map[c.dataset.type] = c.dataset.active !== 'false');
+      return map;
+    }
 
-      const q = document.getElementById('q');
-      const chips = Array.from(document.querySelectorAll('.chip'));
-      const clearBtn = document.getElementById('clear');
-      const exportBtn = document.getElementById('exportCsv');
+    function matchesSearch(item, term){
+      if(!term) return true;
+      const hay = [
+        item.dataset.user || '',
+        item.dataset.ip || '',
+        item.dataset.path || '',
+        item.dataset.msg || ''
+      ].join(' ').toLowerCase();
+      return hay.includes(term.toLowerCase());
+    }
 
-      const countEls = {
-        login: document.getElementById('c-login'),
-        logout: document.getElementById('c-logout'),
-        acesso: document.getElementById('c-acesso'),
-        erro: document.getElementById('c-erro'),
-        total: document.getElementById('c-total')
-      };
+    function apply(){
+      const types = activeTypes();
+      const term = q.value.trim();
 
-      const items = Array.from(list.querySelectorAll('.item'));
+      let c = {login:0, logout:0, acesso:0, erro:0, total:0};
 
-      // Copiar IP ao clicar
-      list.addEventListener('click', (e)=>{
-        const el = e.target.closest('.ip');
-        if(!el) return;
-        const txt = el.textContent.trim();
-        navigator.clipboard.writeText(txt).then(()=>{
-          const old = el.textContent;
-          el.textContent = txt + ' ✓';
-          setTimeout(()=> el.textContent = old, 900);
-        });
-      });
-
-      function activeTypes(){
-        const map = {};
-        chips.forEach(c => map[c.dataset.type] = c.dataset.active !== 'false');
-        return map;
-      }
-
-      function matchesSearch(item, term){
-        if(!term) return true;
-        const hay = [
-          item.dataset.user || '',
-          item.dataset.ip || '',
-          item.dataset.path || '',
-          item.dataset.msg || ''
-        ].join(' ').toLowerCase();
-        return hay.includes(term.toLowerCase());
-      }
-
-      function apply(){
-        const types = activeTypes();
-        const term = q.value.trim();
-
-        let c = {login:0, logout:0, acesso:0, erro:0, total:0};
-
-        items.forEach(li=>{
-          const t = li.dataset.tipo || '';
-          const visible = !!types[t] && matchesSearch(li, term);
-          li.style.display = visible ? '' : 'none';
-          if(visible){
-            c.total++;
-            if(c[t] !== undefined) c[t]++;
-          }
-        });
-
-        countEls.login.textContent = c.login;
-        countEls.logout.textContent = c.logout;
-        countEls.acesso.textContent = c.acesso;
-        countEls.erro.textContent  = c.erro;
-        countEls.total.textContent = c.total;
-      }
-
-      // Eventos
-      q.addEventListener('input', apply);
-      chips.forEach(chip=>{
-        chip.addEventListener('click', ()=>{
-          chip.dataset.active = chip.dataset.active === 'false' ? 'true' : 'false';
-          apply();
-        });
-      });
-      clearBtn.addEventListener('click', ()=>{
-        q.value=''; chips.forEach(c=> c.dataset.active='true'); apply();
+      items.forEach(li=>{
+        const t = li.dataset.tipo || '';
+        const visible = !!types[t] && matchesSearch(li, term);
+        li.style.display = visible ? '' : 'none';
+        if(visible){
+          c.total++;
+          if(c[t] !== undefined) c[t]++;
+        }
       });
 
-      // Exportar CSV (respeita filtros atuais)
-      exportBtn.addEventListener('click', ()=>{
-        const rows = [['tipo','usuario','ip','caminho','hora','mensagem']];
-        items.forEach(li=>{
-          if(li.style.display==='none') return;
-          const tipo = li.dataset.tipo || '';
-          const user = li.dataset.user || '';
-          const ip   = li.dataset.ip || '';
-          const path = li.dataset.path || '';
-          const hora = (li.querySelector('.meta')?.textContent.match(/\d{2}:\d{2}(:\d{2})?/)||[''])[0];
-          const msg  = li.dataset.msg || '';
-          rows.push([tipo,user,ip,path,hora,msg].map(v=> `"${String(v).replace(/"/g,'""')}"`));
-        });
-        const csv = rows.map(r=> r.join(',')).join('\n');
-        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'atividades_usuarios.csv';
-        a.click();
-        URL.revokeObjectURL(a.href);
-      });
+      countEls.login.textContent = c.login;
+      countEls.logout.textContent = c.logout;
+      countEls.acesso.textContent = c.acesso;
+      countEls.erro.textContent  = c.erro;
+      countEls.total.textContent = c.total;
+    }
 
-      // Inicial
-      apply();
-    })();
-  </script>
+    // Eventos
+    q.addEventListener('input', apply);
+    chips.forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        chip.dataset.active = chip.dataset.active === 'false' ? 'true' : 'false';
+        apply();
+      });
+    });
+    function clearAll(){
+      q.value=''; chips.forEach(c=> c.dataset.active='true'); apply();
+    }
+    clearBtn?.addEventListener('click', clearAll);
+    clearBtn2?.addEventListener('click', clearAll);
+
+    // Exportar CSV (respeita filtros atuais)
+    function exportCsv(){
+      const rows = [['tipo','usuario','ip','caminho','hora','mensagem']];
+      items.forEach(li=>{
+        if(li.style.display==='none') return;
+        const tipo = li.dataset.tipo || '';
+        const user = li.dataset.user || '';
+        const ip   = li.dataset.ip || '';
+        const path = li.dataset.path || '';
+        const hora = (li.querySelector('.meta')?.textContent.match(/\d{2}:\d{2}(:\d{2})?/)||[''])[0] || '';
+        const msg  = li.dataset.msg || '';
+        rows.push([tipo,user,ip,path,hora,msg].map(v=> `"${String(v).replace(/"/g,'""')}"`));
+      });
+      const csv = rows.map(r=> r.join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'atividades_usuarios.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    exportBtn?.addEventListener('click', exportCsv);
+    exportBtn2?.addEventListener('click', exportCsv);
+
+    // Inicial
+    apply();
+  })();
+</script>
 </body>
 </html>

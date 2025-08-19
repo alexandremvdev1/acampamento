@@ -5,253 +5,233 @@
   <meta charset="utf-8" />
   <title>Repasse — {{ evento.nome }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Font Awesome (opcional) -->
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
         integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <style>
     :root{
-      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --radius:14px; --shadow:0 8px 32px rgba(16,24,40,.08);
-      --accent:#2563eb; --accent-2:#1d4ed8;
-      --ok:#16a34a; --warn:#f59e0b; --chip:#111827; --chip-2:#374151;
-      --table-stripe:#f4f7f9;
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a; /* navbar gradiente */
+      --base-font:14px;
+      --ok:#16a34a; --warn:#f59e0b;
     }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow:0 14px 40px rgba(0,0,0,.5);
-        --accent:#1d4ed8; --accent-2:#1e40af;
-        --chip:#374151; --chip-2:#111827; --table-stripe:#121821;
-      }
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0}
-    body{
-      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.55;
-      padding:20px;
-    }
-    .wrap{ max-width:980px; margin:0 auto }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
 
-    /* HERO */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(16px, 3.6vw, 26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      margin-bottom:16px;
-      display:grid; gap:10px;
+    /* Navbar / topbar no padrão do painel */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    /* Cards limpos */
+    .card-clean{
+      border:1px solid #e5e7eb; border-radius:.9rem; background:#fff;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
     }
-    .hero-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
-    .hero-title{margin:0; font-weight:800; font-size: clamp(1.2rem,3.2vw,1.8rem)}
-    .hero-sub{margin:2px 0 0; opacity:.9}
-    .actions{display:flex; gap:10px; flex-wrap:wrap}
-    .pill{
-      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px;
-      font-weight:800; text-decoration:none; color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12); transition:transform .12s ease, background .2s ease; cursor:pointer;
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+
+    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
     }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .text-muted-2{ color:var(--muted); }
 
     /* KPIs */
-    .kpis{ display:grid; grid-template-columns: repeat(3,1fr); gap:12px; margin-bottom:14px }
-    @media (max-width:860px){ .kpis{ grid-template-columns: 1fr } }
-    .kpi{
-      background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px;
-      display:grid; gap:6px; box-shadow:var(--shadow);
+    .kpi{ background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem; }
+    .kpi .small{ color:var(--muted); font-size:.8rem; }
+    .kpi .fs-4{ font-size:1.15rem !important; }
+    .kpi .fw-bold{ font-weight:700 !important; }
+    .kpi.ok .fs-4{ color:var(--ok); }
+    .kpi.warn .fs-4{ color:var(--warn); }
+
+    /* Tabela */
+    table thead th{ background:#0f172a; color:#fff; }
+    @media (prefers-color-scheme: dark){
+      table thead th{ background:#1d2b55; }
     }
-    .kpi .label{ color:var(--muted); font-size:.92rem }
-    .kpi .value{ font-size:1.25rem; font-weight:800 }
-    .kpi .sub{ color:var(--muted); font-size:.92rem }
-    .kpi.ok .value{ color:var(--ok) }
-    .kpi.warn .value{ color:var(--warn) }
 
-    /* Painéis / Tabela */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(12px,2vw,16px); margin-bottom:14px;
+    /* QR bloco dentro da tabela */
+    .qr-img{
+      width: 160px; max-width:100%; height:auto; border-radius:.6rem; border:1px solid #e5e7eb;
     }
-    .panel h2{margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:800; letter-spacing:.2px; display:flex; gap:8px; align-items:center}
-    .table-wrap{ overflow:auto; border:1px solid var(--line); border-radius:12px }
-    table{ width:100%; border-collapse:collapse; min-width:720px; background:var(--panel) }
-    th, td{ padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; font-size:.98rem; vertical-align:top }
-    thead th{ background:linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,0)); font-weight:800; position:sticky; top:0; z-index:1 }
-    tbody tr:nth-child(even){ background:var(--table-stripe) }
-    tbody tr:hover{ background:rgba(37,99,235,.06) }
-    .muted{ color:var(--muted) }
-
-    .btn{ border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
-      padding:10px 12px; border-radius:12px; font-weight:800; color:#fff; text-decoration:none;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .12s ease, filter .2s ease; }
-    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-
-    .btn-ghost{ background:transparent; color:var(--ink); border:1px solid var(--line) }
-
-    .qr{
-      display:grid; gap:10px; grid-template-columns: 160px 1fr; align-items:start;
-    }
-    @media (max-width:640px){ .qr{ grid-template-columns: 1fr } }
-    .qr img{ width:160px; height:auto; border-radius:12px; border:1px solid var(--line) }
-
-    footer{ text-align:center; margin:18px auto 6px; color:var(--muted); font-size:.95rem }
+    textarea.form-control[readonly]{ background-color: #fff; }
   </style>
 </head>
 <body>
-  <div class="wrap">
 
-    <!-- HERO -->
-    <header class="hero">
-      <div class="hero-head">
-        <div>
-          <h1 class="hero-title">Repasse — {{ evento.nome }}</h1>
-          <p class="hero-sub">
-            Data: {{ evento.data_inicio|date:"d/m/Y" }}{% if evento.data_fim %} a {{ evento.data_fim|date:"d/m/Y" }}{% endif %}
-          </p>
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:repasse_lista_eventos' %}">
+      Repasses • {{ evento.nome }}
+    </a>
+
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:repasse_lista_eventos' %}">← Voltar</a>
+      <button id="printBtn" class="btn btn-sm btn-warning" type="button">🖨️ Imprimir</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  <!-- HEADER / CONTEXTO -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Repasse — {{ evento.nome }}</h1>
+        <div class="small text-muted-2">
+          Data: {{ evento.data_inicio|date:"d/m/Y" }}{% if evento.data_fim %} a {{ evento.data_fim|date:"d/m/Y" }}{% endif %}
         </div>
-        <div class="actions">
-          <a href="{% url 'inscricoes:repasse_lista_eventos' %}" class="pill">
-            <i class="fa-solid fa-arrow-left"></i><span>Voltar</span>
-          </a>
-          <button id="themeToggle" type="button" class="pill" aria-label="Alternar tema">
-            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-          </button>
-          <button id="printBtn" type="button" class="pill">
-            <i class="fa-solid fa-print"></i><span>Imprimir</span>
-          </button>
-        </div>
       </div>
-    </header>
-
-    <!-- KPIs -->
-    <section class="kpis" aria-label="Indicadores">
-      <div class="kpi">
-        <div class="label">Arrecadado Bruto</div>
-        <div class="value">R$ {{ fin.bruto|floatformat:2 }}</div>
-        <div class="sub">Pagamentos confirmados</div>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary btn-sm" href="{% url 'inscricoes:repasse_lista_eventos' %}">
+          <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+        </a>
+        <button id="printBtn2" class="btn btn-primary btn-sm" type="button">
+          <i class="fa-solid fa-print me-1"></i> Imprimir
+        </button>
       </div>
-      <div class="kpi warn">
-        <div class="label">Taxas Mercado Pago</div>
-        <div class="value">R$ {{ fin.taxas_mp|floatformat:2 }}</div>
-        <div class="sub">Somatório real (fee_details)</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Base p/ Repasse</div>
-        <div class="value">R$ {{ fin.base_repasse|floatformat:2 }}</div>
-        <div class="sub">Bruto – Taxas MP</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Taxa do Sistema</div>
-        <div class="value">R$ {{ fin.valor_repasse|floatformat:2 }}</div>
-        <div class="sub">{{ fin.taxa_percent }}% sobre a base</div>
-      </div>
-      <div class="kpi ok">
-        <div class="label">Líquido da Paróquia</div>
-        <div class="value">R$ {{ fin.liquido_paroquia|floatformat:2 }}</div>
-        <div class="sub">Após o repasse</div>
-      </div>
-    </section>
-
-    <!-- Ação: Gerar PIX -->
-    <section class="panel">
-      <h2><i class="fa-solid fa-bolt"></i> Gerar PIX de Repasse</h2>
-      <form method="post" action="{% url 'inscricoes:gerar_pix_repasse_evento' evento.id %}">
-        {% csrf_token %}
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
-          <button class="btn" type="submit"><i class="fa-solid fa-qrcode"></i> Gerar PIX (R$ {{ fin.valor_repasse|floatformat:2 }})</button>
-          <span class="muted">Ao confirmar, um QR Code e o código “copia e cola” ficarão disponíveis abaixo em Histórico.</span>
-        </div>
-      </form>
-    </section>
-
-    <!-- Histórico -->
-    <section class="panel">
-      <h2><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Repasses</h2>
-      <div class="table-wrap" role="region" aria-label="Histórico">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:170px">Data</th>
-              <th style="width:160px">Valor (R$)</th>
-              <th style="width:140px">Status</th>
-              <th>PIX (QR / Copia e Cola)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in historico %}
-              <tr>
-                <td>{{ r.criado_em|date:"d/m/Y H:i" }}</td>
-                <td><strong>R$ {{ r.valor_repasse|floatformat:2 }}</strong></td>
-                <td>{{ r.get_status_display }}</td>
-                <td>
-                  {% if r.qr_code_base64 or r.qr_code_text %}
-                    <div class="qr">
-                      <div>
-                        {% if r.qr_code_base64 %}
-                          <img src="data:image/png;base64,{{ r.qr_code_base64 }}" alt="PIX QR">
-                        {% else %}
-                          <div class="muted">Sem imagem</div>
-                        {% endif %}
-                      </div>
-                      <div>
-                        <label class="muted">Copia e Cola</label>
-                        <textarea readonly style="width:100%; min-height:90px; padding:10px; border-radius:12px; border:1px solid var(--line); background:transparent; color:var(--ink)">{{ r.qr_code_text }}</textarea>
-                        {% if r.transacao_id %}
-                          <p class="muted" style="margin:.4rem 0 0">Transação: {{ r.transacao_id }}</p>
-                        {% endif %}
-                      </div>
-                    </div>
-                  {% else %}
-                    <span class="muted">—</span>
-                  {% endif %}
-                </td>
-              </tr>
-            {% empty %}
-              <tr><td colspan="4" class="muted" style="text-align:center; padding:16px">Nenhum repasse gerado ainda.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <footer>
-      &copy; {{ current_year }} Painel da Paróquia — Repasses
-    </footer>
+    </div>
   </div>
 
-  <script>
-    // Tema
-    (function themeToggle(){
-      const KEY='repasse-evento-theme';
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
-      }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next); apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
-      });
-    })();
+  <!-- KPIs -->
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="kpi">
+        <div class="small">Arrecadado Bruto</div>
+        <div class="fs-4 fw-bold">R$ {{ fin.bruto|floatformat:2 }}</div>
+        <div class="small">Pagamentos confirmados</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="kpi warn">
+        <div class="small">Taxas Mercado Pago</div>
+        <div class="fs-4 fw-bold">R$ {{ fin.taxas_mp|floatformat:2 }}</div>
+        <div class="small">Somatório real (fee_details)</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="kpi">
+        <div class="small">Base p/ Repasse</div>
+        <div class="fs-4 fw-bold">R$ {{ fin.base_repasse|floatformat:2 }}</div>
+        <div class="small">Bruto – Taxas MP</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="kpi">
+        <div class="small">Taxa do Sistema</div>
+        <div class="fs-4 fw-bold">R$ {{ fin.valor_repasse|floatformat:2 }}</div>
+        <div class="small">{{ fin.taxa_percent }}% sobre a base</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="kpi ok">
+        <div class="small">Líquido da Paróquia</div>
+        <div class="fs-4 fw-bold">R$ {{ fin.liquido_paroquia|floatformat:2 }}</div>
+        <div class="small">Após o repasse</div>
+      </div>
+    </div>
+  </div>
 
-    // Imprimir
-    document.getElementById('printBtn')?.addEventListener('click', ()=>window.print());
-  </script>
+  <!-- GERAR PIX -->
+  <section class="card-clean p-3 p-md-4 mb-3">
+    <h2 class="sec-title"><i class="fa-solid fa-bolt me-1"></i> Gerar PIX de Repasse</h2>
+    <form method="post" action="{% url 'inscricoes:gerar_pix_repasse_evento' evento.id %}">
+      {% csrf_token %}
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <button class="btn btn-primary" type="submit">
+          <i class="fa-solid fa-qrcode me-1"></i> Gerar PIX (R$ {{ fin.valor_repasse|floatformat:2 }})
+        </button>
+        <span class="text-muted-2">
+          Ao confirmar, um QR Code e o código “copia e cola” ficarão disponíveis abaixo em Histórico.
+        </span>
+      </div>
+    </form>
+  </section>
+
+  <!-- HISTÓRICO -->
+  <section class="card-clean p-3 p-md-4">
+    <h2 class="sec-title"><i class="fa-solid fa-clock-rotate-left me-1"></i> Histórico de Repasses</h2>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th style="width:170px">Data</th>
+            <th style="width:160px">Valor (R$)</th>
+            <th style="width:140px">Status</th>
+            <th>PIX (QR / Copia e Cola)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in historico %}
+            <tr>
+              <td>{{ r.criado_em|date:"d/m/Y H:i" }}</td>
+              <td><strong>R$ {{ r.valor_repasse|floatformat:2 }}</strong></td>
+              <td>{{ r.get_status_display }}</td>
+              <td>
+                {% if r.qr_code_base64 or r.qr_code_text %}
+                  <div class="row g-3">
+                    <div class="col-auto">
+                      {% if r.qr_code_base64 %}
+                        <img class="qr-img" src="data:image/png;base64,{{ r.qr_code_base64 }}" alt="PIX QR">
+                      {% else %}
+                        <div class="text-muted-2">Sem imagem</div>
+                      {% endif %}
+                    </div>
+                    <div class="col">
+                      <label class="form-label text-muted-2 mb-1">Copia e Cola</label>
+                      <textarea class="form-control" readonly rows="5">{{ r.qr_code_text }}</textarea>
+                      {% if r.transacao_id %}
+                        <p class="text-muted-2 mb-0 mt-1">Transação: {{ r.transacao_id }}</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% else %}
+                  <span class="text-muted-2">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted-2 py-3">
+                Nenhum repasse gerado ainda.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <small>© {{ current_year }} Painel da Paróquia — Repasses</small>
+      <small class="text-muted-2">Interface no padrão do Catálogo • Bootstrap 5</small>
+    </div>
+  </footer>
+
+</main>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // Imprimir (suporta os 2 botões)
+  const p1 = document.getElementById('printBtn');
+  const p2 = document.getElementById('printBtn2');
+  p1 && p1.addEventListener('click', ()=>window.print());
+  p2 && p2.addEventListener('click', ()=>window.print());
+</script>
 </body>
 </html>

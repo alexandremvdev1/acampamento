@@ -1,172 +1,125 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
   <title>Criar Novo Evento</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap + Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
         integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <style>
     :root{
-      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --accent:#2563eb; --accent-2:#1d4ed8;
-      --danger:#ef4444; --ok:#16a34a; --warn:#f59e0b;
-      --radius:14px; --shadow:0 8px 32px rgba(16,24,40,.08);
-      --stripe:#f4f7f9;
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px;
     }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow:0 14px 40px rgba(0,0,0,.5);
-        --accent:#1d4ed8; --accent-2:#1e40af;
-        --stripe:#121821;
-      }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    .card-clean{
+      border:none; box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease; border-radius:.9rem; background:#fff;
+      border:1px solid #e5e7eb;
+    }
+    .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+    .text-muted-2{ color:var(--muted); }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
+    }
+    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
+
+    /* Deixa inputs com “cara” de form-control sem precisar add_class */
+    .form-auto input,
+    .form-auto select,
+    .form-auto textarea{
+      display:block; width:100%;
+      padding:.55rem .75rem; border:1px solid #e5e7eb; border-radius:.5rem;
+      background:#fff; color:#0f172a; font-size:.95rem; outline:none;
+    }
+    .form-auto input:focus,
+    .form-auto select:focus,
+    .form-auto textarea:focus{
+      border-color:#bfdbfe; box-shadow:0 0 0 .2rem var(--ring);
+    }
+    .form-auto .help{ font-size:.85rem; color:var(--muted); }
+    .form-auto .errorlist{ list-style:none; padding:0; margin:.4rem 0 0; }
+    .form-auto .errorlist li{
+      background:#fee2e2; border:1px solid #fecaca; color:#991b1b;
+      border-radius:.5rem; padding:.45rem .6rem; font-size:.85rem;
     }
 
-    *{box-sizing:border-box}
-    html,body{margin:0}
-    body{
-      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.55;
-      padding:20px;
-    }
-    .wrap{max-width:1000px;margin:0 auto}
-
-    /* HERO */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(16px, 3.6vw, 26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      margin-bottom:16px;
-      display:grid; gap:10px;
-    }
-    .hero-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
-    .hero-title{margin:0; font-weight:800; font-size: clamp(1.2rem,3.2vw,1.8rem)}
-    .hero-sub{margin:2px 0 0; opacity:.9}
-    .actions{display:flex; gap:10px; flex-wrap:wrap}
-    .pill{
-      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px;
-      font-weight:800; text-decoration:none; color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12); transition:transform .12s ease, background .2s ease; cursor:pointer;
-    }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
-
-    /* PAINEL / FORM */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(12px,2vw,18px); margin-bottom:14px;
-    }
-    .panel h2{margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:800; letter-spacing:.2px; display:flex; gap:8px; align-items:center}
-
-    form{margin:0}
-    .form-grid{
-      display:grid; gap:14px;
-      grid-template-columns: repeat(12, 1fr);
-    }
-    .col-12{grid-column: span 12}
-    .col-6{grid-column: span 6}
-    .col-4{grid-column: span 4}
-    .col-3{grid-column: span 3}
-    @media (max-width: 900px){ .col-6,.col-4,.col-3{ grid-column: span 12 } }
-
-    .form-group{display:flex; flex-direction:column; gap:6px}
-    label{ font-size:.95rem; color:var(--muted); font-weight:700 }
-    .req{ color:var(--warn) }
-
-    input[type="text"],
-    input[type="date"],
-    input[type="time"],
-    input[type="number"],
-    input[type="file"],
-    select, textarea{
-      width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:12px;
-      background:transparent; color:var(--ink); font-size:1rem; outline:none;
-    }
-    textarea{ min-height:120px; resize:vertical }
-
-    /* ajuda e erros */
-    .help{ font-size:.9rem; color:var(--muted) }
-    .errorlist{ list-style:none; margin:6px 0 0; padding:0 }
-    .errorlist li{
-      background:rgba(239,68,68,.08); color:var(--danger);
-      border:1px solid rgba(239,68,68,.25); padding:8px 10px; border-radius:10px; font-size:.9rem;
-    }
-
-    /* AÇÕES */
-    .actions-row{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:6px }
-    .btn{
-      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
-      padding:11px 14px; border-radius:12px; font-weight:800; color:#fff; text-decoration:none;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .12s ease, filter .2s ease;
-    }
-    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-    .btn-ghost{ background:transparent; color:var(--ink); border:1px solid var(--line) }
-
-    /* FILE preview */
-    .file-preview{ display:grid; grid-auto-flow:column; grid-auto-columns:120px; gap:10px; margin-top:4px; overflow:auto }
+    /* Preview de arquivos */
+    .file-preview{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.25rem }
     .file-preview__item{
-      border:1px solid var(--line); border-radius:10px; background:var(--stripe);
-      display:grid; place-items:center; padding:6px; min-height:90px; font-size:.85rem; color:var(--muted)
+      width:120px; min-height:84px; border:1px solid #e5e7eb; border-radius:.5rem;
+      background:#f7f9fc; display:grid; place-items:center; padding:.4rem; color:#64748b; font-size:.8rem;
     }
-    .file-preview__item img{ width:100%; height:100%; object-fit:cover; border-radius:8px }
-
-    footer{ text-align:center; margin:18px auto 6px; color:var(--muted); font-size:.95rem }
+    .file-preview__item img{ width:100%; height:100%; object-fit:cover; border-radius:.4rem }
   </style>
 </head>
 <body>
-  <div class="wrap">
 
-    <!-- HERO -->
-    <header class="hero">
-      <div class="hero-head">
-        <div>
-          <h1 class="hero-title">Criar Novo Evento</h1>
-          <p class="hero-sub">Preencha as informações do evento da sua paróquia</p>
-        </div>
-        <div class="actions">
-          <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="pill">
-            <i class="fa-solid fa-arrow-left"></i><span>Voltar</span>
-          </a>
-          <button id="themeToggle" type="button" class="pill" aria-label="Alternar tema">
-            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-          </button>
-        </div>
+<!-- NAVBAR (padrão painel) -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
+      <a class="btn btn-sm btn-light" href="http://localhost:8000/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
+      <a class="btn btn-sm btn-secondary" href="{% url 'inscricoes:admin_paroquia_painel' %}">Paróquia</a>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  <!-- HEADER -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Criar Novo Evento</h1>
+        <div class="small text-muted-2">Preencha as informações do evento da sua paróquia.</div>
       </div>
-    </header>
+      <div class="d-flex gap-2">
+        <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-arrow-left"></i> Voltar
+        </a>
+      </div>
+    </div>
+  </div>
 
-    <!-- FORM -->
-    <section class="panel">
-      <h2><i class="fa-solid fa-calendar-plus"></i> Dados do Evento</h2>
+  <!-- FORM -->
+  <section class="mb-4">
+    <h2 class="sec-title">Dados do evento</h2>
 
-      <form method="post" enctype="multipart/form-data">
+    <div class="card-clean p-3 p-lg-4">
+      <form method="post" enctype="multipart/form-data" class="form-auto">
         {% csrf_token %}
         {{ form.hidden_fields }}
 
-        <div class="form-grid">
+        <div class="row g-3">
           {% for field in form.visible_fields %}
-            <div class="form-group
-              {% if field.field.widget.input_type == 'file' %} col-12 {% else %} col-6 {% endif %}">
-              <label for="{{ field.id_for_label }}">
-                {{ field.label }}{% if field.field.required %} <span class="req">*</span>{% endif %}
+            <div class="col-12 {% if field.field.widget.input_type != 'file' %}col-md-6{% endif %}">
+              <label for="{{ field.id_for_label }}" class="form-label fw-semibold small text-muted-2 mb-1">
+                {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
               </label>
+
               {{ field }}
 
               {% if field.help_text %}
-                <div class="help">{{ field.help_text|safe }}</div>
+                <div class="help mt-1">{{ field.help_text|safe }}</div>
               {% endif %}
 
               {% if field.errors %}
@@ -182,71 +135,59 @@
           {% endfor %}
         </div>
 
-        <div class="actions-row">
-          <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="btn btn-ghost">
+        <div class="d-flex justify-content-end gap-2 mt-3">
+          <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="btn btn-outline-secondary">
             <i class="fa-solid fa-xmark"></i> Cancelar
           </a>
-          <button type="submit" class="btn">
+          <button type="submit" class="btn btn-primary">
             <i class="fa-solid fa-floppy-disk"></i> Salvar
           </button>
         </div>
       </form>
-    </section>
+    </div>
+  </section>
 
-    <footer>
-      &copy; {{ current_year }} Sistema de Eventos — Todos os direitos reservados
-    </footer>
-  </div>
+  <footer class="py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <small>© {{ current_year }} Sistema de Eventos — Todos os direitos reservados</small>
+      <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+    </div>
+  </footer>
+</main>
 
-  <script>
-    // Tema com persistência (mesma lógica das outras telas)
-    (function themeToggle(){
-      const KEY='ui-theme';
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
-      }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next); apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
-      });
-    })();
-
-    // Pré-visualização genérica para campos de arquivo (imagens)
-    (function filePreviewer(){
-      function isImage(file){ return /^image\//.test(file.type) }
-      document.querySelectorAll('input[type="file"]').forEach(input=>{
-        input.addEventListener('change', (e)=>{
-          const target = e.currentTarget;
-          const pv = document.querySelector(`[data-preview-for="${target.id}"]`);
-          if(!pv) return;
-          pv.innerHTML = '';
-          const files = Array.from(target.files||[]);
-          if(!files.length){ pv.innerHTML = '<div class="file-preview__item">Sem arquivo</div>'; return; }
-          files.forEach(f=>{
-            const item = document.createElement('div');
-            item.className='file-preview__item';
-            if(isImage(f)){
-              const img = document.createElement('img');
-              img.alt = f.name;
-              item.appendChild(img);
-              const reader = new FileReader();
-              reader.onload = ev => img.src = ev.target.result;
-              reader.readAsDataURL(f);
-            }else{
-              item.textContent = f.name;
-            }
-            pv.appendChild(item);
-          });
+<script>
+  // Pré-visualização para inputs de arquivo (imagens)
+  (function filePreviewer(){
+    function isImage(file){ return /^image\//.test(file.type) }
+    document.querySelectorAll('input[type="file"]').forEach(input=>{
+      input.addEventListener('change', (e)=>{
+        const target = e.currentTarget;
+        const pv = document.querySelector(`[data-preview-for="${target.id}"]`);
+        if(!pv) return;
+        pv.innerHTML = '';
+        const files = Array.from(target.files||[]);
+        if(!files.length){
+          pv.innerHTML = '<div class="file-preview__item">Sem arquivo</div>';
+          return;
+        }
+        files.forEach(f=>{
+          const item = document.createElement('div');
+          item.className='file-preview__item';
+          if(isImage(f)){
+            const img = document.createElement('img');
+            img.alt = f.name;
+            item.appendChild(img);
+            const reader = new FileReader();
+            reader.onload = ev => img.src = ev.target.result;
+            reader.readAsDataURL(f);
+          }else{
+            item.textContent = f.name;
+          }
+          pv.appendChild(item);
         });
       });
-    })();
-  </script>
+    });
+  })();
+</script>
 </body>
 </html>

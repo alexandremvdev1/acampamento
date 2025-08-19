@@ -1,206 +1,201 @@
 {% load static %}
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Fichas de Sorteio - {{ evento.nome }}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+  <meta charset="utf-8" />
+  <title>Fichas de Sorteio — {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfSLzLQvWQ2zYlH3xZkS2VJKJQGXrCM1/MrZ8Dq03+4T6pG8Y2LRp5kw=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        /* Estilos CSS (movidos para um arquivo style.css para melhor organização) */
-        @media print {
-            .no-print {
-                display: none;
-            }
 
-            body {
-                padding: 0;
-            }
+  <style>
+    /* ====== Impressão ====== */
+    @media print{
+      .no-print{ display:none !important; }
+      body{ margin:0; background:#fff; }
+      .page{ page-break-after: always; }
+      .ticket{ border:1px dashed #000 !important; box-shadow:none !important; }
+      .sticky-topbar{ display:none !important; }
+    }
 
-            .ficha {
-                border: 1px dashed #999;
-            }
-        }
+    /* ====== Tokens / estilo do painel ====== */
+    :root{
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px; --line:#e5e7eb; --panel:#fff;
+      --shadow:0 10px 24px rgba(17,24,39,.08);
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f6f9;
-            color: #334155;
-        }
+      /* paleta do ticket */
+      --brand:#4338ca; --brand-2:#312e81;
+      --chip:#f1f5f9;
+    }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
 
-        .page {
-            page-break-after: always;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-        }
+    /* Navbar */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
 
-        .ficha {
-            width: 32%;
-            height: 250px;
-            border: 1px dashed #999;
-            margin-bottom: 15px;
-            padding: 15px;
-            box-sizing: border-box;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-        }
+    /* Topbar fixa (ações) */
+    .sticky-topbar{
+      position: sticky; top: 0; z-index: 20;
+      background:#ffffffd6; backdrop-filter: blur(6px);
+      border:1px solid var(--line); border-radius:.9rem;
+    }
 
-        .ficha h2 {
-            font-size: 18px;
-            margin: 0;
-            color: #334155;
-            font-weight: 600;
-        }
+    /* Cards */
+    .card-clean{
+      border:1px solid var(--line); border-radius:.9rem; background:#fff;
+      box-shadow:var(--shadow);
+      transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease, filter .12s ease;
+    }
+    .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 30px rgba(17,24,39,.12); border-color:#dbe1ea; filter:brightness(1.02) }
 
-        .ficha h3 { /* Estilo para o nome do evento */
-            font-size: 16px;
-            margin: 5px 0;
-            color: #64748b;
-            font-weight: normal;
-        }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700; display:flex; align-items:center; gap:.5rem;
+    }
 
-        .ficha p {
-            font-size: 14px;
-            margin: 4px 0;
-            color: #64748b;
-        }
+    .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
+    .text-muted-2{ color:var(--muted); }
 
-        .filtros {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e0e0e0;
-        }
+    /* ====== Grid de fichas ====== */
+    .page{
+      display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px;
+      margin-bottom:12px;
+    }
+    .ticket{
+      width:32%;
+      height:250px;
+      border:1px dashed #cbd5e1;
+      border-radius:12px;
+      background:#fff;
+      padding:14px;
+      box-sizing:border-box;
+      text-align:center;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      box-shadow:0 8px 24px rgba(2,6,23,.06);
+    }
+    .ticket h2{
+      font-size:18px; margin:0; color:#334155; font-weight:700; line-height:1.2;
+    }
+    .ticket .evt{
+      font-size:15px; margin:4px 0 8px; color:#64748b; font-weight:600;
+    }
+    .ticket p{ font-size:14px; margin:4px 0; color:#64748b; }
+    .avatar{
+      width:80px; height:80px; border-radius:50%; object-fit:cover; margin-bottom:10px;
+      border:2px solid #e2e8f0; background:#e5e7eb;
+      box-shadow:0 4px 10px rgba(2,6,23,.08);
+    }
 
-        .filtros label {
-            font-size: 16px;
-            color: #334155;
-            margin-right: 10px;
-            font-weight: 500;
-        }
-
-        .filtros select {
-            font-size: 15px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #cbd5e0;
-            color: #4b5563;
-            background-color: #f9fafb;
-            margin-right: 10px;
-        }
-
-        .filtros button {
-            font-size: 15px;
-            padding: 8px 16px;
-            border-radius: 6px;
-            background-color: #4338ca;
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .filtros button:hover {
-            background-color: #312e81;
-        }
-
-        /* Estilo para a foto do participante */
-        .foto-participante {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 10px;
-            border: 2px solid #ddd;
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-
-            .page {
-                flex-direction: column;
-            }
-
-            .ficha {
-                width: 100%;
-                margin-bottom: 20px;
-            }
-
-            .filtros {
-                padding: 10px;
-            }
-
-            .filtros label {
-                font-size: 14px;
-                margin-right: 5px;
-            }
-
-            .filtros select,
-            .filtros button {
-                font-size: 14px;
-                padding: 6px 10px;
-            }
-        }
-    </style>
+    /* Responsivo (tela) */
+    @media (max-width: 992px){ .ticket{ width:48%; } }
+    @media (max-width: 576px){ .ticket{ width:100%; } }
+  </style>
 </head>
-
 <body>
 
-    <div class="no-print filtros">
-        <form method="get">
-            <label for="cidade"><i class="fas fa-filter"></i> Filtrar por cidade:</label>
-            <select name="cidade" id="cidade">
-                <option value="">Todas</option>
-                {% for cid in cidades %}
-                <option value="{{ cid }}" {% if cid == cidade_selecionada %}selected{% endif %}>
-                    {{ cid }}
-                </option>
-                {% endfor %}
-            </select>
-            <button type="submit"><i class="fas fa-search"></i> Filtrar</button>
-            <button type="button" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
-        </form>
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark no-print">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:relatorios_evento' evento.id %}">
+      <i class="fa-solid fa-arrow-left me-2"></i> Relatórios
+    </a>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <span class="navbar-text small d-none d-md-inline text-white-50">{{ evento.nome }}</span>
+      <button class="btn btn-light btn-sm" onclick="window.print()">
+        <i class="fa-solid fa-print me-1"></i> Imprimir
+      </button>
     </div>
+  </div>
+</nav>
 
-    {% for inscricao in inscricoes %}
-    {# A cada 6 fichas abre uma nova página #}
+<main class="container py-3">
+
+  <!-- HEADER FIXO -->
+  <div class="sticky-topbar p-3 mb-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Fichas de Sorteio</h1>
+        <div class="small text-muted-2">
+          {{ evento.nome }} • Total: <strong>{{ inscricoes|length }}</strong>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'inscricoes:relatorios_evento' evento.id %}" class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+        </a>
+        <button class="btn btn-primary btn-sm" onclick="window.print()">
+          <i class="fa-solid fa-print me-1"></i> Imprimir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTROS -->
+  <section class="card-clean p-3 p-md-4 mb-3 no-print">
+    <h2 class="sec-title"><i class="fa-solid fa-filter"></i> Filtros</h2>
+    <form method="get" class="row g-2 g-md-3 align-items-end">
+      <div class="col-12 col-md-6 col-lg-4">
+        <label for="cidade" class="form-label">Filtrar por cidade</label>
+        <select name="cidade" id="cidade" class="form-select">
+          <option value="">Todas</option>
+          {% for cid in cidades %}
+            <option value="{{ cid }}" {% if cid == cidade_selecionada %}selected{% endif %}>{{ cid }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-auto">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-magnifying-glass me-1"></i> Filtrar
+        </button>
+      </div>
+      <div class="col-12 col-md-auto">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+          <i class="fa-solid fa-print me-1"></i> Imprimir
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- FICHAS (6 por página) -->
+  {% for inscricao in inscricoes %}
     {% if forloop.first or forloop.counter0|divisibleby:6 %}
-    <div class="page">
+      <div class="page">
+    {% endif %}
+
+      <article class="ticket">
+        {% if inscricao.participante.foto %}
+          <img class="avatar" src="{{ inscricao.participante.foto.url }}" alt="Foto de {{ inscricao.participante.nome }}">
+        {% else %}
+          <img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">
         {% endif %}
 
-        <div class="ficha">
-            <img src="{{ inscricao.participante.foto.url }}" alt="Foto do Participante" class="foto-participante">
-            <h3>{{ evento.nome }}</h3> <!-- Nome do evento aqui -->
-            <h2>{{ inscricao.participante.nome }}</h2>
-            <p><i class="fas fa-map-marker-alt"></i> <strong>Cidade:</strong> {{ inscricao.paroquia.cidade }}</p>
-            <p><i class="fas fa-church"></i> <strong>Paróquia:</strong> {{ inscricao.paroquia.nome }}</p>
-        </div>
+        <div class="evt">{{ evento.nome }}</div>
+        <h2>{{ inscricao.participante.nome }}</h2>
+        <p><i class="fas fa-map-marker-alt me-1"></i> <strong>Cidade:</strong> {{ inscricao.paroquia.cidade }}</p>
+        <p><i class="fas fa-church me-1"></i> <strong>Paróquia:</strong> {{ inscricao.paroquia.nome }}</p>
+      </article>
 
-        {% if forloop.counter|divisibleby:6 or forloop.last %}
-    </div>
+    {% if forloop.counter|divisibleby:6 or forloop.last %}
+      </div>
     {% endif %}
-    {% empty %}
-    <p>Nenhuma inscrição concluída encontrada para este evento.</p>
-    {% endfor %}
+  {% empty %}
+    <p class="text-center text-muted">Nenhuma inscrição concluída encontrada para este evento.</p>
+  {% endfor %}
 
+</main>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
 </html>

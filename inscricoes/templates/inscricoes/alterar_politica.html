@@ -1,368 +1,274 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>Política de Privacidade — Admin Geral</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
   <style>
-    /* ============ Tokens globais (compatível com as outras telas) ============ */
     :root{
-      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
-      --focus:0 0 0 3px rgba(37,99,235,.25);
-
-      --pill-back:#4b5563; --pill-accent:#0ea5e9; --pill-green:#22c55e;
-      --thead:#2563eb; --thead-ink:#fff; --row-hover:rgba(37,99,235,.06);
-
-      --ok:#16a34a; --warn:#f59e0b; --err:#ef4444; --info:#0284c7;
-      --kbd-bg:#111827; --kbd-ink:#e5e7eb;
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px;
+      --line:#e5e7eb; --panel:#fff;
+      --row:#f8fafc;
     }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow:0 10px 40px rgba(0,0,0,.45);
-        --pill-back:#6b7280; --pill-accent:#0284c7; --pill-green:#16a34a;
-        --thead:#1d4ed8; --thead-ink:#e5e7eb; --row-hover:rgba(59,130,246,.08);
-        --kbd-bg:#0b1220; --kbd-ink:#cbd5e1;
-      }
-    }
+    html{ font-size:var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+    .text-muted-2{ color:var(--muted); }
 
-    *{ box-sizing:border-box }
-    html,body{ margin:0; padding:0 }
-    body{
-      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.42;
-    }
-    .container{ max-width:1000px; margin:20px auto 32px; padding:0 16px }
+    /* Navbar catálogo */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar-brand{ font-size:1rem; }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
 
-    /* ============ HERO ============ */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(18px,4vw,26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      margin-bottom:18px;
-    }
-    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
-    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.1rem,3vw,1.8rem); letter-spacing:.3px }
-    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
+    /* Header/toolbar compacto */
+    .sticky-topbar{ position:sticky; top:0; z-index:20; background:#ffffffd6; backdrop-filter:blur(6px); }
 
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
-      color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12);
-      transition: transform .12s ease, background .2s ease;
+    /* Painel limpinho */
+    .card-clean{
+      background:var(--panel); border:1px solid var(--line); border-radius:.9rem;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
     }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
-    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
-    .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
-    .pill.-accent{ background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
-    .pill.-green{ background: linear-gradient(135deg, #34d399, var(--pill-green)) }
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
 
-    /* ============ Painel/Form ============ */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(16px,2vw,20px); margin-bottom:16px;
-    }
-    .panel h2{
-      margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
-      display:flex; align-items:center; gap:8px;
-    }
-    label{ display:block; font-weight:700; color:var(--muted); margin:10px 0 6px }
-
+    /* Form / textarea */
+    label.form-label{ font-weight:700; color:var(--muted); font-size:.9rem; }
     textarea{
       width:100%; min-height:360px; resize:vertical;
-      border:1px solid var(--line); border-radius:12px;
-      padding:14px 16px; font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-      color:var(--ink); background:linear-gradient(#fff,#fff) padding-box, linear-gradient(180deg, #e5e7eb, #cbd5e1) border-box;
-      background-clip: padding-box, border-box;
+      border:1px solid var(--line); border-radius:.8rem;
+      padding:.8rem; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background:#fff;
     }
-    textarea:focus{ outline:none; box-shadow:var(--focus) }
+    textarea:focus{ outline:none; border-color:#93c5fd; box-shadow:0 0 0 .25rem var(--ring); }
 
-    .controls{
-      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:10px 0 6px;
-    }
-    .stats{ color:var(--muted); font-size:.92rem }
-    .actions{ display:flex; gap:8px; flex-wrap:wrap }
-    .btn{
-      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
-      padding:10px 14px; border-radius:12px; font-weight:700; color:#fff; text-decoration:none;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      transition: transform .12s ease, filter .2s ease;
-    }
-    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-    .btn.-secondary{ background: linear-gradient(135deg, #4b5563, #374151) }
-    .btn.-ghost{
-      color:var(--ink); background:transparent; border:1px solid var(--line);
-    }
-
-    .hint{
-      font-size:.9rem; color:var(--muted); margin-top:6px;
-    }
-    kbd{
-      background:var(--kbd-bg); color:var(--kbd-ink);
-      border-radius:6px; padding:2px 6px; font: 12px/1 ui-monospace, Menlo, Consolas, monospace;
-    }
-
-    /* Pré-visualização */
-    .editor-grid{ display:grid; grid-template-columns: 1fr; gap:14px }
-    @media (min-width: 960px){
-      .editor-grid{ grid-template-columns: 1fr 1fr }
-    }
+    /* Preview */
     .preview{
-      border:1px dashed var(--line); border-radius:12px; padding:14px 16px; background:rgba(2,132,199,.03);
+      border:1px dashed var(--line); border-radius:.8rem; padding:.9rem; background:rgba(2,132,199,.03);
       max-height:520px; overflow:auto;
     }
-    .preview h3{ margin:0 0 6px; font-size:1rem; color:var(--muted) }
-    .prose p{ margin:0 0 8px }
-    .prose ul{ margin:0 0 8px 18px }
-    .prose li{ margin:2px 0 }
-    .prose b, .prose strong{ font-weight:700 }
-    .prose i, .prose em{ font-style:italic }
-    .prose small{ color:var(--muted) }
+    .prose p{ margin:0 0 .6rem }
+    .prose ul{ margin:.4rem 0 .6rem 1.1rem }
+    .prose li{ margin:.15rem 0 }
 
-    /* Alerts (Django messages) */
-    .alerts{ display:grid; gap:10px; margin:0 0 12px }
-    .alert{
-      border-radius:12px; padding:12px 14px; border:1px solid var(--line); background:#fff;
-      display:flex; align-items:flex-start; gap:10px;
-    }
-    .alert.info{ border-color: rgba(2,132,199,.35); background: rgba(2,132,199,.06) }
-    .alert.success{ border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.06) }
-    .alert.warning{ border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.08) }
-    .alert.error{ border-color: rgba(239,68,68,.45); background: rgba(239,68,68,.08) }
-    .alert .icon{ min-width:20px; margin-top:2px }
-    .alert .msg{ flex:1 }
-
-    footer{ text-align:center; color:var(--muted); margin:18px 0 0 }
+    /* Alerts simples */
+    .alert-slim{ padding:.5rem .65rem; border-radius:.6rem; font-size:.9rem; }
   </style>
 </head>
-
 <body>
-  <div class="container">
-    <!-- HERO -->
-    <header class="hero">
-      <div class="hero-head">
-        <div>
-          <h1 class="hero-title">Política de Privacidade</h1>
-          <p class="hero-sub">Edite o texto oficial exibido aos participantes. Alterações ficam disponíveis imediatamente após salvar.</p>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-          <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="pill -back">
-            <i class="fa-solid fa-arrow-left"></i><span>Dashboard</span>
-          </a>
-          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema">
-            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-          </button>
-        </div>
-      </div>
-    </header>
 
-    <!-- Alerts (Django messages) -->
-    {% if messages %}
-    <div class="alerts">
+<!-- NAVBAR catálogo -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-outline-light" href="{% url 'inscricoes:admin_geral_dashboard' %}">← Dashboard</a>
+      <button type="button" class="btn btn-sm btn-light" id="themeToggle" aria-label="Alternar tema">Tema</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  <!-- Cabeçalho compacto (título + ações) -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Política de Privacidade</h1>
+        <div class="small text-muted-2">Edite o texto exibido aos participantes. Válido imediatamente após salvar.</div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="togglePreview">
+          Visualizar
+        </button>
+        <button form="policyForm" type="submit" class="btn btn-primary btn-sm">
+          Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mensagens Django (opcional) -->
+  {% if messages %}
+    <div class="mb-3">
       {% for message in messages %}
-        <div class="alert {{ message.tags|default:'info' }}">
-          <div class="icon">
-            {% if 'error' in message.tags %}<i class="fa-solid fa-triangle-exclamation"></i>
-            {% elif 'success' in message.tags %}<i class="fa-solid fa-circle-check"></i>
-            {% elif 'warning' in message.tags %}<i class="fa-solid fa-circle-exclamation"></i>
-            {% else %}<i class="fa-solid fa-circle-info"></i>{% endif %}
-          </div>
-          <div class="msg">{{ message }}</div>
+        <div class="alert alert-slim {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% elif 'warning' in message.tags %}alert-warning{% else %}alert-info{% endif %} m-0 mb-2">
+          {{ message }}
         </div>
       {% endfor %}
     </div>
-    {% endif %}
+  {% endif %}
 
-    <!-- FORM -->
-    <section class="panel">
-      <h2><i class="fa-solid fa-pen-to-square"></i> Alterar Política de Privacidade</h2>
+  <!-- Editor -->
+  <section class="card-clean p-3 p-lg-4">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+      <div class="small text-muted-2" id="stats">0 caracteres • 0 palavras</div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="restoreDraft" title="Rascunho salvo no navegador">
+          Restaurar rascunho
+        </button>
+        <button form="policyForm" type="submit" class="btn btn-primary btn-sm">
+          Salvar
+        </button>
+      </div>
+    </div>
 
-      <form method="post" enctype="multipart/form-data" id="policyForm">
-        {% csrf_token %}
+    <form method="post" id="policyForm" class="row g-3">
+      {% csrf_token %}
 
-        <div class="controls">
-          <div class="stats" id="stats">0 caracteres • 0 palavras</div>
-          <div class="actions">
-            <button type="button" class="btn -ghost" id="restoreDraft" title="Rascunho salvo no navegador">
-              <i class="fa-solid fa-clock-rotate-left"></i> Restaurar rascunho
-            </button>
-            <button type="button" class="btn -secondary" id="togglePreview">
-              <i class="fa-solid fa-eye"></i> Visualizar
-            </button>
-            <button type="submit" class="btn">
-              <i class="fa-solid fa-floppy-disk"></i> Salvar
-            </button>
+      <div class="col-12 col-lg-6">
+        <label for="{{ form.texto.id_for_label }}" class="form-label">{{ form.texto.label|default:"Texto da Política" }}</label>
+        {{ form.texto }}
+        {% if form.texto.errors %}
+          <div class="mt-2">
+            {% for error in form.texto.errors %}
+              <div class="alert alert-danger py-1 px-2 mb-1">{{ error }}</div>
+            {% endfor %}
           </div>
+        {% endif %}
+        <p class="small text-muted-2 mt-2 mb-0">
+          Dica: use <kbd>Ctrl</kbd>+<kbd>S</kbd> (ou <kbd>⌘</kbd>+<kbd>S</kbd>) para salvar. Rascunhos são salvos automaticamente no navegador.
+        </p>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div id="previewBox" class="preview" hidden>
+          <div class="fw-semibold mb-2 text-muted-2">Pré-visualização</div>
+          <div id="preview" class="prose"></div>
         </div>
+      </div>
 
-        <div class="editor-grid">
-          <div>
-            <label for="{{ form.texto.id_for_label }}">{{ form.texto.label|default:"Texto da Política" }}</label>
-            {{ form.texto }}
-            {% if form.texto.errors %}
-              <div class="alerts" style="margin-top:10px">
-                {% for error in form.texto.errors %}
-                  <div class="alert error"><div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="msg">{{ error }}</div></div>
-                {% endfor %}
-              </div>
-            {% endif %}
-            <p class="hint">
-              Dica: use <kbd>Ctrl</kbd>+<kbd>S</kbd> (ou <kbd>⌘</kbd>+<kbd>S</kbd>) para salvar. Rascunhos são salvos automaticamente no navegador.
-            </p>
-          </div>
-
-          <aside id="previewBox" class="preview" hidden>
-            <h3><i class="fa-solid fa-eye"></i> Pré-visualização</h3>
-            <div id="preview" class="prose"></div>
-          </aside>
+      <div class="col-12 d-flex align-items-center justify-content-between">
+        <div class="small text-muted-2" id="draftInfo" aria-live="polite"></div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="btn btn-outline-secondary btn-sm">Voltar ao Dashboard</a>
+          <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
         </div>
+      </div>
+    </form>
+  </section>
 
-        <div class="controls" style="margin-top:12px">
-          <div class="hint" id="draftInfo" aria-live="polite"></div>
-          <div class="actions">
-            <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="btn -secondary">
-              <i class="fa-solid fa-arrow-left"></i> Voltar ao Dashboard
-            </a>
-            <button type="submit" class="btn">
-              <i class="fa-solid fa-floppy-disk"></i> Salvar
-            </button>
-          </div>
-        </div>
-      </form>
-    </section>
+  <footer class="py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center text-muted-2 small">
+      <div>© {% now "Y" %} Admin Geral — Todos os direitos reservados</div>
+      <div>Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</div>
+    </div>
+  </footer>
+</main>
 
-    <footer>&copy; {{ current_year }} Admin Geral — Todos os direitos reservados</footer>
-  </div>
+<script>
+  // Tema com persistência (mesma key das outras telas)
+  (function themeToggle(){
+    const KEY='relatorios-theme';
+    const btn=document.getElementById('themeToggle');
+    const root=document.documentElement;
+    function apply(theme){
+      if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+      else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+      else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+    }
+    apply(localStorage.getItem(KEY) || 'auto');
+    btn?.addEventListener('click', ()=>{
+      const cur=localStorage.getItem(KEY)||'auto';
+      const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+      localStorage.setItem(KEY,next); apply(next);
+      btn.setAttribute('aria-label',`Tema: ${next}`);
+    });
+  })();
 
-  <script>
-    // ===== Tema com persistência (mesma key das outras telas) =====
-    (function themeToggle(){
-      const KEY='relatorios-theme';
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+  // Editor: auto-resize, contador, preview, rascunho, Ctrl/Cmd+S
+  (function policyEditor(){
+    const form = document.getElementById('policyForm');
+    const ta = form?.querySelector('textarea[name="{{ form.texto.name }}"]') || form?.querySelector('textarea');
+    const stats = document.getElementById('stats');
+    const previewBox = document.getElementById('previewBox');
+    const preview = document.getElementById('preview');
+    const togglePreview = document.getElementById('togglePreview');
+    const draftInfo = document.getElementById('draftInfo');
+    const restoreDraftBtn = document.getElementById('restoreDraft');
+    const DRAFT_KEY = 'policy-draft';
+
+    if(!ta) return;
+
+    // Auto-resize
+    const autoresize = () => { ta.style.height='auto'; ta.style.height = Math.min(ta.scrollHeight, 1200) + 'px'; };
+    ['input','change'].forEach(ev => ta.addEventListener(ev, autoresize));
+    window.addEventListener('load', autoresize);
+
+    // Contador
+    const count = () => {
+      const txt = ta.value || '';
+      const chars = txt.length;
+      const words = (txt.trim().match(/\S+/g) || []).length;
+      stats.textContent = `${chars} caracteres • ${words} palavras`;
+    };
+    ['input','change'].forEach(ev => ta.addEventListener(ev, count));
+    count();
+
+    // Preview simples (sanitização leve + parágrafos)
+    function toHTML(text){
+      if(!text) return '';
+      const esc = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return esc.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+    }
+    const render = () => { preview.innerHTML = toHTML(ta.value); };
+    ['input','change'].forEach(ev => ta.addEventListener(ev, render));
+    render();
+
+    // Toggle preview
+    togglePreview?.addEventListener('click', ()=>{
+      const hidden = previewBox.hasAttribute('hidden');
+      if(hidden){
+        previewBox.removeAttribute('hidden'); render();
+        togglePreview.textContent = 'Ocultar';
+      }else{
+        previewBox.setAttribute('hidden','');
+        togglePreview.textContent = 'Visualizar';
       }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next); apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
-      });
-    })();
+    });
 
-    // ===== Editor: autosize, contador, preview, rascunho =====
-    (function policyEditor(){
-      const form = document.getElementById('policyForm');
-      const ta = form?.querySelector('textarea[name="{{ form.texto.name }}"]') || form?.querySelector('textarea');
-      const stats = document.getElementById('stats');
-      const previewBox = document.getElementById('previewBox');
-      const preview = document.getElementById('preview');
-      const togglePreview = document.getElementById('togglePreview');
-      const draftInfo = document.getElementById('draftInfo');
-      const restoreDraftBtn = document.getElementById('restoreDraft');
-      const DRAFT_KEY = 'policy-draft';
+    // Rascunho local
+    let draftTimer = null;
+    const saveDraft = () => {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ t: Date.now(), v: ta.value }));
+      draftInfo.textContent = 'Rascunho salvo localmente.';
+    };
+    ta.addEventListener('input', ()=>{
+      clearTimeout(draftTimer);
+      draftTimer = setTimeout(saveDraft, 400);
+    });
 
-      if(!ta) return;
-
-      // Auto-resize
-      const autoresize = () => { ta.style.height='auto'; ta.style.height = Math.min(ta.scrollHeight, 1200) + 'px'; };
-      ['input','change'].forEach(ev => ta.addEventListener(ev, autoresize));
-      window.addEventListener('load', autoresize);
-
-      // Contador
-      const count = () => {
-        const txt = ta.value || '';
-        const chars = txt.length;
-        const words = (txt.trim().match(/\S+/g) || []).length;
-        stats.textContent = `${chars} caracteres • ${words} palavras`;
-      };
-      ['input','change'].forEach(ev => ta.addEventListener(ev, count));
-      count();
-
-      // Preview simples (quebra de linha → <br>, dois \n\n viram parágrafo)
-      function toHTML(text){
-        if(!text) return '';
-        // proteção simples contra tags
-        const esc = text
-          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        // parágrafos
-        return esc.split(/\n{2,}/).map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+    // Restaurar rascunho se houver
+    const draft = (()=>{ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||''); }catch{return null;} })();
+    if(draft && (!ta.value || ta.value.trim().length < (draft.v||'').trim().length)){
+      const d = new Date(draft.t);
+      draftInfo.textContent = `Rascunho local de ${d.toLocaleString()}.`;
+      restoreDraftBtn.disabled = false;
+    } else {
+      restoreDraftBtn.disabled = true;
+    }
+    restoreDraftBtn?.addEventListener('click', ()=>{
+      const d = (()=>{ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||''); }catch{return null;} })();
+      if(d?.v!=null){
+        ta.value = d.v; autoresize(); count(); render();
+        draftInfo.textContent = 'Rascunho restaurado.';
       }
-      const render = () => { preview.innerHTML = toHTML(ta.value); };
-      ['input','change'].forEach(ev => ta.addEventListener(ev, render));
-      render();
+    });
 
-      // Toggle preview
-      togglePreview?.addEventListener('click', ()=>{
-        const hidden = previewBox.hasAttribute('hidden');
-        if(hidden){ previewBox.removeAttribute('hidden'); render(); togglePreview.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Ocultar'; }
-        else{ previewBox.setAttribute('hidden',''); togglePreview.innerHTML = '<i class="fa-solid fa-eye"></i> Visualizar'; }
-      });
+    // Limpa rascunho após envio
+    form.addEventListener('submit', ()=> localStorage.removeItem(DRAFT_KEY));
 
-      // Rascunho (auto-save a cada digitação)
-      let draftTimer = null;
-      const saveDraft = () => {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ t: Date.now(), v: ta.value }));
-        draftInfo.textContent = 'Rascunho salvo localmente.';
-      };
-      ta.addEventListener('input', ()=>{
-        clearTimeout(draftTimer);
-        draftTimer = setTimeout(saveDraft, 400);
-      });
-
-      // Mostrar info de rascunho existente
-      const draft = (()=>{ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||''); }catch{return null;} })();
-      if(draft && (!ta.value || ta.value.trim().length < draft.v?.trim()?.length)){
-        const d = new Date(draft.t);
-        draftInfo.textContent = `Encontrado rascunho de ${d.toLocaleString()} (local). Clique em “Restaurar rascunho”.`;
-        restoreDraftBtn.disabled = false;
-      } else {
-        restoreDraftBtn.disabled = true;
+    // Atalho Ctrl/Cmd + S para enviar
+    document.addEventListener('keydown', (e)=>{
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){
+        e.preventDefault();
+        form.requestSubmit();
       }
-
-      // Restaurar
-      restoreDraftBtn?.addEventListener('click', ()=>{
-        const d = (()=>{ try{ return JSON.parse(localStorage.getItem(DRAFT_KEY)||''); }catch{return null;} })();
-        if(d?.v!=null){
-          ta.value = d.v; autoresize(); count(); render();
-          draftInfo.textContent = 'Rascunho restaurado.';
-        }
-      });
-
-      // Limpar rascunho após envio
-      form.addEventListener('submit', ()=> localStorage.removeItem(DRAFT_KEY));
-
-      // Atalho Ctrl/Cmd + S para enviar
-      document.addEventListener('keydown', (e)=>{
-        if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='s'){
-          e.preventDefault();
-          form.requestSubmit();
-        }
-      });
-    })();
-  </script>
+    });
+  })();
+</script>
 </body>
 </html>

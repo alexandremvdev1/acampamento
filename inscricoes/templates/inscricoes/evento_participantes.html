@@ -1,365 +1,225 @@
-<!DOCTYPE html>
+{% load static %}
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>Participantes do Evento — {{ evento.nome }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Font Awesome (opcional) -->
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
         integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <style>
-    /* ========= Tokens (iguais ao estilo anterior) ========= */
     :root{
-      --page: #f7f8fb;
-      --panel: #ffffff;
-      --ink: #0f172a;
-      --muted: #64748b;
-      --line: #e5e7eb;
-      --radius: 14px;
-      --shadow: 0 6px 30px rgba(16, 24, 40, .08);
-
-      --g1: #7c3aed;
-      --g2: #2563eb;
-      --g3: #14b8a6;
-
-      --btn-ink: #fff;
-      --btn-back: #4b5563;
-      --btn-report: #0ea5e9;
-
-      --ok: #22c55e;
-      --bad: #ef4444;
-      --warn:#f59e0b;
-
-      --focus: 0 0 0 3px rgba(37, 99, 235, .25);
-      --row-hover: rgba(37,99,235,.06);
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a; /* navbar gradiente */
+      --base-font:14px;
     }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow: 0 10px 40px rgba(0,0,0,.45);
-        --btn-back:#6b7280; --btn-report:#0284c7;
-        --row-hover: rgba(59,130,246,.08);
-      }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+
+    /* Navbar / topbar */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    /* Header “sticky” */
+    .sticky-topbar{
+      position: sticky; top: 0; z-index: 20;
+      background:#ffffffd6; backdrop-filter: blur(6px);
+      border:1px solid #e5e7eb; border-radius:.9rem;
     }
 
-    *{ box-sizing:border-box }
-    html,body{ margin:0; padding:0 }
-    body{
-      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.35;
+    /* Cards limpos */
+    .card-clean{
+      border:1px solid #e5e7eb; border-radius:.9rem; background:#fff;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
     }
-    .container{ max-width:1100px; margin:20px auto 32px; padding:0 16px }
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
 
-    /* ========= HERO ========= */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(18px, 4vw, 26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        var(--hero-image, radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25))),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      backdrop-filter: blur(2px);
-      margin-bottom:18px;
+    .text-muted-2{ color:var(--muted); }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
     }
-    .hero-head{
-      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;
-    }
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
-      color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12);
-      transition: transform .12s ease, background .2s ease, opacity .2s ease;
-    }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
-    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
 
-    .back{ background: linear-gradient(135deg, #4b5563, #374151); }
-    .report{ background: linear-gradient(135deg, #06b6d4, #0ea5e9); }
-
-    .hero-title{
-      margin:4px 0 0; text-align:center; font-weight:800;
-      font-size: clamp(1.15rem, 3vw, 1.9rem); letter-spacing:.3px;
-    }
-    .hero-sub{ margin:6px 0 0; text-align:center; opacity:.92; font-size:.95rem }
-
-    /* ========= Painel ========= */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(14px, 2vw, 18px);
-    }
-    .panel-head{
-      display:flex; flex-wrap:wrap; gap:10px 12px; align-items:center; justify-content:space-between; margin-bottom:10px;
-    }
-    .metrics{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    /* Chips/indicadores */
     .chip{
-      display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px;
-      border:1px solid var(--line); background:linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,.2));
-      color:var(--ink); font-weight:700; box-shadow: inset 0 0 12px rgba(255,255,255,.15);
+      display:inline-flex; align-items:center; gap:.5rem;
+      padding:.4rem .7rem; border-radius:999px; border:1px solid #e5e7eb; background:#fff;
+      font-weight:700; font-size:.85rem;
     }
-    .chip i{ opacity:.75 }
 
-    /* Search */
-    .search{
-      position:relative; flex:1 1 360px; min-width:260px;
+    /* Tabela com thead sticky */
+    .table-wrap{ border:1px solid #e5e7eb; border-radius:.8rem; overflow:hidden; background:#fff; }
+    .table-responsive{ max-height:70vh; }
+    .table-sticky thead th{
+      position: sticky; top: 0; z-index: 5;
+      background: #f8fafc !important; /* similar à .table-light */
+      border-bottom: 1px solid #e5e7eb !important;
     }
-    .search i{ position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted) }
-    .search input{
-      width:100%; padding:10px 12px 10px 38px; border-radius:10px; border:1px solid var(--line);
-      background:var(--panel); color:var(--ink); font-size:1rem;
-      outline:none; transition: box-shadow .15s ease, border-color .15s ease;
-    }
-    .search input:focus{ box-shadow:var(--focus); border-color:#93c5fd }
 
-    /* ========= Tabela ========= */
-    .table-wrap{
-      margin-top:8px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--panel);
-      box-shadow:var(--shadow);
-    }
-    .table-scroll{ max-height:66vh; overflow:auto }
-    table{ width:100%; border-collapse:separate; border-spacing:0 }
-    thead th{
-      position:sticky; top:0; z-index:2; background:linear-gradient(180deg, rgba(248,250,252,.9), rgba(248,250,252,.8));
-      backdrop-filter: blur(2px); color:#0f172a; font-weight:800; text-align:left; font-size:.92rem;
-      border-bottom:1px solid var(--line); padding:12px 14px;
-    }
-    @media (prefers-color-scheme: dark){
-      thead th{ background:linear-gradient(180deg, rgba(15,21,32,.9), rgba(15,21,32,.82)); color:#e5e7eb }
-    }
-    tbody td{ padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle; }
-    tbody tr:nth-child(even){ background: rgba(2, 6, 23, .02) }
-    tbody tr:hover{ background: var(--row-hover) }
+    /* Botões de ação compactos */
+    .btn-icon{ width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; }
 
-    .td-name{ min-width: 220px }
-    .td-age{ width: 72px; text-align:center; white-space:nowrap }
-    .td-actions{ white-space:nowrap; width: 360px }
-    .td-pay{ text-align:center; width:60px }
-    .td-check{ text-align:center; width:160px }
-
-    /* Status pago/pendente */
-    .status{
-      display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-weight:700;
-      border:1px solid var(--line); background: #fff; color:#111827;
-    }
-    .status.-ok{ background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.35); color:#065f46 }
-    .status.-bad{ background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.35); color:#7f1d1d }
-
-    /* Botões de ação (ícone) */
-    .btn{
-      --bg:#111827;
-      display:inline-flex; align-items:center; justify-content:center;
-      width:36px; height:36px; border-radius:10px; color:#fff; text-decoration:none;
-      background:var(--bg); border:1px solid rgba(255,255,255,.12);
-      box-shadow: var(--shadow);
-      transition: transform .12s ease, filter .2s ease, box-shadow .2s ease;
-      margin-right:6px;
-    }
-    .btn:last-child{ margin-right:0 }
-    .btn:hover{ transform: translateY(-1px); filter: brightness(1.05) }
-    .btn:focus-visible{ outline:none; box-shadow: var(--focus) }
-
-    .-view { --bg: linear-gradient(135deg, #34d399, #22c55e) }
-    .-edit { --bg: linear-gradient(135deg, #60a5fa, #2563eb) }
-    .-del  { --bg: linear-gradient(135deg, #f87171, #ef4444) }
-    .-ficha{ --bg: linear-gradient(135deg, #ffe082, #ffc107); color:#1f2937 }
-    .-cracha{ --bg: linear-gradient(135deg, #ff8a4c, #d35400) }
-    .-pgt  { --bg: linear-gradient(135deg, #2ec4b6, #16a085) }
-
-    /* Checkbox/Salvar inline */
-    .inline-form{ display:inline-flex; align-items:center; gap:8px; justify-content:center }
-    .inline-form input[type="checkbox"]{ transform: scale(1.25); cursor:pointer }
-    .save{
-      display:inline-flex; align-items:center; justify-content:center; gap:6px;
-      padding:8px 10px; border-radius:10px; font-weight:700; color:#fff; border:none; cursor:pointer;
-      background: linear-gradient(135deg, #60a5fa, #2563eb);
-      box-shadow: var(--shadow); transition: transform .12s ease, filter .2s ease;
-    }
-    .save:hover{ transform: translateY(-1px); filter: brightness(1.05) }
-    .save:focus-visible{ outline:none; box-shadow: var(--focus) }
-
-    /* Acessibilidade visual escondida */
-    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    /* Checkbox maiorzinho pro toque */
+    .form-check-input{ transform: scale(1.15); cursor:pointer; }
   </style>
 </head>
-
 <body>
-  <div class="container">
-    <!-- HERO -->
-    <header class="hero"
-      {% if evento.banner %}style="--hero-image: url('{{ evento.banner.url }}') center/cover no-repeat;"{% endif %}>
-      <div class="hero-head">
-        <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="pill back" aria-label="Voltar ao painel">
-          <i class="fa-solid fa-arrow-left"></i><span>Voltar</span>
-        </a>
-        <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema claro/escuro">
-          <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-        </button>
-        <a href="{% url 'inscricoes:relatorios_evento' evento.id %}" class="pill report" aria-label="Ir para Relatórios">
-          <i class="fa-solid fa-chart-column"></i><span>Relatórios</span>
-        </a>
+
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:admin_paroquia_painel' %}">← Voltar</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:relatorios_evento' evento.id %}">📊 Relatórios</a>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  <!-- HEADER -->
+  <div class="sticky-topbar p-3 mb-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Participantes — {{ evento.nome }}</h1>
+        <div class="small text-muted-2">Gerencie inscrições, acompanhe pagamentos e imprima documentos.</div>
       </div>
-      <h1 class="hero-title">Participantes — {{ evento.nome }}</h1>
-      <p class="hero-sub">Gerencie inscrições, acompanhe pagamentos e imprima documentos.</p>
-    </header>
-
-    <!-- PAINEL -->
-    <section class="panel" aria-labelledby="ttl-participantes">
-      <div class="panel-head">
-        <h2 id="ttl-participantes" class="sr-only">Lista de participantes</h2>
-
-        <div class="search" role="search">
-          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-          <label class="sr-only" for="searchInput">Buscar participante</label>
-          <input id="searchInput" type="text" placeholder="Buscar participante por nome..." autocomplete="off" />
-        </div>
-
-        <div class="metrics" aria-label="Indicadores do evento">
-          <div class="chip" title="Total de participantes">
-            <i class="fa-solid fa-users"></i> {{ total_participantes|default:"0" }}
-          </div>
-          <!-- se tiver variáveis de pagos/pendentes, descomente:
-          <div class="chip" title="Pagos">
-            <i class="fa-solid fa-circle-check" style="color:var(--ok)"></i> {{ total_pagos|default:"0" }}
-          </div>
-          <div class="chip" title="Pendentes">
-            <i class="fa-solid fa-circle-xmark" style="color:var(--bad)"></i> {{ total_pendentes|default:"0" }}
-          </div>
-          -->
-        </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="chip"><i class="fa-solid fa-users"></i> {{ total_participantes|default:"0" }}</span>
       </div>
-
-      <!-- TABELA -->
-      <div class="table-wrap">
-        <div class="table-scroll">
-          <table aria-describedby="ttl-participantes">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th class="td-age">Idade</th>
-                <th class="td-pay" title="Status do pagamento">
-                  <i class="fa-solid fa-dollar-sign" aria-hidden="true"></i>
-                  <span class="sr-only">Pagamento</span>
-                </th>
-                <th class="td-check">Selecionado</th>
-                <th class="td-actions"><i class="fa-solid fa-toolbox" aria-hidden="true"></i> Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for inscricao in participantes %}
-              <tr>
-                <td class="td-name">
-                  {{ inscricao.participante.nome }}
-                </td>
-
-                <td class="td-age">
-                  {% if inscricao.idade is not None %}
-                    {{ inscricao.idade }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-
-                <td class="td-pay">
-                  {% if inscricao.pagamento_confirmado %}
-                    <span class="status -ok"><i class="fa-solid fa-check"></i><span class="sr-only">Pago</span></span>
-                  {% else %}
-                    <span class="status -bad"><i class="fa-solid fa-xmark"></i><span class="sr-only">Pendente</span></span>
-                  {% endif %}
-                </td>
-
-                <td class="td-check">
-                  <form method="POST" class="inline-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="inscricao_id" value="{{ inscricao.id }}" />
-                    <label class="sr-only" for="sel_{{ inscricao.id }}">Selecionado</label>
-                    <input id="sel_{{ inscricao.id }}" type="checkbox" name="foi_selecionado" value="1" {% if inscricao.foi_selecionado %}checked{% endif %} />
-                    <button type="submit" class="save" title="Salvar seleção">
-                      <i class="fa-solid fa-floppy-disk"></i><span class="sr-only">Salvar</span>
-                    </button>
-                  </form>
-                </td>
-
-                <td class="td-actions">
-                  <a href="{% url 'inscricoes:ver_inscricao' inscricao.id %}" class="btn -view" title="Ver inscrição">
-                    <i class="fa-solid fa-eye" aria-hidden="true"></i><span class="sr-only">Ver</span>
-                  </a>
-                  <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}" class="btn -edit" title="Editar inscrição">
-                    <i class="fa-solid fa-pen" aria-hidden="true"></i><span class="sr-only">Editar</span>
-                  </a>
-                  <a href="{% url 'inscricoes:deletar_inscricao' inscricao.id %}" class="btn -del" title="Excluir inscrição"
-                     onclick="return confirm('Tem certeza que deseja excluir?');">
-                    <i class="fa-solid fa-trash" aria-hidden="true"></i><span class="sr-only">Excluir</span>
-                  </a>
-                  <a href="{% url 'inscricoes:ficha_inscricao' inscricao.id %}" class="btn -ficha" title="Ficha">
-                    <i class="fa-solid fa-file-lines" aria-hidden="true"></i><span class="sr-only">Ficha</span>
-                  </a>
-                  <a href="{% url 'inscricoes:imprimir_cracha' inscricao.id %}" class="btn -cracha" title="Imprimir Crachá" target="_blank" rel="noopener noreferrer">
-                    <i class="fa-solid fa-id-card" aria-hidden="true"></i><span class="sr-only">Crachá</span>
-                  </a>
-                  <a href="{% url 'inscricoes:incluir_pagamento' inscricao.id %}" class="btn -pgt" title="Incluir Pagamento">
-                    <i class="fa-solid fa-dollar-sign" aria-hidden="true"></i><span class="sr-only">Pagamento</span>
-                  </a>
-                </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="5" style="text-align:center; color:var(--muted); padding:20px;">Nenhum participante inscrito.</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+    </div>
   </div>
 
-  <script>
-    // Busca por nome (client-side)
-    (function(){
-      const input = document.getElementById('searchInput');
-      const rows  = Array.from(document.querySelectorAll('tbody tr'));
-      input?.addEventListener('input', () => {
-        const q = input.value.trim().toLowerCase();
-        rows.forEach(tr => {
-          const cell = tr.querySelector('.td-name');
-          if (!cell) return;
-          const show = cell.textContent.trim().toLowerCase().includes(q);
-          tr.style.display = show ? '' : 'none';
-        });
-      });
-    })();
+  <!-- BUSCA -->
+  <section class="mb-3">
+    <h2 class="sec-title"><i class="fa-solid fa-magnifying-glass me-1"></i> Buscar participante</h2>
+    <div class="card-clean p-3">
+      <div class="input-group">
+        <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+        <input id="searchInput" type="text" class="form-control" placeholder="Digite o nome do participante..." autocomplete="off">
+      </div>
+    </div>
+  </section>
 
-    // Toggle de tema com persistência (mesmo do outro template)
-    (function themeToggle(){
-      const KEY='relatorios-theme';
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
-      }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next);
-        apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
-      });
-    })();
-  </script>
+  <!-- TABELA -->
+  <section>
+    <h2 class="sec-title"><i class="fa-solid fa-people-group me-1"></i> Lista de participantes</h2>
+    <div class="table-wrap">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-sticky mb-0" aria-describedby="ttl-participantes">
+          <thead class="table-light">
+            <tr>
+              <th>Nome</th>
+              <th class="text-center" style="width:90px;">Idade</th>
+              <th class="text-center" style="width:110px;">Pagamento</th>
+              <th class="text-center" style="width:170px;">Selecionado</th>
+              <th class="text-center" style="width:360px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyRows">
+            {% for inscricao in participantes %}
+            <tr>
+              <td class="col-nome">
+                {{ inscricao.participante.nome }}
+              </td>
+
+              <td class="text-center">
+                {% if inscricao.idade is not None %}{{ inscricao.idade }}{% else %}-{% endif %}
+              </td>
+
+              <td class="text-center">
+                {% if inscricao.pagamento_confirmado %}
+                  <span class="badge rounded-pill text-bg-success"><i class="fa-solid fa-check me-1"></i> Pago</span>
+                {% else %}
+                  <span class="badge rounded-pill text-bg-danger"><i class="fa-solid fa-xmark me-1"></i> Pendente</span>
+                {% endif %}
+              </td>
+
+              <td class="text-center">
+                <form method="POST" class="d-inline-flex align-items-center gap-2">
+                  {% csrf_token %}
+                  <input type="hidden" name="inscricao_id" value="{{ inscricao.id }}" />
+                  <div class="form-check m-0">
+                    <input class="form-check-input" type="checkbox" id="sel_{{ inscricao.id }}" name="foi_selecionado" value="1" {% if inscricao.foi_selecionado %}checked{% endif %}>
+                    <label class="visually-hidden" for="sel_{{ inscricao.id }}">Selecionado</label>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span class="ms-1">Salvar</span>
+                  </button>
+                </form>
+              </td>
+
+              <td class="text-center">
+                <div class="btn-group" role="group" aria-label="Ações">
+                  <a href="{% url 'inscricoes:ver_inscricao' inscricao.id %}" class="btn btn-success btn-sm btn-icon" title="Ver inscrição">
+                    <i class="fa-solid fa-eye"></i>
+                  </a>
+                  <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}" class="btn btn-primary btn-sm btn-icon" title="Editar inscrição">
+                    <i class="fa-solid fa-pen"></i>
+                  </a>
+                  <a href="{% url 'inscricoes:deletar_inscricao' inscricao.id %}"
+                     class="btn btn-danger btn-sm btn-icon" title="Excluir inscrição"
+                     onclick="return confirm('Tem certeza que deseja excluir?');">
+                    <i class="fa-solid fa-trash"></i>
+                  </a>
+                  <a href="{% url 'inscricoes:ficha_inscricao' inscricao.id %}" class="btn btn-warning btn-sm btn-icon" title="Ficha">
+                    <i class="fa-solid fa-file-lines"></i>
+                  </a>
+                  <a href="{% url 'inscricoes:imprimir_cracha' inscricao.id %}" target="_blank" rel="noopener"
+                     class="btn btn-outline-secondary btn-sm btn-icon" title="Imprimir Crachá">
+                    <i class="fa-solid fa-id-card"></i>
+                  </a>
+                  <a href="{% url 'inscricoes:incluir_pagamento' inscricao.id %}" class="btn btn-teal btn-sm btn-icon"
+                     style="--bs-btn-bg:#16a085;--bs-btn-border-color:#13856e;--bs-btn-hover-bg:#13856e;--bs-btn-hover-border-color:#117a62;"
+                     title="Incluir Pagamento">
+                    <i class="fa-solid fa-dollar-sign"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">Nenhum participante inscrito.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* Busca por nome (client-side) */
+(function(){
+  const input = document.getElementById('searchInput');
+  const rows  = Array.from(document.querySelectorAll('#tbodyRows tr'));
+  input?.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    rows.forEach(tr => {
+      const cell = tr.querySelector('.col-nome');
+      if (!cell) return;
+      const show = cell.textContent.trim().toLowerCase().includes(q);
+      tr.style.display = show ? '' : 'none';
+    });
+  });
+})();
+</script>
 </body>
 </html>

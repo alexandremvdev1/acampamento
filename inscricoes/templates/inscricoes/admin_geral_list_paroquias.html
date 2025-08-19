@@ -1,311 +1,290 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>Paróquias — Admin Geral</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
   <style>
-    /* ========= Tokens (mesmo set das outras páginas) ========= */
     :root{
-      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
-      --focus:0 0 0 3px rgba(37,99,235,.25);
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px;
+    }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
 
-      --pill-back:#4b5563; --pill-accent:#0ea5e9; --pill-green:#22c55e;
-      --row-hover:rgba(37,99,235,.06);
-      --thead:#2563eb; --thead-ink:#fff;
-    }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow:0 10px 40px rgba(0,0,0,.45);
-        --pill-back:#6b7280; --pill-accent:#0284c7; --pill-green:#16a34a;
-        --row-hover:rgba(59,130,246,.08);
-        --thead:#1d4ed8; --thead-ink:#e5e7eb;
-      }
-    }
+    /* navbar do catálogo */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar-brand{ font-size:1rem; }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
 
-    *{ box-sizing:border-box }
-    html,body{ margin:0; padding:0 }
-    body{
-      font-family:'Roboto', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.35;
+    /* KPIs do catálogo (se quiser, pode esconder) */
+    .kpi{
+      background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem;
     }
-    .container{ max-width:1100px; margin:20px auto 32px; padding:0 16px }
+    .kpi .small{ color:var(--muted); font-size:.8rem; }
+    .kpi .fs-4{ font-size:1.15rem !important; }
+    .kpi .fw-bold{ font-weight:700 !important; }
 
-    /* ========= HERO ========= */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(18px,4vw,26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      margin-bottom:18px;
-    }
-    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px }
-    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.1rem,3vw,1.8rem); letter-spacing:.3px }
-    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
+    /* toolbar compacta do catálogo */
+    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
+    .toolbar .form-select, .toolbar .form-control{ border-radius:.6rem; border-color:#e5e7eb; font-size:.85rem; padding:.35rem .5rem; }
+    .toolbar .input-group-text{ font-size:.85rem; padding:.35rem .5rem; }
+    .toolbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .toolbar .form-select:focus, .toolbar .form-control:focus{ box-shadow:0 0 0 .25rem var(--ring); border-color:#93c5fd; }
 
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
-      color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12);
-      transition: transform .12s ease, background .2s ease;
+    /* Tabela estilo catálogo */
+    .table{ font-size:.875rem; background:#fff; }
+    .table thead th{
+      font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:#64748b;
+      border-bottom:1px solid #e5e7eb;
     }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
-    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
-    .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
-    .pill.-accent{ background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
-    .pill.-green{ background: linear-gradient(135deg, #34d399, #22c55e) }
+    .table tbody td{ vertical-align: middle; }
+    .table-hover tbody tr:hover{ background-color:#f8fafc; }
 
-    /* ========= Painéis ========= */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(14px,2vw,18px); margin-bottom:16px;
-    }
-    .panel h2{
-      margin:0 0 12px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
-      display:flex; align-items:center; gap:8px;
-    }
+    .empty{ border:1px dashed #cbd5e1; border-radius:12px; background:#fff; padding:2rem; text-align:center; }
 
-    /* ========= Filtros ========= */
-    .filters{
-      display:grid; grid-template-columns: 1fr 180px auto; gap:8px; align-items:center;
-    }
-    @media (max-width:720px){ .filters{ grid-template-columns: 1fr 1fr } .filters .actions{ grid-column:1/-1 } }
-    input[type="search"], select{
-      border:1px solid var(--line); background:var(--panel); color:var(--ink);
-      border-radius:12px; padding:10px 12px; font-size:.96rem; width:100%;
-    }
-    input[type="search"]::placeholder{ color:var(--muted) }
-    .actions{ display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap }
-    .actions a, .actions button{ border:none; cursor:pointer }
+    .btn.btn-sm, .btn-sm{ font-size:.8rem; padding:.3rem .5rem; }
+    .text-muted-2{ color:var(--muted); }
 
-    /* ========= Tabela ========= */
-    .table-wrap{ overflow:auto; border:1px solid var(--line); border-radius:14px }
-    table{ width:100%; border-collapse:separate; border-spacing:0; min-width:800px; background:var(--panel) }
-    thead th{
-      position:sticky; top:0; z-index:1; text-align:left; font-weight:700; color:var(--thead-ink);
-      background:var(--thead); padding:12px 14px; letter-spacing:.02em;
-    }
-    tbody td{ padding:12px 14px; border-top:1px solid var(--line) }
-    tbody tr:hover{ background:var(--row-hover) }
-    .actions-col{ white-space:nowrap; text-align:center }
-    .btn-view{
-      display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; color:#fff; text-decoration:none;
-      background: linear-gradient(135deg, #34d399, #22c55e);
-      border:1px solid rgba(255,255,255,.12);
-    }
-    .count{ color:var(--muted); font-size:.92rem }
-
-    footer{ text-align:center; color:var(--muted); margin:12px 0 0 }
-
-    /* ======= ADIÇÕES ======= */
-    /* Fonte menor para o nome da paróquia */
-    td[data-col="nome"]{ font-size:.9rem; font-weight:600; }
-    /* Badges de status */
+    /* badges de status */
     .badge-ativa{
-      display:inline-block; padding:2px 8px; border-radius:999px;
-      background:#dcfce7; color:#166534; border:1px solid #86efac; font-weight:700; font-size:.75rem; margin-right:6px;
+      display:inline-block; padding:.15rem .5rem; border-radius:999px;
+      background:#dcfce7; color:#166534; border:1px solid #86efac; font-weight:700; font-size:.72rem;
     }
     .badge-inativa{
-      display:inline-block; padding:2px 8px; border-radius:999px;
-      background:#fee2e2; color:#991b1b; border:1px solid #fecaca; font-weight:700; font-size:.75rem; margin-right:6px;
+      display:inline-block; padding:.15rem .5rem; border-radius:999px;
+      background:#fee2e2; color:#991b1b; border:1px solid #fecaca; font-weight:700; font-size:.72rem;
     }
   </style>
 </head>
-
 <body>
-  <div class="container">
-    <!-- HERO -->
-    <header class="hero">
-      <div class="hero-head">
-        <div>
-          <h1 class="hero-title">Paróquias Cadastradas</h1>
-          <p class="hero-sub">Gerencie e acesse rapidamente as paróquias do sistema.</p>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-          <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="pill -back">
-            <i class="fa-solid fa-arrow-left"></i><span>Dashboard</span>
-          </a>
-          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema">
-            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-          </button>
-          <a href="{% url 'inscricoes:admin_geral_create_paroquia' %}" class="pill -green">
-            <i class="fa-solid fa-plus"></i><span>Nova Paróquia</span>
-          </a>
-        </div>
-      </div>
-    </header>
 
-    <!-- FILTROS -->
-    <section class="panel">
-      <h2><i class="fa-solid fa-filter"></i> Filtros</h2>
-      <div class="filters">
-        <input type="search" id="search" placeholder="Buscar por nome, cidade, responsável..." />
-        <select id="uf">
-          <option value="">UF (todas)</option>
-        </select>
-        <div class="actions">
-          <span class="count" id="count"></span>
-        </div>
-      </div>
-    </section>
+<!-- NAVBAR (igual ao catálogo) -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
 
-    <!-- TABELA -->
-    <section class="panel">
-      <div class="table-wrap">
-        <table id="tblParoquias">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Cidade</th>
-              <th>Estado</th>
-              <!-- ADIÇÃO: cabeçalho Status -->
-              <th>Status</th>
-              <th>Responsável</th>
-              <th>Telefone</th>
-              <th style="text-align:center;">Ações</th>
-            </tr>
-          </thead>
-<!-- ... resto do código igual ao seu ... -->
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
+      <a class="btn btn-sm btn-success" href="{% url 'inscricoes:admin_geral_create_paroquia' %}">+ Nova Paróquia</a>
+    </div>
+  </div>
+</nav>
 
-<tbody>
-  {% for paroquia in paroquias %}
-  <tr>
-    <td data-col="nome">{{ paroquia.nome }}</td>
-    <td data-col="cidade">{{ paroquia.cidade }}</td>
-    <td data-col="uf">{{ paroquia.estado }}</td>
+<main class="container py-3 py-lg-4">
 
-    <!-- STATUS apenas com badge -->
-    <td data-col="status">
-      {% if paroquia.status == "ativa" %}
-        <span class="badge-ativa">Ativa</span>
-      {% else %}
-        <span class="badge-inativa">Inativa</span>
-      {% endif %}
-    </td>
-
-    <td data-col="resp">{{ paroquia.responsavel }}</td>
-
-    <td data-col="tel">{{ paroquia.telefone }}</td>
-
-    <!-- AÇÕES: Ver + botão ligar/desligar -->
-    <td class="actions-col">
-      <a href="{% url 'inscricoes:admin_paroquia_painel' paroquia.id %}" class="btn-view">
-        <i class="fa-solid fa-eye"></i> Ver
-      </a>
-
-      <form method="post" action="{% url 'inscricoes:admin_geral_toggle_status_paroquia' paroquia.id %}" style="display:inline;">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-        {% if paroquia.status == "ativa" %}
-          <button type="submit" class="pill -back" title="Inativar esta paróquia" style="margin-left:6px;">
-            <i class="fa-solid fa-power-off"></i>
-          </button>
-        {% else %}
-          <button type="submit" class="pill -green" title="Ativar esta paróquia" style="margin-left:6px;">
-            <i class="fa-solid fa-power-off"></i>
-          </button>
-        {% endif %}
-      </form>
-    </td>
-  </tr>
-  {% empty %}
-  <tr>
-    <td colspan="8" style="text-align:center; color:var(--muted); padding:18px;">
-      Nenhuma paróquia cadastrada.
-    </td>
-  </tr>
-  {% endfor %}
-</tbody>
-        </table>
-      </div>
-    </section>
-
-    <footer>&copy; {{ current_year }} Admin Geral — Todos os direitos reservados</footer>
+  <!-- Título + ações rápidas -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
+    <h1 class="h6 m-0">Paróquias cadastradas</h1>
+    <div class="d-flex gap-2">
+      <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+      <a href="{% url 'inscricoes:admin_geral_create_paroquia' %}" class="btn btn-success btn-sm">Nova Paróquia</a>
+    </div>
   </div>
 
-  <script>
-    // Tema com persistência (mesma key das outras telas)
-    (function themeToggle(){
-      const KEY='relatorios-theme';
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
-      }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next); apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
-      });
-    })();
+  <!-- KPIs (opcional) -->
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+      <div class="kpi">
+        <div class="small">Paróquias</div>
+        <div class="fs-4 fw-bold">{{ paroquias|length }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi">
+        <div class="small">Ativas</div>
+        <div class="fs-4 fw-bold">
+          {% with ativas=paroquias|dictsort:"status" %}
+            {{ paroquias|length|default:0 }}{% comment %}placeholder simples; ajuste se quiser contar de fato{% endcomment %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+  </div>
 
-    // Busca + filtro por UF + contador
-    (function tableFilters(){
-      const $tbl = document.getElementById('tblParoquias');
-      if(!$tbl) return;
-      const $rows = Array.from($tbl.querySelectorAll('tbody tr'));
-      const $search = document.getElementById('search');
-      const $uf = document.getElementById('uf');
-      const $count = document.getElementById('count');
+  <!-- Toolbar de filtros (padrão catálogo) -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="row g-3 align-items-end toolbar">
+      <div class="col-12 col-md-6">
+        <label class="form-label small text-muted-2 mb-1" for="q">Buscar</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white">🔎</span>
+          <input id="q" type="search" class="form-control" placeholder="Nome, cidade ou responsável…">
+          <button id="btn-clear" class="btn btn-outline-secondary">Limpar</button>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small text-muted-2 mb-1" for="ufSel">UF</label>
+        <select id="ufSel" class="form-select">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small text-muted-2 mb-1" for="statusSel">Status</label>
+        <select id="statusSel" class="form-select">
+          <option value="">Todos</option>
+          <option value="ativa">Ativa</option>
+          <option value="inativa">Inativa</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-2 justify-content-end">
+        <button id="btnExport" class="btn btn-dark btn-sm w-100">Exportar CSV</button>
+      </div>
+    </div>
+  </div>
 
-      // Popular UF a partir das linhas
-      const ufs = [...new Set($rows
-        .map(r => (r.querySelector('[data-col="uf"]')?.textContent || '').trim())
-        .filter(Boolean)
-      )].sort();
-      ufs.forEach(uf => {
-        const opt = document.createElement('option');
-        opt.value = uf; opt.textContent = uf; $uf.appendChild(opt);
-      });
+  <!-- Tabela -->
+  {% if paroquias %}
+  <div class="table-responsive">
+    <table id="tbl" class="table table-hover align-middle rounded-3 overflow-hidden">
+      <thead>
+        <tr>
+          <th style="width:28%">Nome</th>
+          <th style="width:18%">Cidade</th>
+          <th style="width:10%">UF</th>
+          <th style="width:12%">Status</th>
+          <th style="width:18%">Responsável</th>
+          <th style="width:14%">Telefone</th>
+          <th style="width:10%">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in paroquias %}
+        <tr class="row-item"
+            data-nome="{{ p.nome|lower }}"
+            data-cidade="{{ p.cidade|lower }}"
+            data-uf="{{ p.estado }}"
+            data-resp="{{ p.responsavel|default:''|lower }}"
+            data-status="{{ p.status|default:'inativa' }}">
+          <td><strong>{{ p.nome }}</strong></td>
+          <td class="text-muted-2">{{ p.cidade }}</td>
+          <td class="text-muted-2">{{ p.estado }}</td>
+          <td>
+            {% if p.status == "ativa" %}
+              <span class="badge-ativa">Ativa</span>
+            {% else %}
+              <span class="badge-inativa">Inativa</span>
+            {% endif %}
+          </td>
+          <td>{{ p.responsavel|default:"—" }}</td>
+          <td>{{ p.telefone|default:"—" }}</td>
+          <td>
+            <div class="d-flex flex-wrap gap-2">
+              <a class="btn btn-sm btn-success" href="{% url 'inscricoes:admin_paroquia_painel' p.id %}">Ver</a>
+              <form method="post" action="{% url 'inscricoes:admin_geral_toggle_status_paroquia' p.id %}" class="m-0">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% if p.status == "ativa" %}
+                  <button type="submit" class="btn btn-sm btn-outline-secondary" title="Inativar">Desativar</button>
+                {% else %}
+                  <button type="submit" class="btn btn-sm btn-outline-success" title="Ativar">Ativar</button>
+                {% endif %}
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div id="countLine" class="small text-muted-2 mt-1"></div>
+  </div>
+  {% else %}
+    <div class="empty">
+      <div class="h6 mb-1">Nenhuma paróquia cadastrada</div>
+      <div class="text-muted-2 mb-3">Use o botão “Nova Paróquia” para criar a primeira.</div>
+      <a href="{% url 'inscricoes:admin_geral_create_paroquia' %}" class="btn btn-success btn-sm">+ Nova Paróquia</a>
+    </div>
+  {% endif %}
 
-      function apply(){
-        const q = ($search.value || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
-        const fuf = $uf.value;
+  <footer class="py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center text-muted-2 small">
+      <div>© {% now "Y" %} Admin Geral — Todos os direitos reservados</div>
+      <div>Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</div>
+    </div>
+  </footer>
+</main>
 
-        let shown = 0;
-        $rows.forEach(row=>{
-          const nome = (row.querySelector('[data-col="nome"]')?.textContent || '').toLowerCase();
-          const cidade = (row.querySelector('[data-col="cidade"]')?.textContent || '').toLowerCase();
-          const resp = (row.querySelector('[data-col="resp"]')?.textContent || '').toLowerCase();
-          const uf = (row.querySelector('[data-col="uf"]')?.textContent || '').trim();
-          const text = (nome + ' ' + cidade + ' ' + resp);
+<script>
+(function(){
+  const $q   = document.getElementById('q');
+  const $clear = document.getElementById('btn-clear');
+  const $uf  = document.getElementById('ufSel');
+  const $st  = document.getElementById('statusSel');
+  const $tbl = document.getElementById('tbl');
+  const rows = $tbl ? Array.from($tbl.querySelectorAll('tbody .row-item')) : [];
+  const $countLine = document.getElementById('countLine');
+  const $btnExport = document.getElementById('btnExport');
 
-          const matchQ = !q || text.normalize('NFD').replace(/\p{Diacritic}/gu,'').includes(q);
-          const matchUF = !fuf || uf === fuf;
+  // Popular UFs a partir da tabela
+  const ufs = [...new Set(rows.map(r => r.dataset.uf).filter(Boolean))].sort();
+  ufs.forEach(uf => { const o=document.createElement('option'); o.value=uf; o.textContent=uf; $uf.appendChild(o); });
 
-          const vis = matchQ && matchUF;
-          row.style.display = vis ? '' : 'none';
-          if(vis) shown++;
-        });
-        $count.textContent = shown + ' de ' + $rows.length + ' paróquias';
-      }
-      $search?.addEventListener('input', apply);
-      $uf?.addEventListener('change', apply);
-      apply();
-    })();
-  </script>
+  function norm(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+
+  function applyFilters(){
+    const q = norm($q ? $q.value : '');
+    const fUF = $uf ? $uf.value : '';
+    const fST = $st ? $st.value : '';
+
+    let shown = 0;
+    rows.forEach(r=>{
+      const t = `${r.dataset.nome} ${r.dataset.cidade} ${r.dataset.resp}`;
+      const matchQ = !q || norm(t).includes(q);
+      const matchUF= !fUF || r.dataset.uf === fUF;
+      const matchST= !fST || r.dataset.status === fST;
+      const vis = matchQ && matchUF && matchST;
+      r.classList.toggle('d-none', !vis);
+      if (vis) shown++;
+    });
+    if ($countLine){
+      const total = rows.length;
+      $countLine.textContent = total ? `${shown} de ${total} paróquias` : '';
+    }
+  }
+
+  $q   && $q.addEventListener('input', applyFilters);
+  $uf  && $uf.addEventListener('change', applyFilters);
+  $st  && $st.addEventListener('change', applyFilters);
+  $clear && $clear.addEventListener('click', (e)=>{
+    e.preventDefault();
+    if($q) $q.value = '';
+    if($uf) $uf.value = '';
+    if($st) $st.value = '';
+    applyFilters();
+    $q && $q.focus();
+  });
+
+  // Exportar CSV (nome, cidade, uf, status, responsável, telefone)
+  $btnExport && $btnExport.addEventListener('click', ()=>{
+    const visibles = rows.filter(r=> !r.classList.contains('d-none'));
+    const data = visibles.map(r=>{
+      const cols = r.querySelectorAll('td');
+      return [
+        cols[0]?.innerText.trim() || '',
+        cols[1]?.innerText.trim() || '',
+        cols[2]?.innerText.trim() || '',
+        cols[3]?.innerText.trim() || '',
+        cols[4]?.innerText.trim() || '',
+        cols[5]?.innerText.trim() || '',
+      ];
+    });
+    const csv = ['"Nome","Cidade","UF","Status","Responsável","Telefone"', ...data.map(arr => arr.map(c=>`"${(c||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'paroquias.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=> URL.revokeObjectURL(url), 1500);
+  });
+
+  // init
+  applyFilters();
+})();
+</script>
+
 </body>
 </html>

@@ -1,305 +1,233 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>Novo — Paróquia | Admin Geral</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
   <style>
-    /* ===== Design tokens (coerentes com as outras telas) ===== */
     :root{
-      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --radius:14px; --shadow:0 6px 30px rgba(16,24,40,.08);
-      --focus:0 0 0 3px rgba(37,99,235,.25);
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px;
+      --line:#e5e7eb; --panel:#fff;
+      --warn:#f59e0b;
+    }
+    html{ font-size:var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+    .text-muted-2{ color:var(--muted); }
 
-      --pill-back:#4b5563; --pill-accent:#0ea5e9;
-      --accent:#2563eb; --accent-2:#1d4ed8;
+    /* Navbar catálogo */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar-brand{ font-size:1rem; }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
 
-      --err:#ef4444; --ok:#16a34a; --warn:#f59e0b;
-    }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow:0 10px 40px rgba(0,0,0,.45);
-        --pill-back:#6b7280; --pill-accent:#0284c7;
-        --accent:#1d4ed8; --accent-2:#1e40af;
-      }
-    }
+    /* Header/toolbar compacto */
+    .sticky-topbar{ position:sticky; top:0; z-index:20; background:#ffffffd6; backdrop-filter:blur(6px); }
 
-    *{ box-sizing:border-box }
-    html,body{ margin:0; padding:0 }
-    body{
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.42;
+    /* Cartão limpo (catálogo) */
+    .card-clean{
+      background:var(--panel); border:1px solid var(--line); border-radius:.9rem;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
     }
-    .container{ max-width:900px; margin:20px auto 32px; padding:0 16px }
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
 
-    /* ===== HERO ===== */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(18px,4vw,26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      margin-bottom:18px;
+    /* Form padrão catálogo */
+    .form-label{ font-weight:700; color:var(--muted); font-size:.9rem; }
+    .form-control, .form-select, textarea{
+      border-radius:.8rem; border-color:var(--line); padding:.6rem .8rem; font-size:.95rem; background:#fff;
     }
-    .hero-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
-    .hero-title{ margin:0; font-weight:800; font-size: clamp(1.2rem,3vw,1.9rem); letter-spacing:.3px }
-    .hero-sub{ margin:4px 0 0; opacity:.9; font-size:.95rem }
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 14px; border-radius:999px; font-weight:700; text-decoration:none;
-      color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12);
-      transition: transform .12s ease, background .2s ease;
+    .form-control:focus, .form-select:focus, textarea:focus{
+      border-color:#93c5fd; box-shadow:0 0 0 .25rem var(--ring);
     }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
-    .pill:focus-visible{ outline:none; box-shadow:var(--focus) }
-    .pill.-back{ background: linear-gradient(135deg, var(--pill-back), #374151) }
-    .pill.-accent{ background: linear-gradient(135deg, #06b6d4, var(--pill-accent)) }
+    .req{ color:var(--warn); margin-left:4px; }
 
-    /* ===== Painel / Form ===== */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(16px,2vw,22px);
-    }
-    .panel h2{
-      margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:700; letter-spacing:.2px;
-      display:flex; align-items:center; gap:8px;
-    }
-
-    form{ display:grid; gap:16px; }
-    .grid{
-      display:grid; gap:14px;
-      grid-template-columns: repeat(12, 1fr);
-    }
-    @media (max-width:720px){ .grid{ grid-template-columns: 1fr } }
-    .col-12{ grid-column: span 12 } .col-6{ grid-column: span 6 } .col-4{ grid-column: span 4 } .col-3{ grid-column: span 3 }
-
-    .field{ display:grid; gap:6px; }
-    .label{ font-weight:700; color:var(--muted) }
-    .req{ color:var(--warn); margin-left:4px }
-
-    input[type="text"], input[type="email"], input[type="tel"], input[type="file"], select, textarea{
-      width:100%; border:1px solid var(--line); border-radius:12px; padding:12px 14px;
-      background:var(--panel); color:var(--ink); font-size:1rem;
-    }
-    textarea{ min-height:120px; resize:vertical }
-    input:focus, select:focus, textarea:focus{ outline:none; box-shadow:var(--focus) }
-
-    .help{ color:var(--muted); font-size:.92rem }
-    .errors{ display:grid; gap:6px; margin:0; padding:0; list-style:none }
-    .error{
-      border:1px solid rgba(239,68,68,.4); background:rgba(239,68,68,.08);
-      color:#b91c1c; padding:8px 10px; border-radius:10px; font-size:.92rem;
-    }
-    .nonfield{
-      border:1px dashed rgba(239,68,68,.5); background:rgba(239,68,68,.06);
-      color:#b91c1c; padding:10px 12px; border-radius:12px; margin-bottom:6px;
-    }
-
-    .logo-preview{
-      display:flex; align-items:center; gap:12px; margin-top:6px;
-    }
+    .logo-preview{ display:flex; align-items:center; gap:.6rem; margin-top:.35rem; }
     .logo-preview img{
-      width:56px; height:56px; object-fit:contain; border-radius:10px;
-      border:1px solid var(--line); background:#fff;
+      width:56px; height:56px; object-fit:contain; border-radius:.6rem; border:1px solid var(--line); background:#fff;
     }
 
-    .actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:4px }
-    .btn{
-      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
-      padding:12px 16px; border-radius:12px; font-weight:700; color:#fff; text-decoration:none;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      transition: transform .12s ease, filter .2s ease;
-    }
-    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-    .btn.-ghost{ color:var(--ink); background:transparent; border:1px solid var(--line) }
-
-    .hint{ color:var(--muted); font-size:.9rem; margin-top:4px }
+    .btn.btn-sm, .btn-sm{ font-size:.85rem; padding:.45rem .65rem; }
   </style>
 </head>
-
 <body>
-  <div class="container">
-    <!-- HERO -->
-    <header class="hero">
-      <div class="hero-head">
-        <div>
-          <h1 class="hero-title">Criar Nova Paróquia</h1>
-          <p class="hero-sub">Cadastre os dados institucionais e de contato. Você pode anexar o logo para o portal público.</p>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-          <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="pill -back">
-            <i class="fa-solid fa-arrow-left"></i><span>Voltar à Lista</span>
-          </a>
-          <button type="button" class="pill" id="themeToggle" aria-label="Alternar tema">
-            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-          </button>
-        </div>
+
+<!-- NAVBAR catálogo -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-outline-light" href="{% url 'inscricoes:admin_geral_list_paroquias' %}">← Lista de Paróquias</a>
+      <button type="button" class="btn btn-sm btn-light" id="themeToggle" aria-label="Alternar tema">Tema</button>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  <!-- Cabeçalho compacto -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Criar Nova Paróquia</h1>
+        <div class="small text-muted-2">Cadastre dados institucionais, endereço e contato. Você pode anexar o logo.</div>
       </div>
-    </header>
-
-    <!-- FORM -->
-    <section class="panel" aria-labelledby="formTitle">
-      <h2 id="formTitle"><i class="fa-solid fa-church"></i> Dados da Paróquia</h2>
-
-      {% if form.non_field_errors %}
-        <div class="nonfield">
-          {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
-        </div>
-      {% endif %}
-
-      <form method="post" enctype="multipart/form-data" novalidate id="paroquiaForm">
-        {% csrf_token %}
-
-        <div class="grid">
-          {% for field in form %}
-            {% with name=field.name|lower %}
-              <div class="field
-                {% if 'nome' in name %} col-12
-                {% elif 'email' in name %} col-6
-                {% elif 'telefone' in name or 'cel' in name %} col-4
-                {% elif 'cep' in name or 'estado' in name or 'uf' in name or 'numero' in name %} col-3
-                {% elif 'cidade' in name %} col-6
-                {% elif 'logo' in name or 'imagem' in name %} col-12
-                {% else %} col-6 {% endif %}">
-                <label class="label" for="{{ field.id_for_label }}">
-                  {{ field.label }}
-                  {% if field.field.required %}<span class="req" title="campo obrigatório">*</span>{% endif %}
-                </label>
-
-                {{ field }}
-
-                {% if field.help_text %}
-                  <div class="help">{{ field.help_text|safe }}</div>
-                {% endif %}
-                {% if field.errors %}
-                  <ul class="errors">
-                    {% for error in field.errors %}
-                      <li class="error"><i class="fa-solid fa-triangle-exclamation"></i> {{ error }}</li>
-                    {% endfor %}
-                  </ul>
-                {% endif %}
-
-                {% if 'logo' in name or 'imagem' in name %}
-                  <div class="logo-preview" data-logo-preview hidden>
-                    <img alt="Prévia do logo" aria-hidden="true"/>
-                    <span class="help">Pré-visualização do arquivo selecionado.</span>
-                  </div>
-                {% endif %}
-              </div>
-            {% endwith %}
-          {% endfor %}
-        </div>
-
-        <div class="actions">
-          <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn -ghost">
-            <i class="fa-solid fa-arrow-left"></i> Cancelar
-          </a>
-          <button type="submit" class="btn">
-            <i class="fa-solid fa-floppy-disk"></i> Salvar
-          </button>
-        </div>
-        <p class="hint">Dica: use <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (ou <kbd>⌘</kbd>+<kbd>Enter</kbd>) para enviar.</p>
-      </form>
-    </section>
+      <div class="d-flex gap-2">
+        <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+        <button form="paroquiaForm" type="submit" class="btn btn-primary btn-sm">Salvar</button>
+      </div>
+    </div>
   </div>
 
-  <script>
-    // ===== Tema com persistência (mesma chave das outras telas) =====
-    (function themeToggle(){
-      const KEY='relatorios-theme';
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+  <!-- Painel com formulário -->
+  <section class="card-clean p-3 p-lg-4">
+    <h2 class="h6 text-muted-2 mb-3"><i class="bi bi-building"></i> Dados da Paróquia</h2>
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" novalidate id="paroquiaForm" class="row g-3">
+      {% csrf_token %}
+
+      {% for field in form %}
+        {% with name=field.name|lower %}
+          <div class="
+            {% if 'nome' in name %}col-12
+            {% elif 'email' in name %}col-12 col-md-6
+            {% elif 'telefone' in name or 'cel' in name %}col-12 col-md-4
+            {% elif 'cep' in name or 'estado' in name or 'uf' in name or 'numero' in name %}col-12 col-md-3
+            {% elif 'cidade' in name %}col-12 col-md-6
+            {% elif 'logo' in name or 'imagem' in name %}col-12
+            {% else %}col-12 col-md-6{% endif %}
+          ">
+            <label class="form-label" for="{{ field.id_for_label }}">
+              {{ field.label }}{% if field.field.required %}<span class="req">*</span>{% endif %}
+            </label>
+
+            {{ field }}
+
+            {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+
+            {% if field.errors %}
+              <div class="mt-1">
+                {% for error in field.errors %}
+                  <div class="alert alert-danger py-1 px-2 mb-1">{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            {% if 'logo' in name or 'imagem' in name %}
+              <div class="logo-preview" data-logo-preview hidden>
+                <img alt="Prévia do logo" aria-hidden="true"/>
+                <span class="text-muted-2 small">Pré-visualização do arquivo selecionado.</span>
+              </div>
+            {% endif %}
+          </div>
+        {% endwith %}
+      {% endfor %}
+
+      <div class="col-12 d-flex gap-2 justify-content-end">
+        <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+      </div>
+      <p class="small text-muted-2 m-0">Dica: use <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (ou <kbd>⌘</kbd>+<kbd>Enter</kbd>) para enviar.</p>
+    </form>
+  </section>
+
+  <footer class="py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center text-muted-2 small">
+      <div>© {% now "Y" %} Admin Geral — Todos os direitos reservados</div>
+      <div>Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</div>
+    </div>
+  </footer>
+</main>
+
+<script>
+  // Tema com persistência (mesma chave das outras telas)
+  (function themeToggle(){
+    const KEY='relatorios-theme';
+    const btn=document.getElementById('themeToggle');
+    const root=document.documentElement;
+    function apply(theme){
+      if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
+      else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
+      else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
+    }
+    apply(localStorage.getItem(KEY) || 'auto');
+    btn?.addEventListener('click', ()=>{
+      const cur=localStorage.getItem(KEY)||'auto';
+      const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+      localStorage.setItem(KEY,next); apply(next);
+      btn.setAttribute('aria-label',`Tema: ${next}`);
+    });
+  })();
+
+  // UX do formulário: foco, Ctrl/Cmd+Enter, máscaras e prévia do logo
+  (function formUX(){
+    const form = document.getElementById('paroquiaForm');
+    if(!form) return;
+
+    // Foco no primeiro campo “texto/seleção”
+    const first = form.querySelector('input:not([type=file]), select, textarea');
+    first && first.focus();
+
+    // Ctrl/Cmd + Enter para enviar
+    document.addEventListener('keydown', (e)=>{
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='enter'){
+        e.preventDefault();
+        form.requestSubmit();
       }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next); apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
+    });
+
+    // Máscara leve para telefone
+    form.querySelectorAll('input[type="tel"]').forEach(p=>{
+      p.addEventListener('input', ()=>{
+        let v = p.value.replace(/\D/g,'').slice(0,11);
+        if(v.length > 10) p.value = v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');
+        else if(v.length > 6) p.value = v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+        else if(v.length > 2) p.value = v.replace(/(\d{2})(\d{0,5})/,'($1) $2');
+        else p.value = v;
       });
-    })();
+    });
 
-    // ===== UX do formulário: foco, Ctrl/Cmd+Enter, máscaras e prévia de logo =====
-    (function formUX(){
-      const form = document.getElementById('paroquiaForm');
-      if(!form) return;
+    // Máscara leve para CEP
+    form.querySelectorAll('input[name*="cep" i]').forEach(cep=>{
+      cep.addEventListener('input', ()=>{
+        let v = cep.value.replace(/\D/g,'').slice(0,8);
+        if(v.length > 5) cep.value = v.replace(/(\d{5})(\d{0,3})/,'$1-$2');
+        else cep.value = v;
+      });
+    });
 
-      // Foco no primeiro campo
-      const first = form.querySelector('input:not([type=file]), select, textarea');
-      first && first.focus();
+    // UF/Estado em maiúsculas (2 letras)
+    form.querySelectorAll('input[name*="estado" i], input[name*="uf" i]').forEach(uf=>{
+      uf.maxLength = 2;
+      uf.addEventListener('input', ()=>{ uf.value = uf.value.replace(/[^a-zA-Z]/g,'').toUpperCase().slice(0,2); });
+    });
 
-      // Ctrl/Cmd + Enter para enviar
-      document.addEventListener('keydown', (e)=>{
-        if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='enter'){
-          e.preventDefault();
-          form.requestSubmit();
+    // Pré-visualização do logo
+    const file = form.querySelector('input[type="file"][name*="logo" i], input[type="file"][name*="imagem" i]');
+    if(file){
+      const wrap = form.querySelector('[data-logo-preview]');
+      const img = wrap?.querySelector('img');
+      file.addEventListener('change', ()=>{
+        const f = file.files && file.files[0];
+        if(f && /^image\//.test(f.type)){
+          const reader = new FileReader();
+          reader.onload = e => { if(img){ img.src = e.target.result; wrap.hidden = false; } };
+          reader.readAsDataURL(f);
+        }else{
+          if(img){ img.removeAttribute('src'); wrap.hidden = true; }
         }
       });
-
-      // Máscara leve para telefone
-      form.querySelectorAll('input[type="tel"]').forEach(p=>{
-        p.addEventListener('input', ()=>{
-          let v = p.value.replace(/\D/g,'').slice(0,11);
-          if(v.length > 10) p.value = v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');
-          else if(v.length > 6) p.value = v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
-          else if(v.length > 2) p.value = v.replace(/(\d{2})(\d{0,5})/,'($1) $2');
-          else p.value = v;
-        });
-      });
-
-      // Máscara leve para CEP
-      form.querySelectorAll('input[name*="cep" i]').forEach(cep=>{
-        cep.addEventListener('input', ()=>{
-          let v = cep.value.replace(/\D/g,'').slice(0,8);
-          if(v.length > 5) cep.value = v.replace(/(\d{5})(\d{0,3})/,'$1-$2');
-          else cep.value = v;
-        });
-      });
-
-      // Estado/UF em maiúsculas (2 letras)
-      form.querySelectorAll('input[name*="estado" i], input[name*="uf" i]').forEach(uf=>{
-        uf.maxLength = 2;
-        uf.addEventListener('input', ()=>{ uf.value = uf.value.replace(/[^a-zA-Z]/g,'').toUpperCase().slice(0,2); });
-      });
-
-      // Pré-visualização do logo (campo file que contenha 'logo' ou 'imagem' no name)
-      const file = form.querySelector('input[type="file"][name*="logo" i], input[type="file"][name*="imagem" i]');
-      if(file){
-        const wrap = form.querySelector('[data-logo-preview]');
-        const img = wrap?.querySelector('img');
-        file.addEventListener('change', ()=>{
-          const f = file.files && file.files[0];
-          if(f && /^image\//.test(f.type)){
-            const reader = new FileReader();
-            reader.onload = e => {
-              if(img){ img.src = e.target.result; wrap.hidden = false; }
-            };
-            reader.readAsDataURL(f);
-          }else{
-            if(img){ img.removeAttribute('src'); wrap.hidden = true; }
-          }
-        });
-      }
-    })();
-  </script>
+    }
+  })();
+</script>
 </body>
 </html>

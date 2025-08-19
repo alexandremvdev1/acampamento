@@ -9,6 +9,8 @@ from decimal import Decimal
 from urllib.parse import urljoin
 from datetime import timedelta, timezone as dt_tz
 from django.contrib.auth.views import LoginView
+from django.core.exceptions import ObjectDoesNotExist
+
 
 # ——— Django
 from django.conf import settings
@@ -1333,31 +1335,70 @@ def inscricao_finalizada(request, pk):
 from django.shortcuts import render, get_object_or_404
 from .models import EventoAcampamento, Inscricao
 
+@login_required
 def relatorio_crachas(request, evento_id):
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
-    cidade_selecionada = request.GET.get('cidade', '')
+    cidade_selecionada = (request.GET.get('cidade') or '').strip()
 
-    # 1) Só inscrições concluídas
-    inscricoes = Inscricao.objects.filter(
-        evento=evento,
-        inscricao_concluida=True
-    ).select_related(
-        'participante',
-        'paroquia',
-        'inscricaosenior',
-        'inscricaojuvenil',
-        'inscricaomirim',
-        'inscricaoservos'
-    )
+    # Base: somente inscrições concluídas
+    qs_base = (Inscricao.objects
+               .filter(evento=evento, inscricao_concluida=True)
+               .select_related(
+                   'participante', 'paroquia',
+                   'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
+                   'inscricaocasais', 'inscricaoevento', 'inscricaoretiro',
+               ))
 
-    # 2) Filtro por cidade do participante
+    # Cidades (sempre com base no conjunto completo concluído do evento)
+    cidades = (qs_base.values_list('participante__cidade', flat=True)
+                     .distinct()
+                     .order_by('participante__cidade'))
+
+    # Filtro por cidade (case-insensitive)
     if cidade_selecionada:
-        inscricoes = inscricoes.filter(participante__cidade=cidade_selecionada)
+        qs = qs_base.filter(participante__cidade__iexact=cidade_selecionada)
+    else:
+        qs = qs_base
 
-    # 3) Lista de cidades únicas para o dropdown
-    cidades = inscricoes.values_list('participante__cidade', flat=True).distinct().order_by('participante__cidade')
+    # Ordenação por nome do participante
+    qs = qs.order_by('participante__nome')
 
-    # 4) Template de crachá
+    # Resolve data de nascimento uma única vez e pendura na inscrição (opcional)
+    attr_by_tipo = {
+        'senior':  'inscricaosenior',
+        'juvenil': 'inscricaojuvenil',
+        'mirim':   'inscricaomirim',
+        'servos':  'inscricaoservos',
+        'casais':  'inscricaocasais',
+        'evento':  'inscricaoevento',
+        'retiro':  'inscricaoretiro',
+    }
+
+    def get_base_rel(i):
+        tipo = (getattr(i.evento, 'tipo', '') or '').lower()
+        preferida = attr_by_tipo.get(tipo)
+        ordem = [preferida] if preferida else []
+        ordem += ['inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
+                  'inscricaocasais', 'inscricaoevento', 'inscricaoretiro']
+        seen = set()
+        for name in [n for n in ordem if n and n not in seen]:
+            seen.add(name)
+            try:
+                return getattr(i, name)
+            except Exception:
+                continue
+        return None
+
+    inscricoes = []
+    for insc in qs:
+        base = get_base_rel(insc)
+        nasc = getattr(base, 'data_nascimento', None) if base else None
+        if not nasc and hasattr(insc.participante, 'data_nascimento'):
+            nasc = insc.participante.data_nascimento
+        insc.nasc = nasc  # disponível no template se quiser usar {{ inscricao.nasc|date:"d/m/Y" }}
+        inscricoes.append(insc)
+
+    # Template de crachá (se tiver por evento, adapte aqui)
     cracha_template = CrachaTemplate.objects.first()
 
     return render(request, 'inscricoes/relatorio_crachas.html', {

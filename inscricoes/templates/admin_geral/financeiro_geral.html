@@ -5,289 +5,241 @@
   <meta charset="utf-8" />
   <title>Relatório Financeiro — Admin Geral</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap + (mesmos tokens do painel) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
         integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <style>
     :root{
-      --page:#f7f8fb; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb;
-      --radius:14px; --shadow:0 8px 32px rgba(16,24,40,.08);
-      --accent:#2563eb; --accent-2:#1d4ed8;
-      --ok:#16a34a; --warn:#f59e0b; --chip:#111827; --chip-2:#374151;
-      --table-stripe:#f4f7f9;
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px;
     }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --page:#0b0f14; --panel:#0f1520; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2a37;
-        --shadow:0 14px 40px rgba(0,0,0,.5);
-        --accent:#1d4ed8; --accent-2:#1e40af;
-        --chip:#374151; --chip-2:#111827; --table-stripe:#121821;
-      }
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0}
-    body{
-      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(124,58,237,.12), transparent 60%),
-        radial-gradient(1000px 500px at 90% -20%, rgba(37,99,235,.12), transparent 60%),
-        var(--page);
-      line-height:1.55;
-      padding:20px;
-    }
-    .wrap{ max-width:1100px; margin:0 auto }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
 
-    /* HERO */
-    .hero{
-      position:relative; border-radius:18px; overflow:hidden; color:#fff;
-      padding: clamp(16px, 3.6vw, 26px);
-      background:
-        linear-gradient(180deg, rgba(3,7,18,.45), rgba(3,7,18,.18)),
-        radial-gradient(60% 100% at 70% 0%, rgba(20,184,166,.25), rgba(37,99,235,.25)),
-        linear-gradient(135deg, #111827, #1f2937);
-      box-shadow:var(--shadow);
-      border:1px solid rgba(255,255,255,.18);
-      margin-bottom:16px;
-      display:grid; gap:10px;
-    }
-    .hero-head{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
-    .hero-title{margin:0; font-weight:800; font-size: clamp(1.2rem,3.2vw,1.8rem)}
-    .hero-sub{margin:2px 0 0; opacity:.9}
-    .actions{display:flex; gap:10px; flex-wrap:wrap}
-    .pill{
-      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px;
-      font-weight:800; text-decoration:none; color:#fff; border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.12); transition:transform .12s ease, background .2s ease; cursor:pointer;
-    }
-    .pill:hover{ transform:translateY(-1px); background:rgba(255,255,255,.18) }
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
 
-    /* KPIs */
-    .kpis{ display:grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap:12px; margin-bottom:14px }
-    @media (max-width:900px){ .kpis{ grid-template-columns: repeat(2,1fr) } }
-    @media (max-width:560px){ .kpis{ grid-template-columns: 1fr } }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
+    }
     .kpi{
-      background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px;
-      display:grid; gap:6px; box-shadow:var(--shadow);
+      background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem;
     }
-    .kpi .label{ color:var(--muted); font-size:.92rem }
-    .kpi .value{ font-size:1.25rem; font-weight:800 }
-    .kpi .sub{ color:var(--muted); font-size:.92rem }
-    .kpi.ok .value{ color:var(--ok) }
+    .kpi .small{ color:var(--muted); font-size:.8rem; }
+    .kpi .fs-4{ font-size:1.15rem !important; }
+    .kpi .fw-bold{ font-weight:700 !important; }
 
-    /* Painéis */
-    .panel{
-      background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding: clamp(12px,2vw,16px); margin-bottom:14px;
+    .card-clean{
+      border:none; box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease; border-radius:.9rem; background:#fff;
+      border:1px solid #e5e7eb;
     }
-    .panel h2{margin:0 0 10px; font-size:1rem; color:var(--muted); font-weight:800; letter-spacing:.2px; display:flex; gap:8px; align-items:center}
+    .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+    .text-muted-2{ color:var(--muted); }
 
-    /* Filtros */
-    form.filters{
-      display:grid; gap:12px; grid-template-columns: repeat(5, minmax(140px, 1fr)); align-items:end;
+    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
+
+    /* tabela */
+    .table thead th{ background:linear-gradient(180deg, rgba(0,0,0,.03), rgba(0,0,0,0)); font-weight:700; }
+    .badge-chip{ background:#111827; color:#fff; border-radius:999px; padding:.25rem .5rem; font-weight:700; font-size:.75rem; }
+    @media print{
+      .navbar, .sticky-topbar, .btn, .actions-row { display:none !important; }
+      body{ background:#fff; }
+      a[href]:after{ content:""; }
     }
-    @media (max-width:980px){ form.filters{ grid-template-columns: repeat(3, 1fr) } }
-    @media (max-width:640px){ form.filters{ grid-template-columns: 1fr } }
-    label{ font-size:.92rem; color:var(--muted); display:block; margin:0 0 6px }
-    input, select{
-      width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:12px; background:transparent; color:var(--ink);
-      font-size:1rem; outline:none;
-    }
-    .row-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end }
-
-    .btn{
-      border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
-      padding:10px 12px; border-radius:12px; font-weight:800; color:#fff; text-decoration:none;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2)); transition: transform .12s ease, filter .2s ease;
-    }
-    .btn:hover{ transform:translateY(-1px); filter:brightness(1.05) }
-    .btn-ghost{ background:transparent; color:var(--ink); border:1px solid var(--line) }
-
-    /* Tabela */
-    .table-wrap{ overflow:auto; border:1px solid var(--line); border-radius:12px }
-    table{ width:100%; border-collapse:collapse; min-width:760px; background:var(--panel) }
-    th, td{ padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; font-size:.98rem; vertical-align:top }
-    thead th{ background:linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,0)); font-weight:800; position:sticky; top:0; z-index:1 }
-    tbody tr:nth-child(even){ background:var(--table-stripe) }
-    tbody tr:hover{ background:rgba(37,99,235,.06) }
-    tfoot td{ font-weight:800 }
-
-    .pill-mini{
-      display:inline-block; padding:4px 8px; border-radius:999px;
-      background:linear-gradient(135deg, var(--chip), var(--chip-2));
-      color:#fff; font-weight:800; font-size:.78rem; white-space:nowrap
-    }
-    .muted{ color:var(--muted) }
-
-    footer{ text-align:center; margin:18px auto 6px; color:var(--muted); font-size:.95rem }
   </style>
 </head>
 <body>
-  <div class="wrap">
 
-    <!-- HERO -->
-    <header class="hero">
-      <div class="hero-head">
-        <div>
-          <h1 class="hero-title">Relatório Financeiro — Geral</h1>
-          <p class="hero-sub">Consolidação por paróquia • período {{ ini|date:"d/m/Y" }} a {{ fim|date:"d/m/Y" }}</p>
-        </div>
-        <div class="actions">
-          <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="pill">
-            <i class="fa-solid fa-arrow-left"></i><span>Dashboard</span>
-          </a>
-          <button id="themeToggle" type="button" class="pill" aria-label="Alternar tema">
-            <i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span>
-          </button>
-          <button id="printBtn" type="button" class="pill">
-            <i class="fa-solid fa-print"></i><span>Imprimir</span>
-          </button>
-          <a class="pill" href="{% url 'inscricoes:financeiro_geral_export' %}?ini={{ ini|date:'Y-m-d' }}&fim={{ fim|date:'Y-m-d' }}&paroquia={{ paroquia_id }}&fee={{ fee_percent }}">
-            <i class="fa-solid fa-file-export"></i><span>Exportar CSV</span>
-          </a>
-        </div>
-      </div>
-    </header>
+<!-- NAVBAR (igual ao painel) -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
 
-    <!-- KPIs -->
-    <section class="kpis" aria-label="Indicadores">
-      <div class="kpi">
-        <div class="label">Total Bruto</div>
-        <div class="value">R$ {{ totais.bruto|floatformat:2 }}</div>
-        <div class="sub">Antes das taxas</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Taxas Aplicadas</div>
-        <div class="value">R$ {{ totais.taxa|floatformat:2 }}</div>
-        <div class="sub">Taxa: {{ fee_percent }}%</div>
-      </div>
-      <div class="kpi ok">
-        <div class="label">Total Líquido</div>
-        <div class="value">R$ {{ totais.liquido|floatformat:2 }}</div>
-        <div class="sub">Após taxas</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Paróquias no período</div>
-        <div class="value">{{ linhas|length }}</div>
-        <div class="sub">Com movimentação</div>
-      </div>
-    </section>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
+      <a class="btn btn-sm btn-light" href="http://localhost:8000/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
+      <form method="POST" action="{% url 'logout' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-danger">Sair</button>
+      </form>
+    </div>
+  </div>
+</nav>
 
-    <!-- FILTROS -->
-    <section class="panel">
-      <h2><i class="fa-solid fa-sliders"></i> Filtros</h2>
-      <form method="get" class="filters">
-        <div>
-          <label for="ini">Início</label>
-          <input id="ini" type="date" name="ini" value="{{ ini|date:'Y-m-d' }}">
+<main class="container py-3 py-lg-4">
+
+  <!-- HEADER / AÇÕES -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div>
+        <h1 class="h6 m-0">Relatório Financeiro — Geral</h1>
+        <div class="small text-muted-2">
+          Consolidação por paróquia • período {{ ini|date:"d/m/Y" }} a {{ fim|date:"d/m/Y" }}
         </div>
-        <div>
-          <label for="fim">Fim</label>
-          <input id="fim" type="date" name="fim" value="{{ fim|date:'Y-m-d' }}">
+      </div>
+      <div class="d-flex gap-2 actions-row">
+        <a href="{% url 'inscricoes:admin_geral_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-arrow-left"></i> Dashboard
+        </a>
+        <button id="printBtn" type="button" class="btn btn-outline-dark btn-sm">
+          <i class="fa-solid fa-print"></i> Imprimir
+        </button>
+        <a class="btn btn-primary btn-sm"
+           href="{% url 'inscricoes:financeiro_geral_export' %}?ini={{ ini|date:'Y-m-d' }}&fim={{ fim|date:'Y-m-d' }}&paroquia={{ paroquia_id }}&fee={{ fee_percent }}">
+          <i class="fa-solid fa-file-export"></i> Exportar CSV
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+      <div class="kpi">
+        <div class="small">Total Bruto</div>
+        <div class="fs-4 fw-bold">R$ {{ totais.bruto|floatformat:2 }}</div>
+        <div class="small">Antes das taxas</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi">
+        <div class="small">Taxas Aplicadas</div>
+        <div class="fs-4 fw-bold">R$ {{ totais.taxa|floatformat:2 }}</div>
+        <div class="small">Taxa: {{ fee_percent }}%</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi">
+        <div class="small">Total Líquido</div>
+        <div class="fs-4 fw-bold text-success">R$ {{ totais.liquido|floatformat:2 }}</div>
+        <div class="small">Após taxas</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi">
+        <div class="small">Paróquias no período</div>
+        <div class="fs-4 fw-bold">{{ linhas|length }}</div>
+        <div class="small">Com movimentação</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTROS -->
+  <section class="mb-3">
+    <h2 class="sec-title">Filtros</h2>
+    <div class="card-clean p-3">
+      <form method="get" class="row g-3 align-items-end">
+        <div class="col-12 col-md-3">
+          <label for="ini" class="form-label small text-muted-2 mb-1">Início</label>
+          <input id="ini" type="date" name="ini" value="{{ ini|date:'Y-m-d' }}" class="form-control form-control-sm">
         </div>
-        <div>
-          <label for="paroquia">Paróquia</label>
-          <select id="paroquia" name="paroquia">
+        <div class="col-12 col-md-3">
+          <label for="fim" class="form-label small text-muted-2 mb-1">Fim</label>
+          <input id="fim" type="date" name="fim" value="{{ fim|date:'Y-m-d' }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-12 col-md-3">
+          <label for="paroquia" class="form-label small text-muted-2 mb-1">Paróquia</label>
+          <select id="paroquia" name="paroquia" class="form-select form-select-sm">
             <option value="">Todas</option>
             {% for p in todas_paroquias %}
               <option value="{{ p.id }}" {% if p.id|stringformat:'s' == paroquia_id %}selected{% endif %}>{{ p.nome }}</option>
             {% endfor %}
           </select>
         </div>
-        <div>
-          <label for="fee">Taxa (%)</label>
-          <input id="fee" type="number" step="0.01" name="fee" value="{{ fee_percent }}">
+        <div class="col-12 col-md-2">
+          <label for="fee" class="form-label small text-muted-2 mb-1">Taxa (%)</label>
+          <input id="fee" type="number" step="0.01" name="fee" value="{{ fee_percent }}" class="form-control form-control-sm">
         </div>
-        <div class="row-actions">
-          <a class="btn btn-ghost" href="{% url 'inscricoes:financeiro_geral' %}"><i class="fa-solid fa-rotate"></i> Limpar</a>
-          <button class="btn" type="submit"><i class="fa-solid fa-filter"></i> Aplicar</button>
+        <div class="col-12 col-md d-flex gap-2 justify-content-end">
+          <a class="btn btn-outline-secondary btn-sm" href="{% url 'inscricoes:financeiro_geral' %}">
+            <i class="fa-solid fa-rotate"></i> Limpar
+          </a>
+          <button class="btn btn-primary btn-sm" type="submit">
+            <i class="fa-solid fa-filter"></i> Aplicar
+          </button>
         </div>
       </form>
-    </section>
+    </div>
+  </section>
 
-    <!-- TABELA -->
-    <section class="panel">
-      <h2><i class="fa-solid fa-receipt"></i> Consolidação por Paróquia</h2>
-      <div class="table-wrap" role="region" aria-label="Tabela financeira">
-        <table>
+  <!-- TABELA -->
+  <section class="mb-4">
+    <h2 class="sec-title">Consolidação por Paróquia</h2>
+    <div class="card-clean p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
           <thead>
-            <tr>
+            <tr class="border-bottom">
               <th>Paróquia</th>
-              <th style="width:120px">Pagamentos</th>
-              <th style="width:140px">Bruto (R$)</th>
-              <th style="width:140px">Taxa (R$)</th>
-              <th style="width:140px">Líquido (R$)</th>
+              <th class="text-nowrap">Pagamentos</th>
+              <th class="text-nowrap">Bruto (R$)</th>
+              <th class="text-nowrap">Taxa (R$)</th>
+              <th class="text-nowrap">Líquido (R$)</th>
               <th>Eventos</th>
             </tr>
           </thead>
           <tbody>
             {% for r in linhas %}
-              <tr>
-                <td><strong>{{ r.paroquia_nome }}</strong></td>
-                <td>{{ r.qtd }}</td>
-                <td>R$ {{ r.bruto|floatformat:2 }}</td>
-                <td>R$ {{ r.taxa|floatformat:2 }}</td>
-                <td><strong>R$ {{ r.liquido|floatformat:2 }}</strong></td>
-                <td>
-                  {% if r.eventos %}
-                    {% for ev in r.eventos %}
-                      <span class="pill-mini">{{ ev.inscricao__evento__nome }} • R$ {{ ev.total_evento|floatformat:2 }}</span>
-                      {% if not forloop.last %}&nbsp;{% endif %}
-                    {% endfor %}
-                  {% else %}
-                    <span class="muted">—</span>
-                  {% endif %}
-                </td>
-              </tr>
+            <tr>
+              <td><strong>{{ r.paroquia_nome }}</strong></td>
+              <td>{{ r.qtd }}</td>
+              <td>R$ {{ r.bruto|floatformat:2 }}</td>
+              <td>R$ {{ r.taxa|floatformat:2 }}</td>
+              <td><strong>R$ {{ r.liquido|floatformat:2 }}</strong></td>
+              <td>
+                {% if r.eventos %}
+                  {% for ev in r.eventos %}
+                    <span class="badge-chip me-1">{{ ev.inscricao__evento__nome }} • R$ {{ ev.total_evento|floatformat:2 }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted-2">—</span>
+                {% endif %}
+              </td>
+            </tr>
             {% empty %}
-              <tr><td colspan="6" class="muted" style="text-align:center; padding:16px">Sem dados para os filtros informados.</td></tr>
+            <tr>
+              <td colspan="6" class="text-center text-muted-2 py-4">Sem dados para os filtros informados.</td>
+            </tr>
             {% endfor %}
           </tbody>
-          <tfoot>
+          <tfoot class="table-light">
             <tr>
-              <td>Total</td>
+              <td class="fw-bold">Total</td>
               <td></td>
-              <td>R$ {{ totais.bruto|floatformat:2 }}</td>
-              <td>R$ {{ totais.taxa|floatformat:2 }}</td>
-              <td>R$ {{ totais.liquido|floatformat:2 }}</td>
+              <td class="fw-bold">R$ {{ totais.bruto|floatformat:2 }}</td>
+              <td class="fw-bold">R$ {{ totais.taxa|floatformat:2 }}</td>
+              <td class="fw-bold">R$ {{ totais.liquido|floatformat:2 }}</td>
               <td></td>
             </tr>
           </tfoot>
         </table>
       </div>
-      <p class="muted" style="margin-top:10px">A taxa é aplicada sobre o total bruto confirmado no período selecionado.</p>
-    </section>
+      <div class="px-3 py-2">
+        <small class="text-muted-2">A taxa é aplicada sobre o total bruto confirmado no período selecionado.</small>
+      </div>
+    </div>
+  </section>
 
-    <footer>
-      &copy; {{ current_year }} Admin Geral — Todos os direitos reservados
-    </footer>
-  </div>
+  <footer class="py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <small>© {{ current_year }} Admin Geral — Todos os direitos reservados</small>
+      <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+    </div>
+  </footer>
+</main>
 
-  <script>
-    // Tema com persistência (mesma chave das demais telas)
-    (function themeToggle(){
-      const KEY='relatorios-theme';
-      const btn=document.getElementById('themeToggle');
-      const root=document.documentElement;
-      function apply(theme){
-        if(theme==='dark'){ root.dataset.theme='dark'; document.documentElement.style.colorScheme='dark'; }
-        else if(theme==='light'){ root.dataset.theme='light'; document.documentElement.style.colorScheme='light'; }
-        else{ root.removeAttribute('data-theme'); document.documentElement.style.colorScheme='light dark'; }
-      }
-      apply(localStorage.getItem(KEY) || 'auto');
-      btn?.addEventListener('click', ()=>{
-        const cur=localStorage.getItem(KEY)||'auto';
-        const next= cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-        localStorage.setItem(KEY,next); apply(next);
-        btn.setAttribute('aria-label',`Tema: ${next}`);
-      });
-    })();
-
-    // Imprimir
-    document.getElementById('printBtn')?.addEventListener('click', ()=>window.print());
-  </script>
+<script>
+  document.getElementById('printBtn')?.addEventListener('click', ()=>window.print());
+</script>
 </body>
 </html>
