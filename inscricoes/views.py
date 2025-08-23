@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 from datetime import timedelta, timezone as dt_tz
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpResponseForbidden
 
 
 # ——— Django
@@ -3130,3 +3131,40 @@ class LoginComImagemView(LoginView):
         ctx = super().get_context_data(**kwargs)
         ctx["politica"] = PoliticaPrivacidade.objects.order_by("-id").first()
         return ctx
+    
+@login_required
+def video_evento_form(request, slug):
+    evento = get_object_or_404(EventoAcampamento, slug=slug)
+
+    # Permissão básica: admin geral ou admin da mesma paróquia
+    if not (getattr(request.user, "is_superuser", False)
+            or (hasattr(request.user, "is_admin_geral") and request.user.is_admin_geral())
+            or (hasattr(request.user, "is_admin_paroquia") and request.user.is_admin_paroquia()
+                and request.user.paroquia_id == evento.paroquia_id)):
+        return HttpResponseForbidden("Você não tem permissão para editar este evento.")
+
+    # OneToOne: pega existente ou None
+    try:
+        video = evento.video
+    except VideoEventoAcampamento.DoesNotExist:
+        video = None
+
+    if request.method == "POST":
+        form = VideoEventoForm(request.POST, request.FILES, instance=video)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.evento = evento
+            obj.save()
+            messages.success(request, "Vídeo do evento salvo com sucesso!")
+            # redirecione para a própria página ou para o detalhe do evento
+            return redirect("inscricoes:video_evento_form", slug=slug)
+        else:
+            messages.error(request, "Por favor, corrija os erros abaixo.")
+    else:
+        form = VideoEventoForm(instance=video)
+
+    return render(request, "inscricoes/video_evento_form.html", {
+        "evento": evento,
+        "form": form,
+        "video": video,
+    })

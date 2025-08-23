@@ -108,6 +108,28 @@
             <i class="fa-solid fa-arrow-left"></i> Paróquias
           </a>
         {% endif %}
+
+        <!-- NOVO: Vídeo do Evento (dropdown) -->
+        <div class="dropdown">
+          <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button"
+                  id="btnVideoEventos" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-video"></i> Vídeo do Evento
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="btnVideoEventos">
+            {% if eventos %}
+              {% for e in eventos %}
+                <li>
+                  <a class="dropdown-item" href="{% url 'inscricoes:video_evento_form' slug=e.slug %}">
+                    {{ e.nome }}
+                  </a>
+                </li>
+              {% endfor %}
+            {% else %}
+              <li><span class="dropdown-item-text text-muted">Sem eventos</span></li>
+            {% endif %}
+          </ul>
+        </div>
+
         <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
           {% csrf_token %}
           <button type="submit" class="btn btn-danger btn-sm">
@@ -236,6 +258,10 @@
               <a href="{% url 'inscricoes:editar_politica_reembolso' evento.id %}" class="btn btn-dark btn-sm">
                 <i class="fa-solid fa-file-contract"></i> Política de Reembolso
               </a>
+              <!-- NOVO: atalho para o vídeo do evento -->
+              <a href="{% url 'inscricoes:video_evento_form' slug=evento.slug %}" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-video"></i> Vídeo
+              </a>
             </div>
           </div>
         </div>
@@ -257,6 +283,9 @@
     </div>
   </footer>
 </main>
+
+<!-- Bootstrap JS (necessário para o dropdown) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
   // Copiar link do portal (com fallback)

@@ -544,10 +544,29 @@ class DadosSaudeForm(forms.ModelForm):
 
 
 
+# inscricoes/forms.py
+from django import forms
+from .models import VideoEventoAcampamento
+
 class VideoEventoForm(forms.ModelForm):
     class Meta:
         model = VideoEventoAcampamento
-        fields = ['titulo', 'arquivo']
+        fields = ["titulo", "arquivo"]
+        widgets = {
+            "titulo": forms.TextInput(attrs={
+                "placeholder": "Ex.: Aftermovie Acampamento Juvenil 2025",
+                "class": "w-full border rounded px-3 py-2"
+            }),
+        }
+
+    def clean_arquivo(self):
+        f = self.cleaned_data.get("arquivo")
+        # Opcional: garantir que é vídeo (quando conteúdo vier via upload padrão)
+        # Cloudinary aceita muitos formatos; esse check é só um guard-rail leve.
+        if f and hasattr(f, "content_type") and not f.content_type.startswith("video/"):
+            raise forms.ValidationError("Envie um arquivo de vídeo válido.")
+        return f
+
 
 from django import forms
 from django.contrib.auth import get_user_model
