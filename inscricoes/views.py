@@ -11,7 +11,7 @@ from datetime import timedelta, timezone as dt_tz
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponseForbidden
-
+from django.views.decorators.cache import never_cache
 
 # ——— Django
 from django.conf import settings
@@ -3167,4 +3167,97 @@ def video_evento_form(request, slug):
         "evento": evento,
         "form": form,
         "video": video,
+    })
+
+@never_cache
+def painel_sorteio(request, slug):
+    """
+    Página pública (telão). Envia data/hora do servidor (localtime) para o template.
+    """
+    evento = get_object_or_404(EventoAcampamento, slug=slug)
+
+    agora = timezone.localtime()  # respeita TIME_ZONE e USE_TZ=True
+    context = {
+        "evento": evento,
+        "server_now_iso": agora.isoformat(),            # para JS iniciar o relógio
+        "server_date": agora.strftime("%d/%m/%Y"),      # para render imediato
+        "server_time": agora.strftime("%H:%M:%S"),      # para render imediato
+    }
+    return render(request, "inscricoes/painel_sorteio.html", context)
+
+
+@never_cache
+def api_selecionados(request, slug):
+    """
+    Retorna todos os selecionados do evento.
+    - Para eventos de CASAIS, une o par num único item:
+      {"casal": true, "p1": {...}, "p2": {...}}
+    - Para os demais, retorna itens individuais: {"id":..., "nome":...}
+    A ordenação é crescente por id, então o último é o mais “recente”.
+    """
+    evento = get_object_or_404(EventoAcampamento, slug=slug)
+
+    qs = (
+        Inscricao.objects
+        .select_related(
+            "participante", "evento",
+            "inscricao_pareada__participante",  # fwd one-to-one
+            "pareada_por__participante",        # reverse one-to-one
+        )
+        .filter(evento=evento, foi_selecionado=True)
+        .order_by("id")
+    )
+
+    def serializa_part(i: Inscricao) -> dict:
+        p = i.participante
+        # foto: CloudinaryField pode não existir/estar vazio
+        foto_url = None
+        try:
+            f = getattr(p, "foto", None)
+            if f:
+                foto_url = f.url
+        except Exception:
+            foto_url = None
+        return {
+            "id": i.id,
+            "nome": p.nome,
+            "cidade": getattr(p, "cidade", "") or "",
+            "estado": getattr(p, "estado", "") or "",
+            "foto": foto_url,
+        }
+
+    data = []
+
+    if (evento.tipo or "").lower() == "casais":
+        # agrupa casais sem duplicar
+        vistos = set()
+        pares = []
+        avulsos = []
+
+        for i in qs:
+            par = i.par  # propriedade do modelo que resolve o pareamento em qualquer ponta
+            if par and par.foi_selecionado and par.evento_id == i.evento_id:
+                key = tuple(sorted([i.id, par.id]))
+                if key in vistos:
+                    continue
+                vistos.add(key)
+                p1 = serializa_part(i)
+                p2 = serializa_part(par)
+                rank = max(i.id, par.id)  # aproxima “mais recente”
+                pares.append((rank, {"casal": True, "p1": p1, "p2": p2}))
+            else:
+                # sem par selecionado (ou não pareado): cai como individual
+                avulsos.append((i.id, serializa_part(i)))
+
+        pares.sort(key=lambda t: t[0])
+        avulsos.sort(key=lambda t: t[0])
+        data = [d for _, d in pares] + [d for _, d in avulsos]
+    else:
+        # eventos normais: só individuais
+        data = [serializa_part(i) for i in qs]
+
+    return JsonResponse({
+        "selecionados": data,
+        "generated_at": timezone.now().isoformat(),
+        "count": len(data),
     })

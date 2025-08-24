@@ -137,6 +137,8 @@ urlpatterns = [
     path("admin-paroquia/financeiro/repasse/<uuid:evento_id>/gerar-pix/", views.gerar_pix_repasse_evento, name="gerar_pix_repasse_evento"),
     path("webhooks/mp-owner/", views.mp_owner_webhook, name="mp_owner_webhook"),
     path("eventos/<slug:slug>/video/", views.video_evento_form, name="video_evento_form"),
+    path("telão/<slug:slug>/", views.painel_sorteio, name="painel_sorteio"),
+    path("api/evento/<slug:slug>/selecionados/", views.api_selecionados, name="api_selecionados"),
 ]
 
 if settings.DEBUG:

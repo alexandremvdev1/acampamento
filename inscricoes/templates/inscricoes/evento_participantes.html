@@ -62,7 +62,7 @@
     .table-responsive{ max-height:70vh; }
     .table-sticky thead th{
       position: sticky; top: 0; z-index: 5;
-      background: #f8fafc !important; /* similar à .table-light */
+      background: #f8fafc !important;
       border-bottom: 1px solid #e5e7eb !important;
     }
 
@@ -95,8 +95,19 @@
         <h1 class="h6 m-0">Participantes — {{ evento.nome }}</h1>
         <div class="small text-muted-2">Gerencie inscrições, acompanhe pagamentos e imprima documentos.</div>
       </div>
+
       <div class="d-flex align-items-center gap-2">
         <span class="chip"><i class="fa-solid fa-users"></i> {{ total_participantes|default:"0" }}</span>
+
+        <!-- NOVO: Telão (Painel de Sorteio) -->
+        <a id="btn-open-telao"
+           href="{% url 'inscricoes:painel_sorteio' slug=evento.slug %}"
+           class="btn btn-warning btn-sm" target="_blank" rel="noopener">
+          <i class="fa-solid fa-display"></i> Abrir Telão
+        </a>
+        <button class="btn btn-outline-secondary btn-sm" onclick="copyTelaoLink(event)">
+          <i class="fa-solid fa-clipboard"></i> Copiar link do Telão
+        </button>
       </div>
     </div>
   </div>
@@ -220,6 +231,27 @@
     });
   });
 })();
+
+/* Copiar link do Telão */
+function copyTelaoLink(e){
+  e?.preventDefault?.();
+  const url = "{{ request.scheme }}://{{ request.get_host }}{% url 'inscricoes:painel_sorteio' slug=evento.slug %}";
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(url).then(() => flashBtn(e?.currentTarget));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = url; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); flashBtn(e?.currentTarget); }
+    finally { document.body.removeChild(ta); }
+  }
+}
+
+function flashBtn(btn){
+  if(!btn) return;
+  const old = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
+  setTimeout(()=> btn.innerHTML = old, 1400);
+}
 </script>
 </body>
 </html>
