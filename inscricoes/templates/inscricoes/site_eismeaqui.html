@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>eismeaqui.app — Gestão de Inscrições para Eventos Católicos</title>
+  <meta name="description" content="Plataforma de inscrições para eventos católicos: crie eventos, receba pagamentos via Mercado Pago, gere relatórios, crachás e certificados, com painel paroquial e painel geral."/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .frame { border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; box-shadow:0 10px 24px rgba(2,6,23,.12); background:#fff; }
+    .frame-head { display:flex; gap:.35rem; padding:.6rem .8rem; background:linear-gradient(180deg,#f8fafc,#eef2f7); border-bottom:1px solid #e5e7eb; }
+    .dot { width:.65rem; height:.65rem; border-radius:999px; background:#e11d48; }
+    .dot:nth-child(2){ background:#f59e0b; } .dot:nth-child(3){ background:#10b981; }
+    .kbd { font-variant:all-small-caps; letter-spacing:.06em; padding:.15rem .4rem; border:1px solid #e5e7eb; border-bottom-width:2px; border-radius:.4rem; background:#fff; font-size:.7rem; }
+    .badge { border:1px solid rgba(148,163,184,.35); padding:.25rem .6rem; border-radius:999px; font-size:.75rem; }
+    .grad { background:linear-gradient(135deg, #0ea5e9 0%, #6366f1 55%, #22c55e 100%); }
+    .grad-ink { background:linear-gradient(135deg, #0ea5e9, #6366f1); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .shadow-card { box-shadow:0 10px 24px rgba(2,6,23,.12); }
+    .scrollsnap { scroll-snap-type:x mandatory; }
+    .snap { scroll-snap-align:center; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+{% load site_images %}
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 backdrop-blur bg-white/75 border-b border-slate-200/70">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+      <a href="{% url 'inscricoes:landing' %}" class="flex items-center gap-2 font-semibold text-lg">
+        <span class="w-2.5 h-2.5 rounded-full grad block"></span> eismeaqui<span class="text-slate-400">.app</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-6 text-sm">
+        <a href="#features" class="hover:text-slate-600">Recursos</a>
+        <a href="#screens" class="hover:text-slate-600">Screenshots</a>
+        <a href="#como-funciona" class="hover:text-slate-600">Como funciona</a>
+        <a href="#precos" class="hover:text-slate-600">Contribuição (2%)</a>
+        <a href="#faq" class="hover:text-slate-600">FAQ</a>
+      </nav>
+      <div class="hidden md:flex items-center gap-2">
+        <a href="{% url 'inscricoes:login' %}" class="px-3 py-1.5 rounded-lg border border-slate-300 text-sm bg-white shadow-card">Entrar</a>
+        <a href="#demo" class="px-3 py-1.5 rounded-lg border border-slate-300 text-sm hover:bg-white shadow-card">Ver demonstração</a>
+        <a href="#contato" class="px-3 py-1.5 rounded-lg text-white text-sm grad shadow-card">Entre em contato</a>
+      </div>
+      <button id="menuBtn" class="md:hidden p-2 border border-slate-300 rounded-lg" aria-label="Abrir menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="mobileNav" class="md:hidden hidden border-t border-slate-200 bg-white/90">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-2 text-sm">
+        <a href="#features" class="py-2">Recursos</a>
+        <a href="#screens" class="py-2">Screenshots</a>
+        <a href="#como-funciona" class="py-2">Como funciona</a>
+        <a href="#precos" class="py-2">Contribuição (2%)</a>
+        <a href="#faq" class="py-2">FAQ</a>
+        <a href="{% url 'inscricoes:login' %}" class="py-2">Entrar</a>
+        <a href="#contato" class="py-2">Entre em contato</a>
+        <a href="#demo" class="py-2">Ver demonstração</a>
+      </div>
+    </div>
+  </header>
+
+  {% if messages %}
+  <div class="max-w-3xl mx-auto px-4 mt-4">
+    {% for m in messages %}
+      <div class="my-2 p-3 rounded-xl border {% if m.tags == 'success' %}bg-green-50 border-green-200 text-green-800{% elif m.tags == 'error' %}bg-red-50 border-red-200 text-red-800{% else %}bg-slate-50 border-slate-200 text-slate-800{% endif %}">
+        {{ m }}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Hero -->
+  <section class="relative overflow-hidden">
+    <div class="absolute inset-0 grad opacity-[.10]"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-10 grid md:grid-cols-2 gap-10 items-center">
+      <div>
+        <div class="inline-flex items-center gap-2 mb-4">
+          <span class="badge">Feito para paróquias</span>
+          <span class="badge">Eventos católicos</span>
+          <span class="badge">LGPD</span>
+        </div>
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight">
+          Gestão de inscrições para <span class="grad-ink">eventos católicos</span>,
+          simples, segura e completa.
+        </h1>
+        <p class="mt-4 text-slate-600 text-lg">Crie eventos (sênior, juvenil, mirim, servos), utilize <strong>questionários prontos por tipo</strong>, receba pagamentos via Mercado Pago, emita comprovantes, gere crachás e relatórios — tudo em um só lugar, para cada paróquia.</p>
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          <a href="#contato" class="px-4 py-2 rounded-xl text-white grad shadow-card">Entre em contato</a>
+          <a href="#demo" class="px-4 py-2 rounded-xl border border-slate-300 bg-white shadow-card">Assistir demo</a>
+          <span class="text-slate-500 text-sm">Sem cartão de crédito</span>
+        </div>
+        <div class="mt-6 flex items-center gap-2 text-slate-500 text-sm">
+          <span class="kbd">Ctrl</span><span>+</span><span class="kbd">S</span>
+          <span class="ml-2">Relatórios prontos para imprimir direto do navegador</span>
+        </div>
+      </div>
+      <div class="relative">
+        <div class="frame">
+          <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          {% site_image "dashboard" "w-full h-56 sm:h-64 md:h-[360px] object-cover" alt="Painel geral do eismeaqui.app" %}
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-4">
+          <div class="frame">
+            <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            {% site_image "evento-criacao" "w-full h-28 sm:h-36 md:h-40 object-cover" alt="Criação de evento com questionário pronto" %}
+          </div>
+          <div class="frame">
+            <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            {% site_image "pagamentos" "w-full h-28 sm:h-36 md:h-40 object-cover" alt="Tela de pagamentos via Mercado Pago" %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Logos / Confiança -->
+  <section class="py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <p class="text-slate-500 text-sm">Integrações e recursos</p>
+      <div class="mt-4 flex flex-wrap items-center justify-center gap-6 opacity-80">
+        <span class="badge">Mercado Pago</span>
+        <span class="badge">Envio de e-mails</span>
+        <span class="badge">Exportação CSV/PDF</span>
+        <span class="badge">Relatórios & Crachás</span>
+        <span class="badge">Certificados</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="py-14 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto">
+        <h2 class="text-3xl font-bold">Tudo o que sua paróquia precisa</h2>
+        <p class="mt-2 text-slate-600">Painel geral para a organização e painel por paróquia, com questionários prontos por tipo de evento e acompanhamento de inscrições e pagamentos em tempo real.</p>
+      </div>
+      <div class="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <article class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl grad"></div>
+            <h3 class="font-semibold">Criação de eventos</h3>
+          </div>
+          <p class="mt-3 text-slate-600">Gere um link público para cada evento e utilize <strong>questionário pronto por tipo de evento</strong> (sênior, juvenil, mirim, servos).</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl grad"></div><h3 class="font-semibold">Inscrições & Pagamentos</h3></div>
+          <p class="mt-3 text-slate-600">Integração com <strong>Mercado Pago</strong> por paróquia e status de pagamento em tempo real.</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl grad"></div><h3 class="font-semibold">Relatórios e Crachás</h3></div>
+          <p class="mt-3 text-slate-600">Crachás (4 por A4), fichas, listas e estatísticas com filtros avançados.</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl grad"></div><h3 class="font-semibold">Certificados em PDF</h3></div>
+          <p class="mt-3 text-slate-600">Emissão com imagem de fundo personalizada para cursos e eventos.</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl grad"></div><h3 class="font-semibold">E-mails automáticos</h3></div>
+          <p class="mt-3 text-slate-600">Confirmação de inscrição e pagamento com CPF parcialmente mascarado.</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl grad"></div><h3 class="font-semibold">LGPD & Segurança</h3></div>
+          <p class="mt-3 text-slate-600">Contas segregadas por paróquia, trilhas de auditoria e perfis de acesso.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Eventos com inscrições abertas -->
+  <section id="abertos" class="py-14 bg-slate-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-end justify-between gap-6">
+        <div>
+          <h2 class="text-3xl font-bold">Inscrições abertas</h2>
+          <p class="mt-2 text-slate-600">Escolha um evento e faça sua inscrição agora.</p>
+        </div>
+      </div>
+
+      {% if eventos_abertos %}
+        <div class="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {% for evento in eventos_abertos|slice:":6" %}
+            <article class="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
+              <!-- Banner do evento -->
+              {% if evento.banner %}
+                <img src="{{ evento.banner.url }}" alt="Banner de {{ evento.nome }}" class="w-full h-40 object-cover">
+              {% else %}
+                {% site_image "default-banner" "w-full h-40 object-cover" alt="Banner do evento" %}
+              {% endif %}
+
+              <div class="p-5">
+                <h3 class="font-semibold text-lg">{{ evento.nome }}</h3>
+                <p class="text-sm text-slate-600 mt-1">
+                  {{ evento.get_tipo_display }} •
+                  {% if evento.data_inicio and evento.data_fim %}
+                    {{ evento.data_inicio }} a {{ evento.data_fim }}
+                  {% elif evento.data_inicio %}
+                    {{ evento.data_inicio }}
+                  {% endif %}
+                </p>
+                {% if evento.paroquia %}
+                  <p class="text-xs text-slate-500 mt-1">{{ evento.paroquia.nome }}</p>
+                {% endif %}
+                {% if evento.valor_inscricao %}
+                  <p class="text-sm text-slate-700 mt-2">Valor: R$ {{ evento.valor_inscricao }}</p>
+                {% endif %}
+
+                <div class="mt-4 flex gap-2">
+                  <a href="{% url 'inscricoes:inscricao_inicial' evento.slug %}"
+                     class="px-4 py-2 rounded-xl text-white grad shadow-card">Inscrever-se</a>
+                  <a href="{% url 'inscricoes:inscricao_evento_publico' evento.slug %}"
+                     class="px-4 py-2 rounded-xl border border-slate-300 bg-white shadow-card">Detalhes</a>
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="mt-8 text-slate-500">No momento não há eventos com inscrições abertas.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Screenshots -->
+  <section id="screens" class="py-14 bg-slate-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-end justify-between gap-6">
+        <div>
+          <h2 class="text-3xl font-bold">Veja o sistema em ação</h2>
+          <p class="mt-2 text-slate-600">Substitua as imagens abaixo pelos seus screenshots reais.</p>
+        </div>
+        <a href="#demo" class="text-sm underline underline-offset-4">Abrir vídeo demo</a>
+      </div>
+      <div class="mt-6 overflow-x-auto scrollsnap">
+        <div class="flex gap-6 min-w-max">
+          <div class="snap w-[420px] frame">
+            <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            {% site_image "painel-paroquia" "w-full h-56 sm:h-64 object-cover" alt="Painel da paróquia" %}
+          </div>
+          <div class="snap w-[420px] frame">
+            <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            {% site_image "inscricao-publica" "w-full h-56 sm:h-64 object-cover" alt="Tela pública de inscrição" %}
+          </div>
+          <div class="snap w-[420px] frame">
+            <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            {% site_image "questionario-pronto" "w-full h-56 sm:h-64 object-cover" alt="Questionário pronto por tipo de evento" %}
+          </div>
+          <div class="snap w-[420px] frame">
+            <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            {% site_image "relatorios" "w-full h-56 sm:h-64 object-cover" alt="Relatórios e filtros" %}
+          </div>
+          <div class="snap w-[420px] frame">
+            <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            {% site_image "crachas" "w-full h-56 sm:h-64 object-cover" alt="Crachás prontos para impressão" %}
+          </div>
+          <div class="snap w-[420px] frame">
+            <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            {% site_image "certificados" "w-full h-56 sm:h-64 object-cover" alt="Certificados em PDF" %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Como funciona -->
+  <section id="como-funciona" class="py-14 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold text-center">Como funciona</h2>
+      <div class="mt-10 grid md:grid-cols-3 gap-6">
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="text-sm text-slate-500">Passo 1</div>
+          <h3 class="font-semibold mt-1">Crie o evento</h3>
+          <p class="mt-2 text-slate-600">Defina paróquia, tipo (sênior, mirim, etc.), vagas — o <strong>questionário já vem pronto</strong> conforme o tipo escolhido. Um link público é gerado automaticamente.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="text-sm text-slate-500">Passo 2</div>
+          <h3 class="font-semibold mt-1">Divulgue e receba inscrições</h3>
+          <p class="mt-2 text-slate-600">Acompanhe inscritos, confirme pagamentos, envie e-mails e exporte listas para impressão.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="text-sm text-slate-500">Passo 3</div>
+          <h3 class="font-semibold mt-1">Organize o dia do evento</h3>
+          <p class="mt-2 text-slate-600">Imprima crachás, fichas e relatórios; monitore presenças e gere certificados pós-evento.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contribuição (2%) -->
+  <section id="precos" class="py-14 bg-slate-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto">
+        <h2 class="text-3xl font-bold">Contribuição solidária: <span class="grad-ink">2% por inscrição</span></h2>
+        <p class="mt-2 text-slate-600">Sem mensalidade e sem custo de instalação. Você só contribui quando recebe <strong>inscrições confirmadas</strong>.</p>
+      </div>
+      <div class="mt-10 grid lg:grid-cols-3 gap-6 items-stretch">
+        <div class="lg:col-start-2 rounded-2xl border-2 border-indigo-400 bg-white p-6 shadow-card">
+          <div class="text-sm text-slate-500">Modelo único</div>
+          <div class="mt-1 text-4xl font-extrabold">2%<span class="text-base font-medium text-slate-500"> por inscrição</span></div>
+          <ul class="mt-4 text-sm text-slate-600 space-y-2">
+            <li>• Cobrado apenas sobre inscrições <strong>pagas/confirmadas</strong></li>
+            <li>• Sem mensalidade, sem fidelidade</li>
+            <li>• Paróquias com sua própria conta do Mercado Pago</li>
+            <li>• Relatórios, crachás, certificados e e-mails inclusos</li>
+          </ul>
+          <a href="#contato" class="mt-6 inline-block px-4 py-2 rounded-xl text-white grad">Entre em contato</a>
+          <p class="mt-3 text-xs text-slate-500">Taxas do processador de pagamento (Mercado Pago) são cobradas à parte.</p>
+        </div>
+        <div class="lg:col-start-1 lg:row-start-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
+          <h3 class="font-semibold">Por que 2%?</h3>
+          <ul class="mt-2 text-sm text-slate-600 space-y-2">
+            <li>• Servidores e infraestrutura seguros</li>
+            <li>• Evolução contínua das funcionalidades</li>
+            <li>• Suporte e boas práticas LGPD</li>
+            <li>• Apoio à <strong>missão</strong> evangelizadora</li>
+          </ul>
+        </div>
+        <div class="lg:col-start-3 lg:row-start-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
+          <h3 class="font-semibold">Transparência</h3>
+          <ul class="mt-2 text-sm text-slate-600 space-y-2">
+            <li>• Dashboard de inscrições e pagamentos em tempo real</li>
+            <li>• Exportações CSV/PDF</li>
+            <li>• Recebimento direto na conta da paróquia</li>
+            <li>• Cancelamento a qualquer momento</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contato / CTA -->
+  <section id="contato" class="py-16">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center">
+        <h2 class="text-3xl font-bold">Entre em contato</h2>
+        <p class="mt-2 text-slate-600">Preencha seus dados e retornaremos o mais rápido possível.</p>
+      </div>
+
+      <form action="{% url 'inscricoes:contato_enviar' %}" method="post" class="mt-8 grid gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-card" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="honeypot" value="">
+
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label for="id_nome" class="block text-sm font-medium text-slate-700">Nome</label>
+            {{ form.nome }}
+            {% if form.nome.errors %}<p class="text-red-600 text-xs mt-1">{{ form.nome.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label for="id_whatsapp" class="block text-sm font-medium text-slate-700">WhatsApp</label>
+            {{ form.whatsapp }}
+            {% if form.whatsapp.errors %}<p class="text-red-600 text-xs mt-1">{{ form.whatsapp.errors.0 }}</p>{% endif %}
+          </div>
+        </div>
+
+        <div>
+          <label for="id_email" class="block text-sm font-medium text-slate-700">E-mail</label>
+          {{ form.email }}
+          {% if form.email.errors %}<p class="text-red-600 text-xs mt-1">{{ form.email.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div>
+          <label for="id_mensagem" class="block text-sm font-medium text-slate-700">Mensagem (opcional)</label>
+          {{ form.mensagem }}
+          {% if form.mensagem.errors %}<p class="text-red-600 text-xs mt-1">{{ form.mensagem.errors.0 }}</p>{% endif %}
+        </div>
+
+        {% if form.consent_lgpd %}
+          <div class="flex items-start gap-2 text-xs text-slate-600">
+            {{ form.consent_lgpd }}
+            <label for="{{ form.consent_lgpd.id_for_label }}">Concordo em ser contatado e com o tratamento dos meus dados conforme a LGPD para fins de atendimento.</label>
+          </div>
+          {% if form.consent_lgpd.errors %}<p class="text-red-600 text-xs mt-1">{{ form.consent_lgpd.errors.0 }}</p>{% endif %}
+        {% endif %}
+
+        {% if form.non_field_errors %}
+          <div class="text-red-700 text-sm bg-red-50 border border-red-200 rounded-xl p-3">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="flex flex-wrap gap-3">
+          <button type="submit" class="px-5 py-3 rounded-2xl text-white grad shadow-card">Enviar</button>
+          <a id="demo" href="#" class="px-5 py-3 rounded-2xl border border-slate-300 bg-white shadow-card">Ver demonstração</a>
+        </div>
+        <p class="text-xs text-slate-500">Resposta em horário comercial.</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="py-14 bg-white">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold text-center">Perguntas frequentes</h2>
+      <div class="mt-8 grid md:grid-cols-2 gap-6">
+        <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card">
+          <summary class="font-semibold cursor-pointer">Posso usar o eismeaqui.app para diferentes tipos de eventos?</summary>
+          <p class="mt-2 text-slate-600">Sim. Eventos sênior, juvenil, mirim e servos contam com <strong>questionários prontos por tipo</strong>.</p>
+        </details>
+        <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card">
+          <summary class="font-semibold cursor-pointer">Como funcionam os pagamentos?</summary>
+          <p class="mt-2 text-slate-600">Cada paróquia integra sua conta do Mercado Pago; confirmações atualizam as inscrições automaticamente.</p>
+        </details>
+        <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card">
+          <summary class="font-semibold cursor-pointer">Consigo imprimir crachás e relatórios?</summary>
+          <p class="mt-2 text-slate-600">Sim. Layouts prontos para impressão direta do navegador.</p>
+        </details>
+        <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card">
+          <summary class="font-semibold cursor-pointer">Há envio automático de e-mails?</summary>
+          <p class="mt-2 text-slate-600">Confirmações de inscrição e pagamento com link para a inscrição.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rodapé -->
+  <footer id="rodape" class="border-t border-slate-200 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid md:grid-cols-3 gap-8">
+      <div>
+        <div class="flex items-center gap-2 font-semibold text-lg"><span class="w-2.5 h-2.5 rounded-full grad block"></span> eismeaqui<span class="text-slate-400">.app</span></div>
+        <p class="mt-2 text-sm text-slate-600">Sistema de inscrições e gestão de eventos católicos.</p>
+      </div>
+      <div>
+        <h4 class="font-semibold">Links</h4>
+        <ul class="mt-2 text-sm text-slate-600 space-y-1">
+          <li><a href="#features" class="hover:underline">Recursos</a></li>
+          <li><a href="#precos" class="hover:underline">Contribuição (2%)</a></li>
+          <li><a href="#faq" class="hover:underline">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="font-semibold">Fale com a gente</h4>
+        <p class="mt-2 text-sm text-slate-600">E-mail: contato@eismeaqui.app</p>
+        <p class="text-sm text-slate-600">WhatsApp: (xx) xxxxx-xxxx</p>
+      </div>
+    </div>
+    <div class="py-4 text-center text-xs text-slate-500">© <span id="year"></span> eismeaqui.app — Todos os direitos reservados</div>
+  </footer>
+
+  <script>
+    // Menu mobile
+    const menuBtn = document.getElementById('menuBtn');
+    const mobileNav = document.getElementById('mobileNav');
+    if (menuBtn && mobileNav) {
+      menuBtn.addEventListener('click', () => mobileNav.classList.toggle('hidden'));
+    }
+    // Ano atual
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Máscara (00) 00000-0000 no WhatsApp
+    function maskPhone(v){
+      v=v.replace(/\D/g,'');
+      v=v.replace(/^(\d{2})(\d)/,'($1) $2');
+      v=v.replace(/(\d{5})(\d{4}).*/,'$1-$2');
+      return v;
+    }
+    const w = document.getElementById('id_whatsapp');
+    if (w){
+      w.setAttribute('inputmode','tel');
+      w.addEventListener('input', e => e.target.value = maskPhone(e.target.value));
+    }
+  </script>
+</body>
+</html>

@@ -61,9 +61,12 @@
     <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
 
     <div class="d-flex align-items-center gap-2 ms-auto">
+      <!-- Botão para o SITE (landing) -->
+      <a class="btn btn-sm btn-success" href="{% url 'inscricoes:landing' %}" target="_blank" rel="noopener">🌐 Ir para o site</a>
+
       <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
       <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
-      <a class="btn btn-sm btn-light" href="http://localhost:8000/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
+      <a class="btn btn-sm btn-light" href="https://eismeaqui.app.com.br/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
       <form method="POST" action="{% url 'logout' %}" class="m-0">
         {% csrf_token %}
         <button type="submit" class="btn btn-sm btn-danger">Sair</button>

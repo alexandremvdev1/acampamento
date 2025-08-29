@@ -340,3 +340,26 @@ class RepasseAdmin(admin.ModelAdmin):
     list_display = ("paroquia", "evento", "valor_repasse", "status", "criado_em")
     list_filter = ("status", "paroquia")
     search_fields = ("evento__nome", "paroquia__nome", "transacao_id")
+
+from django.contrib import admin
+from django.utils.html import format_html
+from .models import SiteImage, LeadLanding
+
+@admin.register(SiteImage)
+class SiteImageAdmin(admin.ModelAdmin):
+    list_display = ("key", "categoria", "ativa", "preview", "updated_at")
+    list_filter = ("categoria", "ativa")
+    search_fields = ("key", "titulo", "alt_text", "legenda", "creditos")
+
+    def preview(self, obj):
+        try:
+            url = obj.imagem.url
+        except Exception:
+            return "-"
+        return format_html('<img src="{}" style="height:48px;border-radius:6px"/>', url)
+
+@admin.register(LeadLanding)
+class LeadLandingAdmin(admin.ModelAdmin):
+    list_display = ("nome", "email", "whatsapp", "origem", "created_at")
+    search_fields = ("nome", "email", "whatsapp", "mensagem")
+    list_filter = ("origem", "created_at")

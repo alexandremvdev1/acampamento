@@ -3261,3 +3261,69 @@ def api_selecionados(request, slug):
         "generated_at": timezone.now().isoformat(),
         "count": len(data),
     })
+
+# views.py
+from django.shortcuts import render, redirect
+from django.views.decorators.http import require_POST
+from django.core.mail import EmailMultiAlternatives
+from django.conf import settings
+from .forms import LeadLandingForm
+
+def landing(request):
+    form = LeadLandingForm()
+    return render(request, "inscricoes/site_eismeaqui.html", {"form": form})
+
+@require_POST
+def contato_enviar(request):
+    form = LeadLandingForm(request.POST)
+    if not form.is_valid():
+        # re-renderiza com erros
+        return render(request, "incricoes?[/site_eismeaqui.html", {"form": form}, status=400)
+
+    nome = form.cleaned_data["nome"]
+    whatsapp = form.cleaned_data["whatsapp"]
+    email = form.cleaned_data["email"]
+    mensagem = form.cleaned_data.get("mensagem", "")
+
+    # E-mail para você (admin)
+    assunto_admin = f"[eismeaqui] Novo contato: {nome}"
+    texto_admin = f"Nome: {nome}\nWhatsApp: {whatsapp}\nE-mail: {email}\n\nMensagem:\n{mensagem}"
+    msg_admin = EmailMultiAlternatives(
+        assunto_admin,
+        texto_admin,
+        settings.DEFAULT_FROM_EMAIL,
+        [getattr(settings, "CONTACT_EMAIL", settings.DEFAULT_FROM_EMAIL)],
+    )
+    msg_admin.send(fail_silently=True)
+
+    # E-mail de confirmação para o usuário
+    assunto_user = "Recebemos sua mensagem – eismeaqui.app"
+    texto_user = (
+        f"Olá {nome},\n\nRecebemos sua mensagem e entraremos em contato em breve.\n\n"
+        f"Resumo enviado:\nWhatsApp: {whatsapp}\nMensagem: {mensagem}\n\n"
+        "Deus abençoe!\nEquipe eismeaqui.app"
+    )
+    msg_user = EmailMultiAlternatives(
+        assunto_user, texto_user, settings.DEFAULT_FROM_EMAIL, [email]
+    )
+    msg_user.send(fail_silently=True)
+
+    # Redirecione para uma âncora/thanks simples na própria landing, se quiser
+    return redirect("inscricoes:landing")
+
+from .forms import LeadLandingForm  # seu form de contato
+
+def landing(request):
+    now = timezone.now()  # funciona para DateTime; se seus campos são Date, use now.date()
+
+    eventos_abertos = EventoAcampamento.objects.filter(
+        Q(inicio_inscricoes__isnull=True) | Q(inicio_inscricoes__lte=now),
+        Q(fim_inscricoes__isnull=True)    | Q(fim_inscricoes__gte=now),
+    ).order_by('data_inicio')
+
+    form = LeadLandingForm()
+    return render(request, "inscricoes/site_eismeaqui.html", {
+        "form": form,
+        "eventos_abertos": eventos_abertos,
+    })
+

@@ -770,3 +770,49 @@ class AdminParoquiaCreateForm(UserCreationForm):
         if commit:
             user.save()
         return user
+
+# --- Form de contato da landing (/site/) ---
+from django import forms
+
+class LeadLandingForm(forms.Form):
+    nome = forms.CharField(
+        label="Nome",
+        max_length=150,
+        widget=forms.TextInput(attrs={
+            "class": "mt-1 block w-full rounded-xl border-slate-300 focus:border-indigo-400 focus:ring-indigo-200",
+            "placeholder": "Seu nome completo",
+            "required": True,
+        }),
+    )
+    whatsapp = forms.CharField(
+        label="WhatsApp",
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            "class": "mt-1 block w-full rounded-xl border-slate-300 focus:border-indigo-400 focus:ring-indigo-200",
+            "placeholder": "(xx) xxxxx-xxxx",
+            "inputmode": "tel",
+            "required": True,
+        }),
+    )
+    email = forms.EmailField(
+        label="E-mail",
+        widget=forms.EmailInput(attrs={
+            "class": "mt-1 block w-full rounded-xl border-slate-300 focus:border-indigo-400 focus:ring-indigo-200",
+            "placeholder": "voce@paroquia.com",
+            "required": True,
+        }),
+    )
+    mensagem = forms.CharField(
+        label="Mensagem (opcional)",
+        required=False,
+        widget=forms.Textarea(attrs={
+            "rows": 4,
+            "class": "mt-1 block w-full rounded-xl border-slate-300 focus:border-indigo-400 focus:ring-indigo-200",
+            "placeholder": "Conte rapidamente sobre seu evento ou paróquia...",
+        }),
+    )
+    lgpd = forms.BooleanField(
+        label="Concordo em ser contatado e com o tratamento dos meus dados conforme a LGPD para fins de atendimento.",
+        required=True,
+        widget=forms.CheckboxInput(attrs={"class": "mt-1"}),
+    )

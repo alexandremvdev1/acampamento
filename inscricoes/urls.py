@@ -139,6 +139,9 @@ urlpatterns = [
     path("eventos/<slug:slug>/video/", views.video_evento_form, name="video_evento_form"),
     path("telão/<slug:slug>/", views.painel_sorteio, name="painel_sorteio"),
     path("api/evento/<slug:slug>/selecionados/", views.api_selecionados, name="api_selecionados"),
+
+    path("site/", views.landing, name="landing"),
+    path("site/contato/enviar", views.contato_enviar, name="contato_enviar"),
 ]
 
 if settings.DEBUG:

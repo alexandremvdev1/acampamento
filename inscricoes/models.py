@@ -1184,7 +1184,7 @@ class Repasse(models.Model):
     evento = models.ForeignKey("inscricoes.EventoAcampamento", on_delete=models.CASCADE, related_name="repasses")
     # base = arrecadado confirmado - taxas MP (dos pagamentos das inscrições)
     valor_base = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
-    taxa_percentual = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("3.00"))
+    taxa_percentual = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("2.00"))
     valor_repasse = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDENTE)
@@ -1204,3 +1204,127 @@ class Repasse(models.Model):
 
     def __str__(self):
         return f"Repasse {self.paroquia} / {self.evento} — {self.valor_repasse} ({self.status})"
+    
+# ---------------------------------------------------------------------
+# Mídias do Site (landing / institucional)
+# ---------------------------------------------------------------------
+class SiteImage(models.Model):
+    """
+    Repositório central de imagens usadas no site (landing, páginas institucionais).
+    Use 'key' para referenciar nas templates.
+    """
+    CATEGORIA_CHOICES = [
+        ("hero", "Hero / Capa"),
+        ("screenshot", "Screenshot"),
+        ("logo", "Logo/Marca"),
+        ("ilustracao", "Ilustração"),
+        ("icone", "Ícone"),
+        ("banner", "Banner"),
+        ("outro", "Outro"),
+    ]
+
+    key = models.SlugField("Chave única", max_length=80, unique=True,
+                           help_text="Ex.: dashboard, pagamentos, questionario-pronto")
+    titulo = models.CharField("Título", max_length=120, blank=True)
+    categoria = models.CharField("Categoria", max_length=20, choices=CATEGORIA_CHOICES, default="screenshot")
+    imagem = CloudinaryField(verbose_name="Imagem", null=True, blank=True)
+    alt_text = models.CharField("Texto alternativo (acessibilidade)", max_length=200, blank=True)
+    legenda = models.CharField("Legenda (opcional)", max_length=200, blank=True)
+    creditos = models.CharField("Créditos (opcional)", max_length=200, blank=True)
+    ativa = models.BooleanField("Ativa?", default=True)
+    largura = models.PositiveIntegerField("Largura (px)", null=True, blank=True)
+    altura = models.PositiveIntegerField("Altura (px)", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Imagem do Site"
+        verbose_name_plural = "Imagens do Site"
+        ordering = ["key"]
+
+    def __str__(self):
+        return self.key or self.titulo or f"SiteImage #{self.pk}"
+
+# ---------------------------------------------------------------------
+# Leads da Landing (Entre em contato)
+# ---------------------------------------------------------------------
+class LeadLanding(models.Model):
+    """
+    Armazena os envios do formulário 'Entre em contato' (Nome, E-mail, WhatsApp, Mensagem, LGPD).
+    Um e-mail é enviado para a pessoa ao criar o lead (via sinal post_save abaixo).
+    """
+    nome = models.CharField(max_length=120)
+    email = models.EmailField()
+    whatsapp = models.CharField(
+        max_length=20,
+        help_text="WhatsApp em E.164 BR: +55DDDNÚMERO (ex.: +5563920013103)",
+        validators=[RegexValidator(
+            regex=r'^\+55\d{10,11}$',
+            message="Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103).",
+        )],
+    )
+    mensagem = models.TextField(blank=True)
+    consent_lgpd = models.BooleanField(default=False)
+    origem = models.CharField(max_length=120, default="landing")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.nome} <{self.email}>"
+
+    def clean(self):
+        super().clean()
+        # Normaliza/valida WhatsApp usando seus utils
+        if self.whatsapp:
+            norm = normalizar_e164_br(self.whatsapp)
+            if not norm or not validar_e164_br(norm):
+                raise ValidationError({'whatsapp': "Informe um telefone BR válido. Ex.: +5563920013103"})
+            self.whatsapp = norm
+
+# Envia e-mails automaticamente quando um LeadLanding é criado
+@receiver(post_save, sender=LeadLanding)
+def _leadlanding_enviar_emails(sender, instance: 'LeadLanding', created, **kwargs):
+    if not created:
+        return
+    # E-mail para a pessoa
+    assunto_user = "Recebemos sua mensagem — eismeaqui.app"
+    texto_user = (
+        f"Olá {instance.nome},\n\n"
+        "Recebemos sua mensagem no eismeaqui.app. Em breve retornaremos via e-mail ou WhatsApp.\n\n"
+        "Deus abençoe!\nEquipe eismeaqui.app"
+    )
+    html_user = f"""
+    <html><body style="font-family:Arial,sans-serif;color:#0f172a">
+      <p>Olá <strong>{instance.nome}</strong>,</p>
+      <p>Recebemos sua mensagem no <strong>eismeaqui.app</strong>. Em breve retornaremos via e-mail ou WhatsApp.</p>
+      <p>Deus abençoe!<br/>Equipe eismeaqui.app</p>
+    </body></html>
+    """
+    try:
+        m1 = EmailMultiAlternatives(assunto_user, texto_user, settings.DEFAULT_FROM_EMAIL, [instance.email])
+        m1.attach_alternative(html_user, "text/html")
+        m1.send(fail_silently=True)
+    except Exception:
+        pass
+
+    # E-mail interno (pra você/equipe)
+    destino_admin = getattr(settings, "SALES_INBOX", settings.DEFAULT_FROM_EMAIL)
+    assunto_admin = f"[Landing] Novo contato: {instance.nome}"
+    html_admin = f"""
+    <html><body style="font-family:Arial,sans-serif;color:#0f172a">
+      <h3>Novo contato recebido</h3>
+      <p><strong>Nome:</strong> {instance.nome}</p>
+      <p><strong>E-mail:</strong> {instance.email}</p>
+      <p><strong>WhatsApp:</strong> {instance.whatsapp}</p>
+      <p><strong>Mensagem:</strong><br/>{instance.mensagem or '—'}</p>
+      <p><small>Origem: {instance.origem} • Data: {timezone.localtime(instance.created_at).strftime('%d/%m/%Y %H:%M')}</small></p>
+    </body></html>
+    """
+    try:
+        m2 = EmailMultiAlternatives(assunto_admin, html_admin, settings.DEFAULT_FROM_EMAIL, [destino_admin])
+        m2.attach_alternative(html_admin, "text/html")
+        m2.send(fail_silently=True)
+    except Exception:
+        pass
