@@ -2,6 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
 from django.conf import settings
+from django.views.generic import TemplateView
 from .views import mp_config
 from django.conf.urls.static import static
 from .views import LoginComImagemView
@@ -149,7 +150,8 @@ urlpatterns = [
     path("painel/publicacoes/nova/", views.publicacao_criar, name="publicacao_criar"),
     path("painel/publicacoes/<int:pk>/editar/", views.publicacao_editar, name="publicacao_editar"),
     path("painel/publicacoes/<int:pk>/excluir/", views.publicacao_excluir, name="publicacao_excluir"),
-
+    path("", views.landing, name="landing"),
+    path("contribuicao/", TemplateView.as_view(template_name="inscricoes/contribuicao.html"), name="contribuicao"),
     path("comunicado/<int:pk>/", views.comunicado_detalhe, name="comunicado_detalhe"),
 ]
 
