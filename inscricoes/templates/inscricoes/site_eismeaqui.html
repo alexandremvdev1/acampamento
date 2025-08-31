@@ -85,6 +85,70 @@
   </div>
   {% endif %}
 
+  <!-- Carrossel de Banners dos Eventos (logo abaixo do header) -->
+  {% if eventos_abertos %}
+  <section id="carousel-banners" class="bg-transparent">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+      <div id="evCarousel" class="relative rounded-2xl overflow-hidden border border-slate-200 shadow-card">
+        <div id="evSlides" class="flex transition-transform duration-500 ease-out" style="transform: translateX(0%)">
+          {% for evento in eventos_abertos %}
+            <a
+              href="{% url 'inscricoes:inscricao_inicial' evento.slug %}"
+              class="block min-w-full relative group"
+              aria-label="Inscrever-se em {{ evento.nome }}"
+              target="_blank" rel="noopener noreferrer" data-newtab
+            >
+              {% if evento.banner %}
+                <img src="{{ evento.banner.url }}" alt="Banner de {{ evento.nome }}"
+                     class="w-full h-52 sm:h-64 md:h-80 lg:h-[420px] object-cover">
+              {% else %}
+                {% site_image "default-banner" "w-full h-52 sm:h-64 md:h-80 lg:h-[420px] object-cover" alt="Banner do evento" %}
+              {% endif %}
+              <div class="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                <div class="backdrop-blur bg-black/35 text-white rounded-xl px-3 py-2 sm:px-4 sm:py-3 shadow-card">
+                  <div class="text-sm opacity-90">
+                    {% if evento.data_inicio and evento.data_fim %}
+                      {{ evento.data_inicio|date:"d/m/Y" }} a {{ evento.data_fim|date:"d/m/Y" }}
+                    {% elif evento.data_inicio %}
+                      {{ evento.data_inicio|date:"d/m/Y" }}
+                    {% endif %}
+                    {% if evento.paroquia %}
+                      • {% if evento.paroquia.cidade %}{{ evento.paroquia.cidade }} — {% endif %}{{ evento.paroquia.nome }}
+                    {% endif %}
+                  </div>
+                  <h3 class="text-lg sm:text-xl font-bold leading-snug">{{ evento.nome }}</h3>
+                  <span class="inline-flex items-center gap-1 text-xs sm:text-sm mt-1 opacity-90">
+                    Clique para inscrever-se
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-90">
+                      <path d="M7 17L17 7M17 7H9M17 7V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                </div>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+
+        <!-- Controles -->
+        <button type="button" aria-label="Anterior"
+                class="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-xl border border-slate-300 bg-white/90 hover:bg-white shadow-card"
+                data-ev-prev>‹</button>
+        <button type="button" aria-label="Próximo"
+                class="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl border border-slate-300 bg-white/90 hover:bg-white shadow-card"
+                data-ev-next>›</button>
+
+        <!-- Indicadores -->
+        <div class="absolute inset-x-0 bottom-3 flex items-center justify-center gap-2" id="evDots">
+          {% for evento in eventos_abertos %}
+            <button type="button" class="w-2.5 h-2.5 rounded-full bg-white/60 hover:bg-white ring-1 ring-white/50"
+                    aria-label="Ir para slide {{ forloop.counter }}" data-ev-index="{{ forloop.counter0 }}"></button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
   <!-- Hero -->
   <section class="relative overflow-hidden">
     <div class="absolute inset-0 grad opacity-[.10]"></div>
@@ -141,7 +205,6 @@
 
           {% if comunicados %}
             <div class="relative mt-5" aria-label="Carrossel de notícias">
-              <!-- Trilho rolável -->
               <div id="newsTrack"
                    class="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 pb-2"
                    style="scrollbar-width: thin;">
@@ -153,16 +216,13 @@
                       {% else %}
                         {% site_image "news-default" "w-full h-44 object-cover" alt="Capa do comunicado" %}
                       {% endif %}
-
                       <div class="p-4">
                         <h3 class="font-semibold text-slate-900 truncate">{{ c.titulo }}</h3>
                         {% if c.data_publicacao %}
                           <p class="text-xs text-slate-500 mt-0.5">{{ c.data_publicacao|date:"d/m/Y" }}</p>
                         {% endif %}
                         {% if c.texto %}
-                          <p class="text-slate-700 mt-2 line-clamp-3">
-                            {{ c.texto }}
-                          </p>
+                          <p class="text-slate-700 mt-2 line-clamp-3">{{ c.texto }}</p>
                         {% endif %}
                         <span class="inline-block mt-3 text-indigo-600 font-semibold">Ler mais →</span>
                       </div>
@@ -174,14 +234,10 @@
               <!-- Controles -->
               <button type="button" aria-label="Anterior"
                       class="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 p-2 rounded-xl border border-slate-300 bg-white shadow-card hover:shadow-lg"
-                      onclick="scrollNews(-1)">
-                ‹
-              </button>
+                      onclick="scrollNews(-1)">‹</button>
               <button type="button" aria-label="Próximo"
                       class="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl border border-slate-300 bg-white shadow-card hover:shadow-lg"
-                      onclick="scrollNews(1)">
-                ›
-              </button>
+                      onclick="scrollNews(1)">›</button>
             </div>
           {% else %}
             <div class="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
@@ -201,14 +257,16 @@
               <li class="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
                 <div class="text-sm text-slate-500">
                   {% if e.data_inicio and e.data_fim %}
-                    {{ e.data_inicio }} a {{ e.data_fim }}
+                    {{ e.data_fim|date:"d/m/Y" }} — {{ e.data_inicio|date:"d/m/Y" }}
                   {% elif e.data_inicio %}
-                    {{ e.data_inicio }}
+                    {{ e.data_inicio|date:"d/m/Y" }}
                   {% endif %}
                 </div>
                 <div class="font-semibold">{{ e.nome }}</div>
                 {% if e.paroquia %}
-                  <div class="text-xs text-slate-500">{{ e.paroquia.nome }}</div>
+                  <div class="text-xs text-slate-500">
+                    {% if e.paroquia.cidade %}{{ e.paroquia.cidade }} — {% endif %}{{ e.paroquia.nome }}
+                  </div>
                 {% endif %}
                 <div class="mt-2">
                   {% if e.slug %}
@@ -253,17 +311,17 @@
                 <p class="text-sm text-slate-600 mt-1">
                   {{ evento.get_tipo_display }} •
                   {% if evento.data_inicio and evento.data_fim %}
-                    {{ evento.data_inicio }} a {{ evento.data_fim }}
+                    {{ evento.data_inicio|date:"d/m/Y" }} a {{ evento.data_fim|date:"d/m/Y" }}
                   {% elif evento.data_inicio %}
-                    {{ evento.data_inicio }}
+                    {{ evento.data_inicio|date:"d/m/Y" }}
                   {% endif %}
                 </p>
                 {% if evento.paroquia %}
-                  <p class="text-xs text-slate-500 mt-1">{{ evento.paroquia.nome }}</p>
+                  <p class="text-xs text-slate-500 mt-1">
+                    {% if evento.paroquia.cidade %}{{ evento.paroquia.cidade }} — {% endif %}{{ evento.paroquia.nome }}
+                  </p>
                 {% endif %}
-                {% if evento.valor_inscricao %}
-                  <p class="text-sm text-slate-700 mt-2">Valor: R$ {{ evento.valor_inscricao }}</p>
-                {% endif %}
+                {% if evento.valor_inscricao %}<p class="text-sm text-slate-700 mt-2">Valor: R$ {{ evento.valor_inscricao }}</p>{% endif %}
 
                 <div class="mt-4 flex gap-2">
                   <a href="{% url 'inscricoes:inscricao_inicial' evento.slug %}" target="_blank" rel="noopener noreferrer" data-newtab
@@ -310,13 +368,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center max-w-3xl mx-auto">
         <h2 class="text-3xl font-bold">Contribuição solidária: <span class="grad-ink">0.5% por inscrição</span></h2>
-        <p class="mt-2 text-slate-600">
-          Sem mensalidade e sem custo de instalação. Você contribui apenas quando recebe <strong>inscrições confirmadas</strong>.
-        </p>
-        <p class="mt-2 text-slate-600">
-          Este valor é destinado à <strong>manutenção dos sistemas</strong> e também apoia a <strong>evangelização pela internet</strong>,
-          inspirada pelo testemunho de <strong>Santo Carlo Acutis</strong>.
-        </p>
+        <p class="mt-2 text-slate-600">Sem mensalidade e sem custo de instalação. Você contribui apenas quando recebe <strong>inscrições confirmadas</strong>.</p>
       </div>
       <div class="mt-10 grid lg:grid-cols-3 gap-6 items-stretch">
         <div class="lg:col-start-2 rounded-2xl border-2 border-indigo-400 bg-white p-6 shadow-card card-hover">
@@ -329,7 +381,12 @@
             <li>• Relatórios, crachás, certificados e e-mails inclusos</li>
           </ul>
           <a href="#contato" class="mt-6 inline-block px-4 py-2 rounded-xl text-white grad hover:shadow-lg transition">Entre em contato</a>
-          <p class="mt-3 text-xs text-slate-500">Observação: taxas do processador de pagamento (Mercado Pago) são cobradas à parte pelo próprio provedor.</p>
+          <p class="mt-3 text-xs text-slate-500">
+            Observação: taxas do processador de pagamento (Mercado Pago) são cobradas à parte pelo próprio provedor.
+          </p>
+          <p class="mt-2 text-xs text-slate-600">
+            Esta contribuição ajuda a manter os servidores e a evolução do sistema, e apoia a evangelização pela internet — inspirados em São Carlo Acutis.
+          </p>
         </div>
         <div class="lg:col-start-1 lg:row-start-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-card card-hover">
           <h3 class="font-semibold">Por que 0.5%?</h3>
@@ -418,7 +475,7 @@
       <div class="mt-8 grid md:grid-cols-2 gap-6">
         <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card card-hover">
           <summary class="font-semibold cursor-pointer">Posso usar o eismeaqui.app para diferentes tipos de eventos?</summary>
-          <p class="mt-2 text-slate-600">Sim. Eventos sênior, juvenil, mirim, casais, servos retiros e eventos, contam com <strong>questionários prontos</strong>.</p>
+          <p class="mt-2 text-slate-600">Sim. Eventos sênior, juvenil, mirim e servos contam com <strong>questionários prontos por tipo</strong>.</p>
         </details>
         <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card card-hover">
           <summary class="font-semibold cursor-pointer">Como funcionam os pagamentos?</summary>
@@ -469,8 +526,8 @@
       </div>
       <div>
         <h4 class="font-semibold">Fale com a gente</h4>
-        <p class="mt-2 text-sm text-slate-600">E-mail: contato@eismeaqui.app / alexandremv.dev@gmail.com</p>
-        <p class="text-sm text-slate-600">WhatsApp: (63) 92001-3103</p>
+        <p class="mt-2 text-sm text-slate-600">E-mail: contato@eismeaqui.app</p>
+        <p class="text-sm text-slate-600">WhatsApp: (xx) xxxxx-xxxx</p>
       </div>
     </div>
     <div class="py-4 text-center text-xs text-slate-500">© <span id="year"></span> eismeaqui.app — Todos os direitos reservados</div>
@@ -519,10 +576,62 @@
       const el = document.getElementById('newsTrack');
       if(!el) return;
       const card = el.querySelector('article');
-      const gap  = 16; // precisa bater com o .gap-4 do container (4*4px = 16px)
+      const gap  = 16; // .gap-4 (4*4px)
       const delta = (card?.offsetWidth || 320) + gap;
       el.scrollBy({ left: dir * delta, behavior: 'smooth' });
     }
+
+    // Carrossel de banners de eventos
+    (function(){
+      const track   = document.getElementById('evSlides');
+      const prevBtn = document.querySelector('[data-ev-prev]');
+      const nextBtn = document.querySelector('[data-ev-next]');
+      const dotsBox = document.getElementById('evDots');
+      const container = document.getElementById('evCarousel');
+      if (!track || !container) return;
+
+      const slides = Array.from(track.children);
+      if (slides.length === 0) return;
+
+      let idx = 0;
+      let timer = null;
+      const INTERVAL = 6000;
+
+      function update(){
+        track.style.transform = `translateX(-${idx * 100}%)`;
+        if (dotsBox){
+          dotsBox.querySelectorAll('button').forEach((b, i) => {
+            b.classList.toggle('bg-white', i === idx);
+            b.classList.toggle('bg-white/60', i !== idx);
+            b.classList.toggle('ring-2', i === idx);
+          });
+        }
+      }
+
+      function go(n){ idx = (n + slides.length) % slides.length; update(); }
+      function next(){ go(idx + 1); }
+      function prev(){ go(idx - 1); }
+
+      if (dotsBox){
+        dotsBox.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-ev-index]');
+          if (!btn) return;
+          go(parseInt(btn.getAttribute('data-ev-index'), 10) || 0);
+          restart();
+        });
+      }
+      prevBtn && prevBtn.addEventListener('click', () => { prev(); restart(); });
+      nextBtn && nextBtn.addEventListener('click', () => { next(); restart(); });
+
+      function start(){ timer = setInterval(next, INTERVAL); }
+      function stop(){ if (timer) clearInterval(timer); timer = null; }
+      function restart(){ stop(); start(); }
+      container.addEventListener('mouseenter', stop);
+      container.addEventListener('mouseleave', start);
+
+      update();
+      if (slides.length > 1) start();
+    })();
   </script>
 </body>
 </html>
