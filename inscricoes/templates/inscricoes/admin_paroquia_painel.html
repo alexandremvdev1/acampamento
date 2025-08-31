@@ -61,7 +61,7 @@
     <div class="d-flex align-items-center gap-2 ms-auto">
       <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
       <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
-      <a class="btn btn-sm btn-light" href="http://localhost:8000/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
+      <a class="btn btn-sm btn-light" href="/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
       <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
         {% csrf_token %}
         <button type="submit" class="btn btn-sm btn-danger">Sair</button>
@@ -109,7 +109,7 @@
           </a>
         {% endif %}
 
-        <!-- NOVO: Vídeo do Evento (dropdown) -->
+        <!-- Vídeo do Evento (dropdown) -->
         <div class="dropdown">
           <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button"
                   id="btnVideoEventos" data-bs-toggle="dropdown" aria-expanded="false">
@@ -195,11 +195,25 @@
           </a>
         </div>
       </div>
+
+      <!-- NOVO: Publicações -->
+      <div class="col-12 col-md-6 col-xl-3">
+        <div class="card-clean p-3 h-100">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="h6 m-0">Publicações</div>
+            <div class="list-ico"><i class="fa-solid fa-bullhorn"></i></div>
+          </div>
+          <div class="text-muted-2 mb-3">Crie comunicados e notícias para o site.</div>
+          <a href="{% url 'inscricoes:publicacoes_list' %}?paroquia={{ paroquia.id }}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-newspaper"></i> Gerenciar
+          </a>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- PORTAL DO PARTICIPANTE -->
-  <section class="mb-3">
+  <section class="mb-3" id="portal">
     <h2 class="sec-title">Portal do Participante</h2>
     <div class="card-clean p-3">
       <div class="row g-3 align-items-center">
@@ -224,7 +238,7 @@
   </section>
 
   <!-- EVENTOS RECENTES -->
-  <section class="mb-4">
+  <section class="mb-4" id="eventos">
     <h2 class="sec-title">Eventos recentes</h2>
 
     {% if eventos %}
@@ -234,7 +248,7 @@
           <div class="card-clean p-3 h-100 d-flex flex-column">
             <div class="h6 m-0 mb-2">{{ evento.nome }}</div>
             <div class="small text-muted-2 mb-2">
-              Tipo: {{ evento.get_tipo_display }}<br>
+              Tipo: {{ evento.get_tipo_display|default:evento.tipo }}<br>
               Início: {{ evento.data_inicio }}<br>
               Inscrições: {{ evento.status_inscricao }}
             </div>
@@ -258,7 +272,6 @@
               <a href="{% url 'inscricoes:editar_politica_reembolso' evento.id %}" class="btn btn-dark btn-sm">
                 <i class="fa-solid fa-file-contract"></i> Política de Reembolso
               </a>
-              <!-- NOVO: atalho para o vídeo do evento -->
               <a href="{% url 'inscricoes:video_evento_form' slug=evento.slug %}" class="btn btn-secondary btn-sm">
                 <i class="fa-solid fa-video"></i> Vídeo
               </a>

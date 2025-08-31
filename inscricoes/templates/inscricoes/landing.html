@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inscrições • EIS-ME AQUI</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;margin:0;padding:24px;background:#f7f7fb}
+    header{margin-bottom:24px}
+    .wrap{max-width:920px;margin:0 auto}
+    .card{background:#fff;border:1px solid #e7e7ef;border-radius:12px;padding:16px;margin-bottom:16px}
+    h1{margin:0 0 8px}
+    h2{margin:0 0 12px}
+    ul{padding-left:18px}
+    label{display:block;margin:8px 0 4px}
+    input,textarea,select{width:100%;padding:10px;border:1px solid #d7d7e0;border-radius:8px}
+    button{padding:10px 16px;border:0;border-radius:8px;cursor:pointer}
+    .primary{background:#4f46e5;color:white}
+    .grid{display:grid;gap:16px;grid-template-columns:1fr}
+    @media (min-width: 720px){ .grid{grid-template-columns:2fr 1fr} }
+    .muted{color:#666}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>EIS-ME AQUI</h1>
+    <p class="muted">Página de inscrições e contato</p>
+  </header>
+
+  <div class="grid">
+    <!-- Lista de eventos abertos -->
+    <section class="card">
+      <h2>Eventos com inscrições abertas</h2>
+      {% if eventos_abertos %}
+        <ul>
+          {% for ev in eventos_abertos %}
+            <li style="margin-bottom:12px;">
+              <strong>{{ ev.nome }}</strong>
+              {% if ev.data_inicio %} — {{ ev.data_inicio|date:"d/m/Y" }}{% endif %}
+              {% if ev.paroquia %} • {{ ev.paroquia.nome }}{% endif %}
+              <div style="margin-top:8px">
+                <a href="{% url 'inscricoes:inscricao_inicial' ev.slug %}">
+                  <button class="primary">Inscrever-se</button>
+                </a>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">Nenhum evento aberto no momento.</p>
+      {% endif %}
+    </section>
+
+    <!-- Formulário de contato/lead -->
+    <aside class="card">
+      <h2>Fale conosco</h2>
+      <form method="post" action="{% url 'inscricoes:contato_enviar' %}">
+        {% csrf_token %}
+        <label for="id_nome">Nome</label>
+        {{ form.nome }}
+
+        <label for="id_email">Email</label>
+        {{ form.email }}
+
+        <label for="id_whatsapp">WhatsApp (opcional)</label>
+        {{ form.whatsapp }}
+
+        <label for="id_mensagem">Mensagem (opcional)</label>
+        {{ form.mensagem }}
+
+        <label style="display:flex;gap:8px;align-items:center;margin-top:10px">
+          {{ form.lgpd }} <span class="muted">Concordo com a Política de Privacidade</span>
+        </label>
+
+        <div style="margin-top:12px">
+          <button class="primary" type="submit">Enviar</button>
+        </div>
+      </form>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

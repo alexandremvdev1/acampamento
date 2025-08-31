@@ -12,7 +12,8 @@ from django.contrib.auth.views import LoginView
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponseForbidden
 from django.views.decorators.cache import never_cache
-
+from typing import Optional
+from django.core.exceptions import FieldError
 # ——— Django
 from django.conf import settings
 from django.contrib import messages
@@ -351,56 +352,77 @@ def admin_geral_delete_usuario(request, pk):
         return redirect('inscricoes:admin_geral_list_usuarios')
     return render(request, 'inscricoes/admin_geral_confirm_delete.html', {'obj': usuario, 'tipo': 'Usuário'})
 
-@login_required
-def admin_paroquia_painel(request, paroquia_id=None):
+@login_required  # se preferir: @login_required(login_url="inscricoes:login")
+def admin_paroquia_painel(request, paroquia_id: Optional[int] = None):
+    """
+    Painel da paróquia:
+    - Admin da paróquia: sempre usa a paróquia vinculada ao usuário.
+    - Admin geral: precisa informar paroquia_id (ex.: /painel/3/).
+    - Outros: sem acesso.
+    """
     user = request.user
 
-    # --- Detecta papeis com fallback ---
-    # is_admin_paroquia: usa método se existir; senão checa tipo_usuario
+    # --- Detecta papéis com fallback ---
     if hasattr(user, "is_admin_paroquia") and callable(user.is_admin_paroquia):
-        is_admin_paroquia = user.is_admin_paroquia()
+        is_admin_paroquia = bool(user.is_admin_paroquia())
     else:
         is_admin_paroquia = getattr(user, "tipo_usuario", "") == "admin_paroquia"
 
-    # is_admin_geral: usa método se existir; senão checa superuser/tipo_usuario
     if hasattr(user, "is_admin_geral") and callable(user.is_admin_geral):
-        is_admin_geral = user.is_admin_geral()
+        is_admin_geral = bool(user.is_admin_geral())
     else:
         is_admin_geral = bool(getattr(user, "is_superuser", False)) or (
             getattr(user, "tipo_usuario", "") == "admin_geral"
         )
 
-    # --- Seleção da paróquia conforme o papel ---
+    # --- Seleção da paróquia conforme papel ---
     if is_admin_paroquia:
         paroquia = getattr(user, "paroquia", None)
         if not paroquia:
             messages.error(request, "⚠️ Sua conta não está vinculada a uma paróquia.")
-            return redirect('inscricoes:logout')
+            return redirect("inscricoes:logout")
+
+        # se tentarem acessar outra paróquia via URL, redireciona para a correta
+        if paroquia_id and int(paroquia_id) != getattr(user, "paroquia_id", None):
+            return redirect(reverse("inscricoes:admin_paroquia_painel"))
+
     elif is_admin_geral:
         if not paroquia_id:
             messages.error(request, "⚠️ Paróquia não especificada.")
-            return redirect('inscricoes:admin_geral_list_paroquias')
+            return redirect("inscricoes:admin_geral_list_paroquias")
         paroquia = get_object_or_404(Paroquia, id=paroquia_id)
+
     else:
         messages.error(request, "⚠️ Você não tem permissão para acessar este painel.")
-        return redirect('inscricoes:logout')
+        return redirect("inscricoes:logout")
 
-    # --- Eventos da paróquia (mais recentes primeiro) ---
-    if hasattr(EventoAcampamento, "created_at"):
-        eventos = (EventoAcampamento.objects
-                   .filter(paroquia=paroquia)
-                   .order_by('-data_inicio', '-created_at'))
-    else:
-        eventos = (EventoAcampamento.objects
-                   .filter(paroquia=paroquia)
-                   .order_by('-data_inicio'))
+    # --- Eventos da paróquia (ordenação com fallbacks robustos) ---
+    qs = EventoAcampamento.objects.filter(paroquia=paroquia)
+    eventos = None
+    for ordering in [
+        ("-data_inicio", "-created_at"),
+        ("-data_inicio",),
+        ("-created_at",),
+        ("-pk",),
+    ]:
+        try:
+            eventos = qs.order_by(*ordering)
+            break
+        except FieldError:
+            continue
+    if eventos is None:
+        eventos = qs  # sem ordenação se nada funcionou
 
-    return render(request, 'inscricoes/admin_paroquia_painel.html', {
-        'paroquia': paroquia,
-        'eventos': eventos,
-        'is_admin_paroquia': is_admin_paroquia,  # <- use no template
-        'is_admin_geral': is_admin_geral,        # <- se precisar
-    })
+    return render(
+        request,
+        "inscricoes/admin_paroquia_painel.html",
+        {
+            "paroquia": paroquia,
+            "eventos": eventos,
+            "is_admin_paroquia": is_admin_paroquia,
+            "is_admin_geral": is_admin_geral,
+        },
+    )
 
 @login_required
 def evento_novo(request):
@@ -3262,68 +3284,313 @@ def api_selecionados(request, slug):
         "count": len(data),
     })
 
-# views.py
-from django.shortcuts import render, redirect
-from django.views.decorators.http import require_POST
-from django.core.mail import EmailMultiAlternatives
+# --- LANDING + CONTATO (UNIFICADO) ------------------------------------------
+from typing import Any, Dict, Optional
+
 from django.conf import settings
+from django.contrib import messages
+from django.core.mail import EmailMultiAlternatives
+from django.db.models import Q
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
+from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
 from .forms import LeadLandingForm
+from .models import Paroquia, EventoAcampamento, LeadLanding, SiteVisit
 
-def landing(request):
-    form = LeadLandingForm()
-    return render(request, "inscricoes/site_eismeaqui.html", {"form": form})
 
-@require_POST
-def contato_enviar(request):
-    form = LeadLandingForm(request.POST)
-    if not form.is_valid():
-        # re-renderiza com erros
-        return render(request, "incricoes?[/site_eismeaqui.html", {"form": form}, status=400)
+# --------------------- helpers ---------------------
+def _has_field(model, name: str) -> bool:
+    return name in {f.name for f in model._meta.get_fields() if hasattr(f, "name")}
 
-    nome = form.cleaned_data["nome"]
-    whatsapp = form.cleaned_data["whatsapp"]
-    email = form.cleaned_data["email"]
-    mensagem = form.cleaned_data.get("mensagem", "")
+def _client_ip(request: HttpRequest) -> str:
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "") or ""
 
-    # E-mail para você (admin)
-    assunto_admin = f"[eismeaqui] Novo contato: {nome}"
-    texto_admin = f"Nome: {nome}\nWhatsApp: {whatsapp}\nE-mail: {email}\n\nMensagem:\n{mensagem}"
-    msg_admin = EmailMultiAlternatives(
-        assunto_admin,
-        texto_admin,
-        settings.DEFAULT_FROM_EMAIL,
-        [getattr(settings, "CONTACT_EMAIL", settings.DEFAULT_FROM_EMAIL)],
-    )
-    msg_admin.send(fail_silently=True)
+def _paroquia_from_request(request: HttpRequest) -> Optional[Paroquia]:
+    pid = request.GET.get("paroquia")
+    if not pid:
+        return None
+    try:
+        return Paroquia.objects.get(pk=int(pid))
+    except Exception:
+        return None
 
-    # E-mail de confirmação para o usuário
-    assunto_user = "Recebemos sua mensagem – eismeaqui.app"
-    texto_user = (
-        f"Olá {nome},\n\nRecebemos sua mensagem e entraremos em contato em breve.\n\n"
-        f"Resumo enviado:\nWhatsApp: {whatsapp}\nMensagem: {mensagem}\n\n"
-        "Deus abençoe!\nEquipe eismeaqui.app"
-    )
-    msg_user = EmailMultiAlternatives(
-        assunto_user, texto_user, settings.DEFAULT_FROM_EMAIL, [email]
-    )
-    msg_user.send(fail_silently=True)
+def _landing_context(request: HttpRequest, form: LeadLandingForm) -> Dict[str, Any]:
+    # registra visita (não falha se o modelo não existir)
+    try:
+        SiteVisit.objects.create(
+            path=request.get_full_path(),
+            ip=_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:255],
+        )
+    except Exception:
+        pass
 
-    # Redirecione para uma âncora/thanks simples na própria landing, se quiser
-    return redirect("inscricoes:landing")
+    hoje = timezone.localdate()
+    paroquia_atual = _paroquia_from_request(request)
 
-from .forms import LeadLandingForm  # seu form de contato
+    # Eventos com inscrições abertas
+    qs = EventoAcampamento.objects.all()
+    if paroquia_atual and _has_field(EventoAcampamento, "paroquia"):
+        qs = qs.filter(paroquia=paroquia_atual)
+    if _has_field(EventoAcampamento, "inicio_inscricoes"):
+        qs = qs.filter(Q(inicio_inscricoes__isnull=True) | Q(inicio_inscricoes__lte=hoje))
+    if _has_field(EventoAcampamento, "fim_inscricoes"):
+        qs = qs.filter(Q(fim_inscricoes__isnull=True) | Q(fim_inscricoes__gte=hoje))
+    if _has_field(EventoAcampamento, "publico"):
+        qs = qs.filter(publico=True)
+    if _has_field(EventoAcampamento, "ativo"):
+        qs = qs.filter(ativo=True)
 
-def landing(request):
-    now = timezone.now()  # funciona para DateTime; se seus campos são Date, use now.date()
+    eventos_abertos = qs.order_by("data_inicio")[:12]
 
-    eventos_abertos = EventoAcampamento.objects.filter(
-        Q(inicio_inscricoes__isnull=True) | Q(inicio_inscricoes__lte=now),
-        Q(fim_inscricoes__isnull=True)    | Q(fim_inscricoes__gte=now),
-    ).order_by('data_inicio')
+    # Blocos de comunidade (opcionais)
+    comunicados = []
+    try:
+        from .models import Comunicado  # type: ignore
+        cqs = Comunicado.objects.all()
+        if paroquia_atual and _has_field(Comunicado, "paroquia"):
+            cqs = cqs.filter(paroquia=paroquia_atual)
+        if _has_field(Comunicado, "publicado"):
+            cqs = cqs.filter(publicado=True)
+        if _has_field(Comunicado, "data_publicacao"):
+            cqs = cqs.order_by("-data_publicacao")
+        comunicados = list(cqs[:10])
+    except Exception:
+        pass
 
-    form = LeadLandingForm()
-    return render(request, "inscricoes/site_eismeaqui.html", {
+    eventos_comunidade = []
+    try:
+        from .models import EventoComunitario  # type: ignore
+        ecqs = EventoComunitario.objects.all()
+        if paroquia_atual and _has_field(EventoComunitario, "paroquia"):
+            ecqs = ecqs.filter(paroquia=paroquia_atual)
+        if _has_field(EventoComunitario, "visivel_site"):
+            ecqs = ecqs.filter(visivel_site=True)
+        if _has_field(EventoComunitario, "data_inicio"):
+            ecqs = ecqs.order_by("data_inicio")
+        eventos_comunidade = list(ecqs[:10])
+    except Exception:
+        pass
+
+    return {
         "form": form,
         "eventos_abertos": eventos_abertos,
+        "comunicados": comunicados,
+        "eventos_comunidade": eventos_comunidade,
+        "paroquia_atual": paroquia_atual,
+    }
+
+
+# --------------------- views ---------------------
+def landing(request: HttpRequest) -> HttpResponse:
+    """
+    Página pública de entrada.
+    Template: inscricoes/site_eismeaqui.html
+    """
+    form = LeadLandingForm()
+    ctx = _landing_context(request, form)
+    return render(request, "inscricoes/site_eismeaqui.html", ctx)
+
+
+@require_POST
+def contato_enviar(request: HttpRequest) -> HttpResponse:
+    """
+    Processa o formulário de contato da landing.
+    Re-renderiza a mesma landing com erros (status 400) ou redireciona com sucesso.
+    """
+    form = LeadLandingForm(request.POST)
+    if not form.is_valid():
+        ctx = _landing_context(request, form)
+        messages.error(request, "Verifique os campos destacados e tente novamente.")
+        return render(request, "inscricoes/site_eismeaqui.html", ctx, status=400)
+
+    nome = form.cleaned_data["nome"]
+    email = form.cleaned_data["email"]
+    whatsapp = form.cleaned_data.get("whatsapp", "")
+    mensagem = form.cleaned_data.get("mensagem", "")
+
+    # Salva lead (se o modelo existir)
+    try:
+        LeadLanding.objects.create(
+            nome=nome,
+            email=email,
+            whatsapp=whatsapp,
+            mensagem=mensagem,
+            origem="landing",
+            ip=_client_ip(request),
+            consent_lgpd=form.cleaned_data.get("lgpd", False),
+        )
+    except Exception:
+        pass
+
+    # E-mail para admin
+    try:
+        assunto_admin = f"[eismeaqui] Novo contato: {nome}"
+        texto_admin = (
+            f"Nome: {nome}\nWhatsApp: {whatsapp}\nE-mail: {email}\n\nMensagem:\n{mensagem}"
+        )
+        msg_admin = EmailMultiAlternatives(
+            assunto_admin,
+            texto_admin,
+            settings.DEFAULT_FROM_EMAIL,
+            [getattr(settings, "CONTACT_EMAIL", settings.DEFAULT_FROM_EMAIL)],
+        )
+        msg_admin.send(fail_silently=True)
+    except Exception:
+        pass
+
+    # E-mail de confirmação ao usuário
+    try:
+        assunto_user = "Recebemos sua mensagem – eismeaqui.app"
+        texto_user = (
+            f"Olá {nome},\n\nRecebemos sua mensagem e entraremos em contato em breve.\n\n"
+            f"Resumo enviado:\nWhatsApp: {whatsapp}\nMensagem: {mensagem}\n\n"
+            "Deus abençoe!\nEquipe eismeaqui.app"
+        )
+        msg_user = EmailMultiAlternatives(
+            assunto_user,
+            texto_user,
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+        )
+        msg_user.send(fail_silently=True)
+    except Exception:
+        pass
+
+    messages.success(request, "Recebemos sua mensagem! Em breve retornaremos.")
+    return redirect(reverse("inscricoes:landing") + "#contato")
+
+# inscricoes/views.py
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+
+from .models import Comunicado, Paroquia
+from .forms import ComunicadoForm
+
+def _user_is_admin_paroquia(user):
+    return user.is_authenticated and hasattr(user, "is_admin_paroquia") and user.is_admin_paroquia()
+
+def _user_is_admin_geral(user):
+    return user.is_authenticated and (
+        getattr(user, "is_superuser", False) or
+        getattr(user, "tipo_usuario", "") == "admin_geral" or
+        (hasattr(user, "is_admin_geral") and user.is_admin_geral())
+    )
+
+@login_required
+def publicacoes_list(request):
+    """
+    Lista publicações da paróquia do usuário (admin paroquia) ou,
+    para admin geral, aceita ?paroquia=<id> para filtrar.
+    """
+    if _user_is_admin_geral(request.user):
+        pid = request.GET.get("paroquia") or getattr(request.user, "paroquia_id", None)
+        paroquia = get_object_or_404(Paroquia, pk=pid) if pid else getattr(request.user, "paroquia", None)
+    elif _user_is_admin_paroquia(request.user):
+        paroquia = getattr(request.user, "paroquia", None)
+        if not paroquia:
+            messages.error(request, "Sua conta não está vinculada a uma paróquia.")
+            return redirect("inscricoes:home_redirect")
+    else:
+        messages.error(request, "Sem permissão.")
+        return redirect("inscricoes:home_redirect")
+
+    items = Comunicado.objects.filter(paroquia=paroquia).order_by("-data_publicacao", "-id")
+    return render(request, "inscricoes/publicacoes_list.html", {
+        "paroquia": paroquia,
+        "items": items,
     })
 
+@login_required
+def publicacao_criar(request):
+    if _user_is_admin_geral(request.user):
+        paroquia = getattr(request.user, "paroquia", None)
+        pid = request.GET.get("paroquia")
+        if pid:
+            paroquia = get_object_or_404(Paroquia, pk=pid)
+    elif _user_is_admin_paroquia(request.user):
+        paroquia = getattr(request.user, "paroquia", None)
+        if not paroquia:
+            messages.error(request, "Sua conta não está vinculada a uma paróquia.")
+            return redirect("inscricoes:home_redirect")
+    else:
+        messages.error(request, "Sem permissão.")
+        return redirect("inscricoes:home_redirect")
+
+    if request.method == "POST":
+        form = ComunicadoForm(request.POST, request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.paroquia = paroquia
+            obj.save()
+            messages.success(request, "Publicação criada com sucesso!")
+            return redirect("inscricoes:publicacoes_list")
+    else:
+        form = ComunicadoForm()
+
+    return render(request, "inscricoes/publicacao_form.html", {
+        "form": form,
+        "paroquia": paroquia,
+        "is_edit": False,
+    })
+
+@login_required
+def publicacao_editar(request, pk: int):
+    obj = get_object_or_404(Comunicado, pk=pk)
+    # permissão: admin da mesma paróquia ou admin geral
+    if not _user_is_admin_geral(request.user):
+        if not _user_is_admin_paroquia(request.user) or request.user.paroquia_id != obj.paroquia_id:
+            messages.error(request, "Sem permissão para editar esta publicação.")
+            return redirect("inscricoes:publicacoes_list")
+
+    if request.method == "POST":
+        form = ComunicadoForm(request.POST, request.FILES, instance=obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Publicação atualizada!")
+            return redirect("inscricoes:publicacoes_list")
+    else:
+        form = ComunicadoForm(instance=obj)
+
+    return render(request, "inscricoes/publicacao_form.html", {
+        "form": form,
+        "paroquia": obj.paroquia,
+        "is_edit": True,
+        "obj": obj,
+    })
+
+@login_required
+def publicacao_excluir(request, pk: int):
+    obj = get_object_or_404(Comunicado, pk=pk)
+    if not _user_is_admin_geral(request.user):
+        if not _user_is_admin_paroquia(request.user) or request.user.paroquia_id != obj.paroquia_id:
+            messages.error(request, "Sem permissão para excluir esta publicação.")
+            return redirect("inscricoes:publicacoes_list")
+
+    if request.method == "POST":
+        obj.delete()
+        messages.success(request, "Publicação excluída.")
+        return redirect("inscricoes:publicacoes_list")
+
+    return render(request, "inscricoes/publicacao_confirm_delete.html", {"obj": obj})
+
+def comunicado_detalhe(request, pk: int):
+    from .models import Comunicado  # evita import circular
+    obj = get_object_or_404(Comunicado, pk=pk)
+    # se tiver flag publicado e quiser ocultar os não publicados:
+    try:
+        if hasattr(obj, "publicado") and not obj.publicado:
+            # admin pode visualizar, público não
+            if not request.user.is_authenticated:
+                from django.http import Http404
+                raise Http404()
+    except Exception:
+        pass
+    return render(request, "inscricoes/comunicado_detalhe.html", {"c": obj})

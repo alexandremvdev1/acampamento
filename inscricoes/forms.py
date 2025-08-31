@@ -816,3 +816,18 @@ class LeadLandingForm(forms.Form):
         required=True,
         widget=forms.CheckboxInput(attrs={"class": "mt-1"}),
     )
+
+# inscricoes/forms.py
+from django import forms
+# ... seus imports ...
+from .models import Comunicado
+
+class ComunicadoForm(forms.ModelForm):
+    class Meta:
+        model = Comunicado
+        fields = ["titulo", "texto", "capa", "publicado"]
+        widgets = {
+            "titulo": forms.TextInput(attrs={"class": "form-control", "placeholder": "Título"}),
+            "texto": forms.Textarea(attrs={"class": "form-control", "rows": 8, "placeholder": "Escreva a publicação..."}),
+            "publicado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }

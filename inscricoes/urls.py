@@ -142,6 +142,15 @@ urlpatterns = [
 
     path("site/", views.landing, name="landing"),
     path("site/contato/enviar", views.contato_enviar, name="contato_enviar"),
+    path("site/", views.landing, name="landing"),
+    path("site/contato-enviar/", views.contato_enviar, name="contato_enviar"),
+
+    path("painel/publicacoes/", views.publicacoes_list, name="publicacoes_list"),
+    path("painel/publicacoes/nova/", views.publicacao_criar, name="publicacao_criar"),
+    path("painel/publicacoes/<int:pk>/editar/", views.publicacao_editar, name="publicacao_editar"),
+    path("painel/publicacoes/<int:pk>/excluir/", views.publicacao_excluir, name="publicacao_excluir"),
+
+    path("comunicado/<int:pk>/", views.comunicado_detalhe, name="comunicado_detalhe"),
 ]
 
 if settings.DEBUG:

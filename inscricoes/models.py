@@ -17,7 +17,16 @@ import re
 from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.core.mail import EmailMultiAlternatives
+from django.core.validators import RegexValidator
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.utils import timezone
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
+from .utils.phones import normalizar_e164_br, validar_e164_br
 from cloudinary.models import CloudinaryField
 
 # utils de telefone do próprio app
@@ -1248,13 +1257,13 @@ class SiteImage(models.Model):
 # ---------------------------------------------------------------------
 # Leads da Landing (Entre em contato)
 # ---------------------------------------------------------------------
+
 class LeadLanding(models.Model):
     """
-    Armazena os envios do formulário 'Entre em contato' (Nome, E-mail, WhatsApp, Mensagem, LGPD).
-    Um e-mail é enviado para a pessoa ao criar o lead (via sinal post_save abaixo).
+    Leads do formulário 'Entre em contato' (landing).
     """
     nome = models.CharField(max_length=120)
-    email = models.EmailField()
+    email = models.EmailField(db_index=True)
     whatsapp = models.CharField(
         max_length=20,
         help_text="WhatsApp em E.164 BR: +55DDDNÚMERO (ex.: +5563920013103)",
@@ -1264,30 +1273,52 @@ class LeadLanding(models.Model):
         )],
     )
     mensagem = models.TextField(blank=True)
+
+    # ATENÇÃO: mantenha o MESMO nome usado no form/template (use 'consent_lgpd').
     consent_lgpd = models.BooleanField(default=False)
+
     origem = models.CharField(max_length=120, default="landing")
-    created_at = models.DateTimeField(auto_now_add=True)
+
+    # Auditoria (úteis p/ analytics básicos)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["email"]),
+            models.Index(fields=["origem"]),
+        ]
 
     def __str__(self):
         return f"{self.nome} <{self.email}>"
 
+    @property
+    def whatsapp_mascarado(self) -> str:
+        """Exibe os 2 últimos dígitos apenas."""
+        if not self.whatsapp:
+            return ""
+        return self.whatsapp[:-2] + "••"
+
     def clean(self):
         super().clean()
-        # Normaliza/valida WhatsApp usando seus utils
+        # Normaliza/valida WhatsApp digitado no site (pode vir sem E.164)
         if self.whatsapp:
             norm = normalizar_e164_br(self.whatsapp)
             if not norm or not validar_e164_br(norm):
                 raise ValidationError({'whatsapp': "Informe um telefone BR válido. Ex.: +5563920013103"})
             self.whatsapp = norm
 
-# Envia e-mails automaticamente quando um LeadLanding é criado
+
+# Disparo de e-mails ao criar um LeadLanding
 @receiver(post_save, sender=LeadLanding)
 def _leadlanding_enviar_emails(sender, instance: 'LeadLanding', created, **kwargs):
     if not created:
         return
+
     # E-mail para a pessoa
     assunto_user = "Recebemos sua mensagem — eismeaqui.app"
     texto_user = (
@@ -1309,7 +1340,7 @@ def _leadlanding_enviar_emails(sender, instance: 'LeadLanding', created, **kwarg
     except Exception:
         pass
 
-    # E-mail interno (pra você/equipe)
+    # E-mail interno (para você/equipe)
     destino_admin = getattr(settings, "SALES_INBOX", settings.DEFAULT_FROM_EMAIL)
     assunto_admin = f"[Landing] Novo contato: {instance.nome}"
     html_admin = f"""
@@ -1328,3 +1359,59 @@ def _leadlanding_enviar_emails(sender, instance: 'LeadLanding', created, **kwarg
         m2.send(fail_silently=True)
     except Exception:
         pass
+
+
+class SiteVisit(models.Model):
+    path = models.CharField(max_length=255)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["path"]),
+        ]
+
+    def __str__(self):
+        return f"{self.ip} {self.path} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+class Comunicado(models.Model):
+    paroquia = models.ForeignKey("inscricoes.Paroquia", on_delete=models.CASCADE, related_name="comunicados")
+    titulo = models.CharField(max_length=180)
+    texto = models.TextField()
+    data_publicacao = models.DateField(default=timezone.localdate)
+    publicado = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    capa = models.ImageField(upload_to='comunicados/capas/', blank=True, null=True)
+
+    class Meta:
+        ordering = ["-data_publicacao", "-created_at"]
+
+    def __str__(self):
+        return f"{self.paroquia.nome} • {self.titulo}"
+
+
+class EventoComunitario(models.Model):
+    paroquia = models.ForeignKey("inscricoes.Paroquia", on_delete=models.CASCADE, related_name="eventos_comunidade")
+    nome = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, blank=True)  # único dentro da paróquia
+    data_inicio = models.DateField()
+    data_fim = models.DateField(null=True, blank=True)
+    visivel_site = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["data_inicio", "nome"]
+        constraints = [
+            models.UniqueConstraint(fields=["paroquia", "slug"], name="unique_evento_comunitario_por_paroquia")
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.nome)[:200]
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.paroquia.nome} • {self.nome}"

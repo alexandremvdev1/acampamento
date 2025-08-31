@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Excluir publicação — {{ paroquia.nome|default:obj.paroquia.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap + Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a;
+      --base-font:14px;
+    }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    .card-clean{
+      border:none; box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease; border-radius:.9rem; background:#fff;
+      border:1px solid #e5e7eb;
+    }
+    .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+    .text-muted-2{ color:var(--muted); }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
+    }
+    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
+
+    .avatar-logo{
+      width:42px; height:42px; border-radius:.6rem; object-fit:cover; border:1px solid #e5e7eb; background:#fff;
+    }
+    .list-ico{
+      width:32px; height:32px; border-radius:.6rem; display:flex; align-items:center; justify-content:center;
+      background:#eef2f7; color:#334155;
+    }
+    .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
+
+    .preview img{ max-height:160px; border-radius:.6rem; border:1px solid #e5e7eb; }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
+      <a class="btn btn-sm btn-light" href="/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
+      <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-danger">Sair</button>
+      </form>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+
+  <!-- HEADER -->
+  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-2">
+        {% with p=paroquia|default:obj.paroquia %}
+          {% if p.logo %}
+            <img class="avatar-logo" src="{{ p.logo.url }}" alt="Logo {{ p.nome }}">
+          {% else %}
+            <div class="list-ico"><i class="fa-solid fa-church"></i></div>
+          {% endif %}
+          <div>
+            <h1 class="h6 m-0">Excluir publicação — {{ p.nome }}</h1>
+            <div class="small text-muted-2">Esta ação é irreversível.</div>
+          </div>
+        {% endwith %}
+      </div>
+
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-secondary btn-sm" href="{% url 'inscricoes:publicacoes_list' %}?paroquia={{ obj.paroquia_id }}">
+          <i class="fa-solid fa-newspaper"></i> Publicações
+        </a>
+        <a class="btn btn-outline-secondary btn-sm" href="{% url 'inscricoes:admin_paroquia_painel' obj.paroquia_id %}">
+          <i class="fa-solid fa-arrow-left"></i> Painel
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENSAGENS -->
+  {% if messages %}
+    <div class="mb-3">
+      {% for m in messages %}
+        <div class="alert alert-{{ m.tags|default:'secondary' }} card-clean p-3 mb-2">{{ m }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- CONFIRMAÇÃO -->
+  <section class="mb-4">
+    <div class="card-clean p-3 p-lg-4">
+      <p class="mb-2">Tem certeza que deseja excluir <strong>{{ obj.titulo }}</strong>?</p>
+
+      {% if obj.capa %}
+        <div class="preview my-2">
+          <img src="{{ obj.capa.url }}" alt="Capa da publicação">
+        </div>
+      {% endif %}
+
+      <form method="post" class="mt-3">
+        {% csrf_token %}
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-secondary btn-sm" href="{% url 'inscricoes:publicacoes_list' %}?paroquia={{ obj.paroquia_id }}">
+            <i class="fa-solid fa-xmark"></i> Cancelar
+          </a>
+          <button class="btn btn-danger btn-sm" type="submit">
+            <i class="fa-solid fa-trash"></i> Excluir definitivamente
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <footer class="py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
+      <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+    </div>
+  </footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -30,6 +30,8 @@
     .form-flat input:focus,.form-flat select:focus,.form-flat textarea:focus{border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.18)}
     .form-flat .errorlist{margin:.25rem 0 0; color:#dc2626; font-size:.75rem}
     .card-hover{ transition:transform .15s, box-shadow .15s; } .card-hover:hover{ transform:translateY(-2px); box-shadow:0 16px 36px rgba(2,6,23,.14); }
+    /* clamp sem plugin do Tailwind */
+    .line-clamp-3{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -132,22 +134,54 @@
   <section id="comunidade" class="py-12 bg-white anchor-offset">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid lg:grid-cols-3 gap-8">
-        <!-- Avisos / Notícias -->
+        <!-- Avisos / Notícias — CARROSSEL -->
         <div class="lg:col-span-2">
           <h2 class="text-2xl font-bold">Notícias e avisos da comunidade</h2>
           <p class="text-slate-600 mt-1">Informações gerais, comunicados e destaques pastorais.</p>
 
           {% if comunicados %}
-            <div class="mt-5 space-y-4">
-              {% for c in comunicados %}
-                <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-card card-hover">
-                  <h3 class="font-semibold">{{ c.titulo }}</h3>
-                  {% if c.data_publicacao %}
-                    <p class="text-xs text-slate-500">{{ c.data_publicacao }}</p>
-                  {% endif %}
-                  <p class="text-slate-700 mt-2">{{ c.texto }}</p>
-                </article>
-              {% endfor %}
+            <div class="relative mt-5" aria-label="Carrossel de notícias">
+              <!-- Trilho rolável -->
+              <div id="newsTrack"
+                   class="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 pb-2"
+                   style="scrollbar-width: thin;">
+                {% for c in comunicados %}
+                  <article class="snap-start shrink-0 w-80 sm:w-[28rem] rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden card-hover">
+                    <a href="{% url 'inscricoes:comunicado_detalhe' c.pk %}" class="block">
+                      {% if c.capa %}
+                        <img src="{{ c.capa.url }}" alt="Capa — {{ c.titulo }}" class="w-full h-44 object-cover">
+                      {% else %}
+                        {% site_image "news-default" "w-full h-44 object-cover" alt="Capa do comunicado" %}
+                      {% endif %}
+
+                      <div class="p-4">
+                        <h3 class="font-semibold text-slate-900 truncate">{{ c.titulo }}</h3>
+                        {% if c.data_publicacao %}
+                          <p class="text-xs text-slate-500 mt-0.5">{{ c.data_publicacao|date:"d/m/Y" }}</p>
+                        {% endif %}
+                        {% if c.texto %}
+                          <p class="text-slate-700 mt-2 line-clamp-3">
+                            {{ c.texto }}
+                          </p>
+                        {% endif %}
+                        <span class="inline-block mt-3 text-indigo-600 font-semibold">Ler mais →</span>
+                      </div>
+                    </a>
+                  </article>
+                {% endfor %}
+              </div>
+
+              <!-- Controles -->
+              <button type="button" aria-label="Anterior"
+                      class="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 p-2 rounded-xl border border-slate-300 bg-white shadow-card hover:shadow-lg"
+                      onclick="scrollNews(-1)">
+                ‹
+              </button>
+              <button type="button" aria-label="Próximo"
+                      class="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl border border-slate-300 bg-white shadow-card hover:shadow-lg"
+                      onclick="scrollNews(1)">
+                ›
+              </button>
             </div>
           {% else %}
             <div class="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
@@ -473,6 +507,16 @@
         });
       }catch(e){}
     })();
+
+    // Carrossel de notícias — rolagem por card
+    function scrollNews(dir){
+      const el = document.getElementById('newsTrack');
+      if(!el) return;
+      const card = el.querySelector('article');
+      const gap  = 16; // precisa bater com o .gap-4 do container (4*4px = 16px)
+      const delta = (card?.offsetWidth || 320) + gap;
+      el.scrollBy({ left: dir * delta, behavior: 'smooth' });
+    }
   </script>
 </body>
 </html>
