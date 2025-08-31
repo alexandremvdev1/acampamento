@@ -1193,7 +1193,7 @@ class Repasse(models.Model):
     evento = models.ForeignKey("inscricoes.EventoAcampamento", on_delete=models.CASCADE, related_name="repasses")
     # base = arrecadado confirmado - taxas MP (dos pagamentos das inscrições)
     valor_base = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
-    taxa_percentual = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("2.00"))
+    taxa_percentual = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.5"))
     valor_repasse = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDENTE)
