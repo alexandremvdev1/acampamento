@@ -59,8 +59,6 @@
     <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
 
     <div class="d-flex align-items-center gap-2 ms-auto">
-      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
-      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
       <a class="btn btn-sm btn-light" href="/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
       <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
         {% csrf_token %}
@@ -183,18 +181,21 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="card-clean p-3 h-100">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="h6 m-0">Repasses</div>
-            <div class="list-ico"><i class="fa-solid fa-hand-holding-dollar"></i></div>
-          </div>
-          <div class="text-muted-2 mb-3">Consulte o valor a repassar ao sistema por evento.</div>
-          <a href="{% url 'inscricoes:repasse_lista_eventos' %}" class="btn btn-success btn-sm">
-            <i class="fa-solid fa-wallet"></i> Ver Repasses
-          </a>
-        </div>
-      </div>
+{% if is_admin_geral %}
+<div class="col-12 col-md-6 col-xl-3">
+  <div class="card-clean p-3 h-100">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <div class="h6 m-0">Repasses</div>
+      <div class="list-ico"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+    </div>
+    <div class="text-muted-2 mb-3">Consulte o valor a repassar ao sistema por evento.</div>
+    <a href="{% url 'inscricoes:repasse_lista_eventos' %}" class="btn btn-success btn-sm">
+      <i class="fa-solid fa-wallet"></i> Ver Repasses
+    </a>
+  </div>
+</div>
+{% endif %}
+
 
       <!-- NOVO: Publicações -->
       <div class="col-12 col-md-6 col-xl-3">
