@@ -47,6 +47,10 @@
         linear-gradient(180deg, rgba(3,7,18,.35), rgba(3,7,18,.20));
       pointer-events:none;
     }
+    .desenvolvido {
+      color: #0f172a;   /* escolha a cor desejada */
+  font-weight: 600; /* opcional */
+    }
 
     /* Cartões / layout */
     .card-clean{
@@ -168,7 +172,9 @@
     </a>
   </div>
 
-  <p class="text-center text-muted small my-3">&copy; {{ now|date:"Y" }}Sistema Desenvolvido por Alexandre Martins Vieira</p>
+  <p class="text-center small my-3 desenvolvido">
+  &copy; {{ now|date:"Y" }} Sistema Desenvolvido por Alexandre Martins Vieira
+</p>
 </main>
 
 <!-- Bootstrap JS -->
