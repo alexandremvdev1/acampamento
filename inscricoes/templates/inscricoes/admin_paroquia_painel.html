@@ -239,54 +239,60 @@
   </section>
 
   <!-- EVENTOS RECENTES -->
-  <section class="mb-4" id="eventos">
-    <h2 class="sec-title">Eventos recentes</h2>
+<!-- EVENTOS RECENTES -->
+<section class="mb-4" id="eventos">
+  <h2 class="sec-title">Eventos recentes</h2>
 
-    {% if eventos %}
-      <div class="row g-3">
-        {% for evento in eventos %}
-        <div class="col-12 col-md-6 col-xl-4">
-          <div class="card-clean p-3 h-100 d-flex flex-column">
-            <div class="h6 m-0 mb-2">{{ evento.nome }}</div>
-            <div class="small text-muted-2 mb-2">
-              Tipo: {{ evento.get_tipo_display|default:evento.tipo }}<br>
-              Início: {{ evento.data_inicio }}<br>
-              Inscrições: {{ evento.status_inscricao }}
-            </div>
-            <div class="mb-3">
-              <div class="small text-muted-2">Link público:</div>
-              <a href="{{ evento.link_inscricao }}" target="_blank" rel="noopener">
-                {{ request.scheme }}://{{ request.get_host }}{{ evento.link_inscricao }}
-              </a>
-            </div>
-            <div class="mt-auto d-flex flex-wrap gap-2">
-              <a href="{% url 'inscricoes:evento_editar' evento.id %}" class="btn btn-primary btn-sm">
-                <i class="fa-solid fa-pen"></i> Editar
-              </a>
-              <a href="{% url 'inscricoes:evento_deletar' evento.id %}" class="btn btn-danger btn-sm"
-                 onclick="return confirm('Tem certeza que deseja excluir?');">
-                 <i class="fa-solid fa-trash"></i> Excluir
-              </a>
-              <a href="{% url 'inscricoes:evento_participantes' evento.id %}" class="btn btn-success btn-sm">
-                <i class="fa-solid fa-eye"></i> Detalhes
-              </a>
-              <a href="{% url 'inscricoes:editar_politica_reembolso' evento.id %}" class="btn btn-dark btn-sm">
-                <i class="fa-solid fa-file-contract"></i> Política de Reembolso
-              </a>
-              <a href="{% url 'inscricoes:video_evento_form' slug=evento.slug %}" class="btn btn-secondary btn-sm">
-                <i class="fa-solid fa-video"></i> Vídeo
-              </a>
-            </div>
+  {% if eventos %}
+    <div class="row g-3">
+      {% for evento in eventos %}
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card-clean p-3 h-100 d-flex flex-column position-relative">
+          
+          <!-- Botão Detalhes maior no canto superior direito -->
+          <a href="{% url 'inscricoes:evento_participantes' evento.id %}" 
+             class="btn btn-success btn-lg position-absolute top-0 end-0 m-2">
+            <i class="fa-solid fa-eye"></i> Detalhes
+          </a>
+
+          <div class="h6 m-0 mb-2 pe-5">{{ evento.nome }}</div>
+          <div class="small text-muted-2 mb-2">
+            Tipo: {{ evento.get_tipo_display|default:evento.tipo }}<br>
+            Início: {{ evento.data_inicio }}<br>
+            Inscrições: {{ evento.status_inscricao }}
+          </div>
+          <div class="mb-3">
+            <div class="small text-muted-2">Link público:</div>
+            <a href="{{ evento.link_inscricao }}" target="_blank" rel="noopener">
+              {{ request.scheme }}://{{ request.get_host }}{{ evento.link_inscricao }}
+            </a>
+          </div>
+          <div class="mt-auto d-flex flex-wrap gap-2">
+            <a href="{% url 'inscricoes:evento_editar' evento.id %}" class="btn btn-primary btn-sm">
+              <i class="fa-solid fa-pen"></i> Editar
+            </a>
+            <a href="{% url 'inscricoes:evento_deletar' evento.id %}" class="btn btn-danger btn-sm"
+               onclick="return confirm('Tem certeza que deseja excluir?');">
+               <i class="fa-solid fa-trash"></i> Excluir
+            </a>
+            <a href="{% url 'inscricoes:editar_politica_reembolso' evento.id %}" class="btn btn-dark btn-sm">
+              <i class="fa-solid fa-file-contract"></i> Política de Reembolso
+            </a>
+            <a href="{% url 'inscricoes:video_evento_form' slug=evento.slug %}" class="btn btn-secondary btn-sm">
+              <i class="fa-solid fa-video"></i> Vídeo
+            </a>
           </div>
         </div>
-        {% endfor %}
       </div>
-    {% else %}
-      <div class="card-clean p-3">
-        <div class="text-muted-2">Sem eventos cadastrados.</div>
-      </div>
-    {% endif %}
-  </section>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card-clean p-3">
+      <div class="text-muted-2">Sem eventos cadastrados.</div>
+    </div>
+  {% endif %}
+</section>
+
 
   {% endif %} {# fecha status != 'inativa' #}
 

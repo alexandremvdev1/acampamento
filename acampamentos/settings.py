@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',
 
     'inscricoes',
+    "django_extensions",
 
     # Arquivos e mídia
     'cloudinary',
