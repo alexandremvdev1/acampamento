@@ -1,4 +1,3 @@
-# scripts/popula_servos.py
 import random
 from datetime import date, timedelta
 from inscricoes.models import (
@@ -28,19 +27,48 @@ evento, _ = EventoAcampamento.objects.get_or_create(
     paroquia=paroquia,
 )
 
-# 🔹 3. Dados de apoio
-nomes = [
-    "Carlos Silva", "Fernanda Oliveira", "João Santos", "Maria Souza",
-    "Paulo Almeida", "Tatiane Costa", "Rogério Lima", "Patrícia Rocha",
-    "Eduardo Pereira", "Juliana Ribeiro", "Sérgio Monteiro", "Cláudia Nunes",
+# 🔹 3. Lista de nomes completos
+nomes_completos = [
+    "Alexandre Martins Vieira", "Carlos Henrique Silva", "Fernanda Oliveira Santos",
+    "João Paulo Pereira", "Maria Eduarda Souza", "Paulo Roberto Almeida",
+    "Tatiane Cristina Costa", "Rogério Augusto Lima", "Patrícia Nogueira Rocha",
+    "Eduardo Fernandes Pereira", "Juliana Ribeiro Castro", "Sérgio Monteiro Dias",
+    "Cláudia Regina Nunes", "André Luiz Barros", "Camila Azevedo Martins",
+    "Leonardo Henrique Carvalho", "Beatriz Figueiredo Alves", "Gabriel Antônio Rocha",
+    "Larissa Costa Almeida", "Marcos Vinícius Ferreira", "Isabela Rodrigues Dias",
+    "Thiago Almeida Fonseca", "Renata Carvalho Lopes", "Pedro Henrique Ramos",
+    "Natália Soares Martins", "Ricardo Gomes da Silva", "Bianca Souza Teixeira",
+    "Diego Araújo Fernandes", "Manuela Castro Farias", "Felipe Moura Oliveira",
+    "Carolina Mendes Pires", "Rafael Duarte Correia", "Larissa Monteiro Lemos",
+    "Victor Hugo Cardoso", "Camila Ribeiro Vasconcelos", "João Vitor Nascimento",
+    "Amanda Ferreira Pinto", "Rodrigo Pires de Almeida", "Sofia Nogueira Cunha",
+    "Daniel Moreira Campos", "Patrícia Souza Mendes", "Caio Fernando Azevedo",
+    "Juliana Monteiro Rocha", "Gustavo Henrique Tavares", "Letícia Carvalho Moura",
+    "André Santos Magalhães", "Fernanda Ribeiro Almeida", "Lucas Oliveira Barros",
+    "Gabriela Souza Campos", "Henrique Costa Fernandes", "Beatriz Lima Guimarães",
+    "Mateus Pereira Duarte", "Mariana Silva Castro", "Cláudio Roberto Mendes",
+    "Ana Clara Fernandes", "Felipe Augusto Rocha", "Rafaela Martins Costa",
+    "Bruno Henrique Teixeira", "Daniela Moura Almeida", "Rodrigo Alves Ferreira",
+    "Bianca Costa Carvalho", "Leonardo Mendes Silva", "Juliana Nogueira Rocha",
+    "Eduardo Carvalho Santos", "Carolina Souza Pires", "Gabriel Fernandes Lopes",
+    "Vanessa Duarte Monteiro", "Thiago Silva Nogueira", "Natália Ramos Teixeira",
+    "Ricardo Oliveira Costa", "Tatiane Gomes Rocha", "André Almeida Souza",
+    "Luana Carvalho Mendes", "Felipe Ramos Oliveira", "Larissa Fernandes Costa",
+    "Rodrigo Martins Pires", "Beatriz Souza Almeida", "Diego Carvalho Rocha",
+    "Camila Ramos Duarte", "Gustavo Oliveira Castro", "Ana Beatriz Nogueira",
+    "Marcos Vinícius Rocha", "Juliana Souza Carvalho", "Daniel Ribeiro Almeida",
+    "Patrícia Mendes Pires", "Victor Almeida Duarte", "Fernanda Silva Lopes",
+    "Lucas Gabriel Rocha", "Camila Fernandes Nogueira", "Eduardo Ramos Teixeira",
+    "Sofia Almeida Costa", "Henrique Silva Rocha", "Gabriela Ramos Oliveira"
 ]
 
+# 🔹 4. Exemplos de informações extras
 problemas_exemplo = ["Hipertensão", "Diabetes", "Asma"]
 medicamentos_exemplo = ["Insulina", "Anti-hipertensivo", "Inalador"]
 alimentos_exemplo = ["Amendoim", "Glúten", "Leite"]
 medicamentos_alergia = ["Dipirona", "Penicilina", "Ibuprofeno"]
 
-# Distribuição de cidades (80 servos)
+# 🔹 5. Distribuição de cidades (80 servos)
 distribuicao_cidades = (
     ["Wanderlândia"] * 30 +
     ["Araguaína"] * 10 +
@@ -52,9 +80,9 @@ distribuicao_cidades = (
     ["Ananás"] * 5
 )
 
-# 🔹 4. Criar participantes e inscrições
+# 🔹 6. Criar participantes e inscrições
 for i, cidade in enumerate(distribuicao_cidades, start=1):
-    nome = random.choice(nomes) + f" {i}"
+    nome = random.choice(nomes_completos)  # ✅ Nome completo, sem número
     cpf = f"{4000+i:011d}"
     telefone = f"+5563989{i:04d}"
     email = f"servo{i}@example.com"

@@ -517,7 +517,7 @@ def evento_participantes(request, evento_id):
     elif not request.user.is_admin_geral():
         return HttpResponseForbidden("Acesso negado.")
 
-    # Inclui os relacionamentos dos subtipos para evitar N+1 e permitir pegar a data de nascimento
+    # Inclui os relacionamentos dos subtipos + ordena alfabeticamente por nome do participante
     participantes = (
         Inscricao.objects
         .filter(evento=evento)
@@ -526,13 +526,12 @@ def evento_participantes(request, evento_id):
             'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
             'inscricaocasais', 'inscricaoevento', 'inscricaoretiro'
         )
+        .order_by("participante__nome")  # ✅ garante ordem alfabética
     )
-    total_participantes = participantes.count()  # Contagem dos participantes
 
-    # ===== Cálculo da idade (anota na própria inscrição) =====
-    from datetime import date
+    total_participantes = participantes.count()
 
-    # Data de referência: início do evento ou hoje
+    # ===== Cálculo da idade =====
     ref_date = getattr(evento, 'data_inicio', None) or timezone.localdate()
 
     attr_by_tipo = {
@@ -548,22 +547,18 @@ def evento_participantes(request, evento_id):
     def _calc_age(nasc, ref):
         if not nasc:
             return None
-        # garante 'date'
         if hasattr(nasc, 'date'):
             nasc = nasc.date()
         if hasattr(ref, 'date'):
             ref = ref.date()
-        # anos completos
         return ref.year - nasc.year - ((ref.month, ref.day) < (nasc.month, nasc.day))
 
     def _get_birth(insc):
-        # tenta primeiro o subtipo do próprio evento
         tipo = (getattr(insc.evento, 'tipo', '') or '').lower()
         nomes = []
         pref = attr_by_tipo.get(tipo)
         if pref:
             nomes.append(pref)
-        # fallback por segurança (cobre dados antigos)
         nomes += [
             'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
             'inscricaocasais', 'inscricaoevento', 'inscricaoretiro'
@@ -576,20 +571,20 @@ def evento_participantes(request, evento_id):
                 dn = getattr(rel, 'data_nascimento', None)
                 if dn:
                     return dn
-        # último fallback: Participante (se existir no seu modelo)
         return getattr(insc.participante, 'data_nascimento', None)
 
-    # Avalia o queryset e anota a idade
+    # Anota idade no objeto
     for insc in participantes:
         dn = _get_birth(insc)
-        insc.idade = _calc_age(dn, ref_date)  # <- disponível no template como {{ inscricao.idade }}
+        insc.idade = _calc_age(dn, ref_date)
 
+    # Atualização de seleção
     if request.method == "POST":
         inscricao_id = request.POST.get('inscricao_id')
         foi_selecionado = 'foi_selecionado' in request.POST
 
         try:
-            inscricao = participantes.get(id=inscricao_id)  # garante que seja do evento
+            inscricao = participantes.get(id=inscricao_id)
         except Inscricao.DoesNotExist:
             return HttpResponse("Inscrição não encontrada", status=404)
 
@@ -601,10 +596,9 @@ def evento_participantes(request, evento_id):
         'evento': evento,
         'participantes': participantes,
         'valor_inscricao': evento.valor_inscricao,
-        'total_participantes': total_participantes,  # Adiciona ao contexto
+        'total_participantes': total_participantes,
     }
     return render(request, 'inscricoes/evento_participantes.html', context)
-
 
 
 def inscricao_evento_publico(request, slug):
