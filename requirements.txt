@@ -15,6 +15,7 @@ cssselect2==0.8.0
 cycler==0.12.1
 defusedxml==0.7.1
 dj-database-url==2.3.0
+django-extensions
 Django==5.2.3
 django-cloudinary-storage==0.3.0
 django-nested-admin==4.1.1
