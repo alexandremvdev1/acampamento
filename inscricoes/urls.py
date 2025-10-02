@@ -44,6 +44,7 @@ urlpatterns = [
 
     path("inscricao/<int:pk>/ficha-geral/",views.inscricao_ficha_geral,name="inscricao_ficha_geral",),
 
+        
     path('eventos/novo/', views.evento_novo, name='evento_novo'),
     path('eventos/', views.eventos_listar, name='eventos_listar'),
     path('inscricoes/', views.inscricoes_listar, name='inscricoes_listar'),

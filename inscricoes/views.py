@@ -14,7 +14,7 @@ from django.http import HttpResponseForbidden
 from django.views.decorators.cache import never_cache
 from typing import Optional
 from django.core.exceptions import FieldError
-
+from .forms import FormBasicoPagamentoPublico
 # ——— Django
 from django.conf import settings
 from django.contrib import messages
@@ -880,15 +880,9 @@ def inscricao_inicial(request, slug):
     politica = PoliticaPrivacidade.objects.first()
     hoje = dj_tz.localdate()
 
-    # Usa o tipo efetivo (pode "virar" casais quando servos vinculado a casais)
+    # Usa o tipo efetivo (pode “virar” casais quando servos vinculado a casais)
     tipo_eff = _tipo_formulario_evento(evento)
     is_casais = (tipo_eff == 'casais')
-
-    # 🚨 Para 'casais' (inclusive servos->casais) → manda direto pro form de casais
-    if is_casais:
-        # Garante inscrição do participante antes: fluxo original já faz isso na primeira etapa,
-        # então aqui só redirecionamos caso a página específica de casais exista.
-        return redirect('inscricoes:formulario_casais', evento_id=evento.id)
 
     # Fora do período?
     if hoje < evento.inicio_inscricoes or hoje > evento.fim_inscricoes:
@@ -896,6 +890,114 @@ def inscricao_inicial(request, slug):
             'evento': evento,
             'politica': politica
         })
+
+    # ===================== FLUXO "PAGAMENTO" ===================== #
+    if (tipo_eff or '').lower() == 'pagamento':
+        form = FormBasicoPagamentoPublico(request.POST or None)
+
+        if request.method == 'POST' and form.is_valid():
+            # Participante 1
+            nome1  = (form.cleaned_data.get('nome') or '').strip()
+            cpf1   = _digits(form.cleaned_data.get('cpf') or request.POST.get('cpf') or '')
+            # Participante 2 (opcional)
+            nome2  = (form.cleaned_data.get('nome_segundo') or '').strip()
+            cpf2   = _digits(form.cleaned_data.get('cpf_segundo') or request.POST.get('cpf_segundo') or '')
+            # Comum
+            cidade = (form.cleaned_data.get('cidade') or '').strip()
+
+            erros = []
+            if len(cpf1) != 11:
+                erros.append("Informe um CPF válido (11 dígitos) para o 1º participante.")
+            if cpf2 and len(cpf2) != 11:
+                erros.append("Informe um CPF válido (11 dígitos) para o 2º participante.")
+            if erros:
+                for e in erros:
+                    messages.error(request, e)
+                return render(request, 'inscricoes/form_basico_pagamento.html', {
+                    'form': form, 'evento': evento, 'politica': politica
+                })
+
+            # -------- Participante 1 --------
+            p1, _ = Participante.objects.get_or_create(
+                cpf=cpf1,
+                defaults={'nome': nome1, 'cidade': cidade}
+            )
+            mudou1 = False
+            if nome1 and (p1.nome or '').strip() != nome1:
+                p1.nome = nome1; mudou1 = True
+            if cidade and (getattr(p1, 'cidade', '') or '').strip() != cidade:
+                p1.cidade = cidade; mudou1 = True
+            if mudou1:
+                p1.save()
+
+            i1, _ = Inscricao.objects.get_or_create(
+                participante=p1, evento=evento,
+                defaults={'paroquia': evento.paroquia}
+            )
+            if not i1.foi_selecionado:
+                i1.foi_selecionado = True
+                i1.save(update_fields=['foi_selecionado'])
+
+            Pagamento.objects.update_or_create(
+                inscricao=i1,
+                defaults={
+                    'valor': float(evento.valor_inscricao or 0),
+                    'status': Pagamento.StatusPagamento.PENDENTE,
+                    'metodo': Pagamento.MetodoPagamento.PIX,  # ajuste se necessário
+                }
+            )
+
+            # -------- Participante 2 (opcional) --------
+            if cpf2:
+                p2, created2 = Participante.objects.get_or_create(
+                    cpf=cpf2,
+                    defaults={'nome': nome2, 'cidade': cidade}
+                )
+                mudou2 = False
+                if nome2 and (p2.nome or '').strip() != nome2:
+                    p2.nome = nome2; mudou2 = True
+                if cidade and (getattr(p2, 'cidade', '') or '').strip() != cidade:
+                    p2.cidade = cidade; mudou2 = True
+                if mudou2:
+                    p2.save()
+
+                i2, _ = Inscricao.objects.get_or_create(
+                    participante=p2, evento=evento,
+                    defaults={'paroquia': evento.paroquia}
+                )
+                if not i2.foi_selecionado:
+                    i2.foi_selecionado = True
+                    i2.save(update_fields=['foi_selecionado'])
+
+                Pagamento.objects.update_or_create(
+                    inscricao=i2,
+                    defaults={
+                        'valor': float(evento.valor_inscricao or 0),
+                        'status': Pagamento.StatusPagamento.PENDENTE,
+                        'metodo': Pagamento.MetodoPagamento.PIX,
+                    }
+                )
+
+                # Parear se o modelo tiver o campo
+                if hasattr(i1, 'inscricao_pareada') and not i1.inscricao_pareada_id:
+                    i1.inscricao_pareada = i2
+                    i1.save(update_fields=['inscricao_pareada'])
+                if hasattr(i2, 'inscricao_pareada') and not i2.inscricao_pareada_id:
+                    i2.inscricao_pareada = i1
+                    i2.save(update_fields=['inscricao_pareada'])
+
+            messages.success(request, "Inscrição(ões) criada(s) e pagamento(s) marcado(s) como pendente(s).")
+            return redirect('inscricoes:ver_inscricao', pk=i1.id)
+
+        # GET ou inválido
+        return render(request, 'inscricoes/form_basico_pagamento.html', {
+            'form': form, 'evento': evento, 'politica': politica
+        })
+    # =================== FIM FLUXO "PAGAMENTO" =================== #
+
+    # Para 'casais' (inclusive servos->casais)
+    if is_casais:
+        return redirect('inscricoes:formulario_casais', evento_id=evento.id)
 
     # --- Retomar endereço ---
     if request.GET.get("retomar") == "1" and request.GET.get("pid"):
@@ -932,9 +1034,8 @@ def inscricao_inicial(request, slug):
             'is_casais': is_casais,
         })
 
-    # --- Etapa inicial (CPF, nome, telefone, email) ---
+    # --- Etapa inicial padrão ---
     inicial_form = ParticipanteInicialForm(request.POST or None)
-
     if request.method == 'POST' and inicial_form.is_valid():
         cpf = _digits(inicial_form.cleaned_data['cpf'])
         participante, created = Participante.objects.get_or_create(
@@ -954,9 +1055,7 @@ def inscricao_inicial(request, slug):
         request.session['participante_id'] = participante.id
 
         inscricao, _ = Inscricao.objects.get_or_create(
-            participante=participante,
-            evento=evento,
-            paroquia=evento.paroquia
+            participante=participante, evento=evento, paroquia=evento.paroquia
         )
 
         prog = _proxima_etapa_forms(inscricao)
@@ -971,7 +1070,6 @@ def inscricao_inicial(request, slug):
         'politica': politica,
         'is_casais': is_casais,
     })
-
 
 # inscricoes/views_ajax.py  (ou no seu views.py, se preferir)
 import re
@@ -3968,3 +4066,5 @@ def _tipo_formulario_evento(evento) -> str:
         if rel and (getattr(rel, "tipo", "") or "").lower() == "casais":
             return "casais"
     return tipo
+
+

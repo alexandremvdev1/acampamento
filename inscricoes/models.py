@@ -156,6 +156,7 @@ class EventoAcampamento(models.Model):
         ('casais',  'Encontro de Casais'),
         ('evento',  'Evento'),
         ('retiro',  'Retiro'),
+        ('pagamento', 'Pagamento'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -404,6 +405,13 @@ class Inscricao(models.Model):
         local = getattr(ev, "local", None) or getattr(ev, "local_evento", None) or "Local a definir"
         return data_str, local
 
+    def _telefone_e164(self) -> str | None:
+        try:
+            tel = getattr(self.participante, "telefone", None)
+            return normalizar_e164_br(tel) if tel else None
+        except Exception:
+            return None
+
     # ---------------- BaseInscricao por tipo ----------------
     def _get_baseinscricao_model(self):
         tipo = (self.evento.tipo or "").strip().lower()
@@ -532,7 +540,7 @@ class Inscricao(models.Model):
         self.set_pareada(alvo)
         return True
 
-    # =============== Pagamento espelhado para casal ===============
+    # =============== NOVO: pagamento espelhado para casal ===============
     def _propagar_pagamento_para_par(self, confirmado: bool):
         """
         Se evento for CASAIS, sincroniza o status de pagamento com a inscrição pareada
@@ -554,59 +562,53 @@ class Inscricao(models.Model):
                 inscricao_concluida=confirmado,
             )
 
-    # ---------------- E-mails (apenas) ----------------
-    def enviar_email_recebida(self):
-        """Inscrição recebida (estilo católico/campista)."""
-        if not getattr(self.participante, "email", None):
+    # ---------------- E-mails / WhatsApp (mantidos) ----------------
+    def enviar_email_selecao(self):
+        if not self.participante.email:
             return
-
         nome_app = self._site_name()
-        data_envio = timezone.localtime(self.data_inscricao).strftime("%d/%m/%Y %H:%M")
-        data_evento, _local_evento = self._evento_data_local()
-
-        assunto = f"🙏 Inscrição recebida — {self.evento.nome} ({data_evento})"
-
+        data_evento, local_evento = self._evento_data_local()
+        portal_url = self.portal_participante_url
+        link_inscricao = self.inscricao_url
+        assunto = "🎉 Parabéns! Você foi selecionado para participar do evento"
         texto = (
-            f"Olá {self.participante.nome}!\n\n"
-            f"Recebemos sua inscrição para o {self.evento.nome}.\n"
-            "Nossa equipe vai analisar e avisaremos os(as) selecionados(as) por e-mail.\n\n"
-            "Resumo do envio:\n"
-            f"📅 Data do envio: {data_envio}\n"
-            f"📍 Evento: {self.evento.nome}\n"
-            f"🗓 Data do evento: {data_evento}\n\n"
-            "Permaneçamos unidos em oração. Deus abençoe!\n"
-            f"Equipe {nome_app}\n"
+            f"Olá {self.participante.nome},\n\n"
+            f"Temos uma ótima notícia: você foi selecionado(a) para participar do {self.evento.nome}!\n"
+            "Estamos muito felizes em tê-lo(a) conosco nesta experiência especial.\n\n"
+            "Detalhes do evento:\n"
+            f"📅 Data: {data_evento}\n"
+            f"📍 Local: {local_evento}\n\n"
+            "Para garantir sua vaga, acesse o Portal do Participante, informe seu CPF e realize o pagamento:\n"
+            f"{portal_url}\n\n"
+            "(Se preferir, você também pode acessar sua inscrição diretamente:\n"
+            f"{link_inscricao})\n\n"
+            "Nos vemos no evento!\n"
+            f"Abraços,\nEquipe {nome_app}"
         )
-
         html = f"""
-        <html><body style="margin:0;font-family:Arial,Helvetica,sans-serif;background:#f7f7f9;color:#222;">
-          <div style="max-width:640px;margin:0 auto;">
-            <div style="background:#1b2a4a;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0;">
-              <h1 style="margin:0;font-size:22px;">Inscrição recebida</h1>
-              <p style="margin:6px 0 0;font-size:14px;opacity:.9;">{self.evento.nome}</p>
-            </div>
-            <div style="background:#fff;padding:22px;border:1px solid #e9e9f1;border-top:none;border-radius:0 0 12px 12px;">
-              <p>Olá, <strong>{self.participante.nome}</strong>! ✨</p>
-              <p>Recebemos sua <strong>inscrição</strong> para o <strong>{self.evento.nome}</strong>.
-                 Em breve avisaremos os(as) selecionados(as).</p>
-              <div style="background:#f3f6ff;border-left:4px solid #3c66ff;padding:12px 14px;border-radius:8px;margin:16px 0;">
-                <p style="margin:0;"><strong>Resumo do envio</strong></p>
-                <p style="margin:6px 0 0;">📅 {data_envio}</p>
-              </div>
-              <p style="margin:14px 0;">
-                Você pode revisar sua inscrição aqui:
-                <a href="{self.inscricao_url}" style="color:#1b2a4a;font-weight:bold;">ver minha inscrição</a>.
-              </p>
-              <hr style="border:none;border-top:1px solid #eee;margin:18px 0;">
-              <p style="font-size:13px;opacity:.8;">
-                “Corações ao alto!” — Que o Senhor conduza nossos passos.<br>
-                <strong>{nome_app}</strong>
-              </p>
-            </div>
+        <html><body style="font-family:Arial,sans-serif;color:#0f172a">
+          <p>Olá <strong>{self.participante.nome}</strong>,</p>
+          <p>Temos uma ótima notícia: você foi selecionado(a) para participar do
+             <strong>{self.evento.nome}</strong>!</p>
+          <p>Estamos muito felizes em tê-lo(a) conosco nesta experiência especial.</p>
+          <p><strong>Detalhes do evento:</strong><br>
+          📅 Data: {data_evento}<br>
+          📍 Local: {local_evento}</p>
+          <div style="margin:22px 0;">
+            <a href="{portal_url}"
+               style="display:inline-block;background:#0ea5e9;color:#fff;
+                      padding:12px 20px;border-radius:8px;text-decoration:none;
+                      font-weight:700">
+              Abrir Portal do Participante
+            </a>
           </div>
+          <p style="font-size:13px;color:#475569">
+            Dica: se preferir, acesse sua inscrição diretamente:
+            <a href="{link_inscricao}" style="color:#0ea5e9;text-decoration:none">{link_inscricao}</a>
+          </p>
+          <p>Nos vemos no evento!<br/>Abraços,<br/>Equipe {nome_app}</p>
         </body></html>
         """
-
         msg = EmailMultiAlternatives(assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email])
         msg.attach_alternative(html, "text/html")
         try:
@@ -615,52 +617,35 @@ class Inscricao(models.Model):
             pass
 
     def enviar_email_pagamento_confirmado(self):
-        """Pagamento confirmado (estilo católico/campista)."""
-        if not getattr(self.participante, "email", None):
+        if not self.participante.email:
             return
-
         data_evento, local_evento = self._evento_data_local()
-        assunto = f"✝️ Pagamento confirmado — {self.evento.nome}"
-
+        assunto = f"✅ Pagamento confirmado – {self.evento.nome}"
         texto = (
-            f"Olá {self.participante.nome}!\n\n"
+            f"Olá {self.participante.nome},\n\n"
             f"Recebemos a confirmação do seu pagamento para o {self.evento.nome}.\n"
-            "Sua vaga está garantida. Obrigado por colaborar com a missão!\n\n"
-            "Resumo:\n"
+            "Sua inscrição agora está totalmente garantida.\n\n"
+            "Resumo da inscrição:\n"
             f"👤 Participante: {self.participante.nome}\n"
-            f"📅 Data do evento: {data_evento}\n"
+            f"📅 Data: {data_evento}\n"
             f"📍 Local: {local_evento}\n\n"
-            "Prepare o coração, leve sua Bíblia e itens pessoais.\n"
-            f"Acompanhe detalhes no Portal do Participante: {self.portal_participante_url}\n\n"
-            "Até breve!\n"
-            f"Equipe {self._site_name()}\n"
+            "Agora é só se preparar e aguardar o grande dia!\n\n"
+            f"Até breve,\nEquipe {self._site_name()}"
         )
-
         html = f"""
-        <html><body style="margin:0;font-family:Arial,Helvetica,sans-serif;background:#fbfaff;color:#222;">
-          <div style="max-width:640px;margin:0 auto;">
-            <div style="background:#265d3a;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0;">
-              <h1 style="margin:0;font-size:22px;">Pagamento confirmado</h1>
-              <p style="margin:6px 0 0;font-size:14px;opacity:.9;">{self.evento.nome}</p>
-            </div>
-            <div style="background:#fff;padding:22px;border:1px solid #e9efe9;border-top:none;border-radius:0 0 12px 12px;">
-              <p>Olá, <strong>{self.participante.nome}</strong>! 💚</p>
-              <p>Recebemos seu pagamento. Sua <strong>vaga está garantida</strong>!</p>
-              <div style="background:#eef9f1;border-left:4px solid #46a86d;padding:12px 14px;border-radius:8px;margin:16px 0;">
-                <p style="margin:0;"><strong>Resumo</strong></p>
-                <p style="margin:6px 0 0;">📅 {data_evento} • 📍 {local_evento}</p>
-              </div>
-              <p>Veja documentos e orientações no Portal do Participante:</p>
-              <p style="margin:14px 0;">
-                <a href="{self.portal_participante_url}" style="background:#265d3a;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;">Abrir Portal</a>
-              </p>
-              <hr style="border:none;border-top:1px solid #e5eee7;margin:18px 0;">
-              <p style="font-size:13px;opacity:.8;">“Fazei tudo o que Ele vos disser” (Jo 2,5).</p>
-            </div>
-          </div>
+        <html><body style="font-family:Arial,sans-serif;color:#0f172a">
+          <p>Olá <strong>{self.participante.nome}</strong>,</p>
+          <p>Recebemos a confirmação do seu pagamento para o
+             <strong>{self.evento.nome}</strong>.</p>
+          <p>Sua inscrição agora está totalmente garantida.</p>
+          <p><strong>Resumo da inscrição:</strong><br>
+          👤 Participante: {self.participante.nome}<br>
+          📅 Data: {data_evento}<br>
+          📍 Local: {local_evento}</p>
+          <p>Agora é só se preparar e aguardar o grande dia!</p>
+          <p>Até breve,<br/>Equipe {self._site_name()}</p>
         </body></html>
         """
-
         msg = EmailMultiAlternatives(assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email])
         msg.attach_alternative(html, "text/html")
         try:
@@ -668,60 +653,159 @@ class Inscricao(models.Model):
         except Exception:
             pass
 
-    def enviar_email_selecao(self):
-        """Selecionado(a) (estilo católico/campista)."""
-        if not getattr(self.participante, "email", None):
+    def enviar_email_recebida(self):
+        if not self.participante.email:
             return
-
         nome_app = self._site_name()
-        data_evento, local_evento = self._evento_data_local()
-
-        assunto = f"🎉 Você foi selecionado(a)! — {self.evento.nome}"
-
+        data_envio = timezone.localtime(self.data_inscricao).strftime("%d/%m/%Y %H:%M")
+        assunto = f"📩 Inscrição recebida – {self.evento.nome}"
         texto = (
-            f"Querido(a) {self.participante.nome},\n\n"
-            "Com grande alegria, comunicamos que você foi selecionado(a) para participar deste encontro!\n\n"
-            "Informações:\n"
-            f"🗓 Data: {data_evento}\n"
-            f"📍 Local: {local_evento}\n\n"
-            f"Confirme sua presença e acompanhe orientações no Portal: {self.portal_participante_url}\n\n"
-            "“Vinde a mim, vós todos que estais cansados…” (Mt 11,28).\n"
-            f"Conte com nossas orações.\nEquipe {nome_app}\n"
+            f"Olá {self.participante.nome},\n\n"
+            f"Recebemos sua inscrição para o {self.evento.nome}.\n"
+            "Nossa equipe vai analisar e, em breve, será realizado o sorteio dos participantes.\n"
+            "Você receberá um e-mail caso seja selecionado(a).\n\n"
+            "Resumo do envio:\n"
+            f"📅 Data do envio: {data_envio}\n"
+            f"📍 Evento: {self.evento.nome}\n\n"
+            "Fique de olho no seu e-mail para os próximos passos.\n\n"
+            f"Atenciosamente,\nEquipe {nome_app}"
         )
-
         html = f"""
-        <html><body style="margin:0;font-family:Arial,Helvetica,sans-serif;background:#fffdfa;color:#222;">
-          <div style="max-width:640px;margin:0 auto;">
-            <div style="background:#7a3e1d;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0;background-image:linear-gradient(135deg,#7a3e1d,#a15a31);">
-              <h1 style="margin:0;font-size:22px;">Você foi selecionado(a)!</h1>
-              <p style="margin:6px 0 0;font-size:14px;opacity:.9;">{self.evento.nome}</p>
-            </div>
-            <div style="background:#fff;padding:22px;border:1px solid #f0e6df;border-top:none;border-radius:0 0 12px 12px;">
-              <p>Querido(a) <strong>{self.participante.nome}</strong>,</p>
-              <p>Com grande alegria comunicamos que você foi <strong>selecionado(a)</strong> para participar do evento!</p>
-              <div style="background:#fff4e8;border-left:4px solid #f5a25f;padding:12px 14px;border-radius:8px;margin:16px 0;">
-                <p style="margin:0;"><strong>Informações importantes</strong></p>
-                <p style="margin:6px 0 0;">🗓 {data_evento} • 📍 {local_evento}</p>
-              </div>
-              <p style="margin:14px 0;">
-                <a href="{self.portal_participante_url}" style="background:#7a3e1d;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;display:inline-block;">Confirmar presença / Ver Portal</a>
-              </p>
-              <hr style="border:none;border-top:1px solid #f2e9e2;margin:18px 0;">
-              <p style="font-size:13px;opacity:.85;">
-                “Vinde a mim, vós todos que estais cansados…” (Mt 11,28).<br>
-                <strong>{nome_app}</strong>
-              </p>
-            </div>
-          </div>
+        <html><body style="font-family:Arial,sans-serif;color:#0f172a">
+          <p>Olá <strong>{self.participante.nome}</strong>,</p>
+          <p>Recebemos sua inscrição para o <strong>{self.evento.nome}</strong>.</p>
+          <p>Nossa equipe vai analisar e, em breve, será realizado o sorteio dos participantes.
+             Você receberá um e-mail caso seja selecionado(a).</p>
+          <p><strong>Resumo do envio:</strong><br>
+          📅 Data do envio: {data_envio}<br>
+          📍 Evento: {self.evento.nome}</p>
+          <p>Fique de olho no seu e-mail para os próximos passos.</p>
+          <p>Atenciosamente,<br/>Equipe {nome_app}</p>
         </body></html>
         """
-
         msg = EmailMultiAlternatives(assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email])
         msg.attach_alternative(html, "text/html")
         try:
             msg.send()
         except Exception:
             pass
+
+    # ---------------- WhatsApp (mantido) ----------------
+    def _whatsapp_disponivel(self) -> bool:
+        return bool(getattr(settings, "USE_WHATSAPP", False) and (enviar_inscricao_recebida or send_template))
+
+    def enviar_whatsapp_selecao(self):
+        if not self._whatsapp_disponivel():
+            return
+        to = self._telefone_e164()
+        if not to:
+            return
+        if enviar_selecionado_info:
+            try:
+                enviar_selecionado_info(
+                    telefone_br=to,
+                    nome=self.participante.nome,
+                    evento=self.evento.nome,
+                    url_param=None,
+                )
+                return
+            except Exception:
+                pass
+        if send_template:
+            try:
+                components = [{
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": self.participante.nome},
+                        {"type": "text", "text": self.evento.nome},
+                        {"type": "text", "text": self.portal_participante_url},
+                    ],
+                }]
+                send_template(to, "selecao_pagamento_util_v2", components=components)
+                return
+            except Exception:
+                pass
+        if send_text:
+            msg = (
+                f"🎉 Olá {self.participante.nome}! Você foi selecionado(a) para o {self.evento.nome}.\n"
+                f"Finalize o pagamento no Portal do Participante: {self.portal_participante_url}"
+            )
+            try:
+                send_text(to, msg)
+            except Exception:
+                pass
+
+    def enviar_whatsapp_pagamento_confirmado(self):
+        if not self._whatsapp_disponivel():
+            return
+        to = self._telefone_e164()
+        if not to:
+            return
+        try:
+            if enviar_pagamento_recebido:
+                enviar_pagamento_recebido(to, self.participante.nome, self.evento.nome)
+                return
+        except Exception:
+            pass
+        if send_template:
+            try:
+                components = [{
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": self.participante.nome},
+                        {"type": "text", "text": self.evento.nome},
+                    ],
+                }]
+                send_template(to, "pagamento_confirmado_util_v2", components=components)
+                return
+            except Exception:
+                pass
+        if send_text:
+            msg = (
+                f"✅ Pagamento confirmado, {self.participante.nome}!\n"
+                f"Sua inscrição para {self.evento.nome} está garantida. Nos vemos lá!"
+            )
+            try:
+                send_text(to, msg)
+            except Exception:
+                pass
+
+    def enviar_whatsapp_recebida(self):
+        if not self._whatsapp_disponivel():
+            return
+        to = self._telefone_e164()
+        if not to:
+            return
+        data_envio = timezone.localtime(self.data_inscricao).strftime("%d/%m/%Y %H:%M")
+        try:
+            if enviar_inscricao_recebida:
+                enviar_inscricao_recebida(to, self.participante.nome, self.evento.nome, data_envio)
+                return
+        except Exception:
+            pass
+        if send_template:
+            try:
+                components = [{
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": self.participante.nome},
+                        {"type": "text", "text": self.evento.nome},
+                        {"type": "text", "text": data_envio},
+                    ],
+                }]
+                send_template(to, "inscricao_recebida_v2", components=components)
+                return
+            except Exception:
+                pass
+        if send_text:
+            msg = (
+                f"📩 Oi {self.participante.nome}! Recebemos sua inscrição para {self.evento.nome}.\n"
+                f"Data do envio: {data_envio}. Avisaremos se for selecionado(a)."
+            )
+            try:
+                send_text(to, msg)
+            except Exception:
+                pass
 
     # ---------------- Disparos automáticos ----------------
     def save(self, *args, **kwargs):
@@ -733,7 +817,7 @@ class Inscricao(models.Model):
         enviar_selecao   = False
         enviar_pagto_ok  = False
         enviar_recebida  = False
-        mudou_pagto      = False  # detecta mudança no pagamento
+        mudou_pagto      = False  # << NOVO
 
         if self.pk:
             antigo = Inscricao.objects.get(pk=self.pk)
@@ -741,6 +825,7 @@ class Inscricao(models.Model):
             if not antigo.foi_selecionado and self.foi_selecionado:
                 enviar_selecao = True
 
+            # << NOVO: detecta mudança no pagamento (tanto true quanto false)
             mudou_pagto = (antigo.pagamento_confirmado != self.pagamento_confirmado)
 
             if not antigo.pagamento_confirmado and self.pagamento_confirmado:
@@ -774,22 +859,25 @@ class Inscricao(models.Model):
                 par.foi_selecionado = True
                 par.save()  # dispara notificações do par também
 
-        # Propaga pagamento ao cônjuge se mudou (pago/desfeito) e for CASAIS
+        # 🔁 NOVO: Propaga pagamento ao cônjuge se mudou (pago/desfeito) e for CASAIS
         try:
             if (self.evento.tipo or '').lower() == 'casais' and mudou_pagto:
                 self._propagar_pagamento_para_par(self.pagamento_confirmado)
         except Exception:
             pass
 
-        # Disparos de e-mail (somente e-mail — WhatsApp removido)
+        # Disparos
         if enviar_selecao:
             self.enviar_email_selecao()
+            self.enviar_whatsapp_selecao()
 
         if enviar_pagto_ok:
             self.enviar_email_pagamento_confirmado()
+            self.enviar_whatsapp_pagamento_confirmado()
 
         if enviar_recebida:
             self.enviar_email_recebida()
+            self.enviar_whatsapp_recebida()
 
 
 @receiver(post_save, sender=Inscricao)

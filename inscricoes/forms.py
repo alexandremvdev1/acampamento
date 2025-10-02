@@ -1073,3 +1073,44 @@ class InscricaoCasaisForm(forms.ModelForm):
         self.fields["tempo_casado_uniao"].label = "Tempo de união (anos/meses)"
         self.fields["foto_casal"].label = "Foto do casal"
 
+from django.core.exceptions import ValidationError
+
+class FormBasicoPagamentoPublico(forms.Form):
+    # Participante 1
+    nome = forms.CharField(label="Nome completo (1º participante)", max_length=150)
+    cpf = forms.CharField(label="CPF do 1º participante", max_length=18)  # aceita máscara
+    # Participante 2 (opcional, mas se informar CPF precisa ter nome, e vice-versa)
+    nome_segundo = forms.CharField(
+        label="Nome completo (2º participante - opcional)",
+        max_length=150,
+        required=False
+    )
+    cpf_segundo = forms.CharField(
+        label="CPF do 2º participante (opcional)",
+        max_length=18,
+        required=False
+    )
+    # Comum
+    cidade = forms.CharField(label="Cidade", max_length=120, required=False)
+
+    def clean_nome(self):
+        return (self.cleaned_data.get("nome") or "").strip()
+
+    def clean_nome_segundo(self):
+        return (self.cleaned_data.get("nome_segundo") or "").strip()
+
+    def clean_cidade(self):
+        return (self.cleaned_data.get("cidade") or "").strip()
+
+    def clean(self):
+        data = super().clean()
+        nome2 = (data.get("nome_segundo") or "").strip()
+        cpf2 = (data.get("cpf_segundo") or "").strip()
+
+        # Se informou CPF2, exige nome2; se informou nome2, exige CPF2
+        if cpf2 and not nome2:
+            raise ValidationError("Informe o nome do 2º participante.")
+        if nome2 and not cpf2:
+            raise ValidationError("Informe o CPF do 2º participante.")
+
+        return data
