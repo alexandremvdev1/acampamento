@@ -300,45 +300,71 @@
         {% csrf_token %}
         {{ form.non_field_errors }}
 
-        <label for="id_data_nascimento">Data de Nascimento:</label>
-        <div class="date input-group date" data-provide="datepicker">
-            {{ form.data_nascimento.errors }}
-            <input type="text" id="id_data_nascimento" name="{{ form.data_nascimento.name }}"
-                value="{{ form.data_nascimento.value|date:'d/m/Y' }}" class="form-control" placeholder="DD/MM/AAAA">
-            <div class="input-group-addon">
-                <i class="fa fa-calendar"></i>
-            </div>
-        </div>
+<label for="id_data_nascimento">Data de Nascimento:</label>
+<div class="date input-group date" data-provide="datepicker">
+    {{ form.data_nascimento.errors }}
+    <input type="text" id="id_data_nascimento" name="{{ form.data_nascimento.name }}"
+        value="{{ form.data_nascimento.value|date:'d/m/Y' }}" class="form-control" placeholder="DD/MM/AAAA">
+    <div class="input-group-addon">
+        <i class="fa fa-calendar"></i>
+    </div>
+</div>
 
-        <label for="id_estado_civil">Estado Civil:</label>
-        {{ form.estado_civil.errors }}
-        {{ form.estado_civil }}
+<!-- Pergunta: Já é campista? -->
+<label for="id_ja_e_campista">Você é campista?</label>
+{{ form.ja_e_campista.errors }}
+{{ form.ja_e_campista }}
 
-        <div id="campo_nome_conjuge" class="campo-condicional">
-        <label for="{{ conj_form.nome.id_for_label }}">Nome do Cônjuge:</label>
-            {{ conj_form.nome.errors }}
-            {{ conj_form.nome }}
-        </div>
+<div id="campo_tema_acampamento" class="campo-condicional">
+    <label for="id_tema_acampamento">Qual tema do Acampamento?</label>
+    {{ form.tema_acampamento.errors }}
+    {{ form.tema_acampamento }}
+</div>
 
-        <div id="campo_conjuge_inscrito" class="campo-condicional">
-        <label for="{{ conj_form.conjuge_inscrito.id_for_label }}">Cônjuge Inscrito?</label>
-            {{ conj_form.conjuge_inscrito.errors }}
-        <select name="{{ conj_form.conjuge_inscrito.name }}" id="{{ conj_form.conjuge_inscrito.id_for_label }}">
-        <option value="">---------</option>
-        <option value="sim" {% if conj_form.conjuge_inscrito.value == "sim" %}selected{% endif %}>Sim</option>
-        <option value="nao" {% if conj_form.conjuge_inscrito.value == "nao" %}selected{% endif %}>Não</option>
-        </select>
-            </div>
+<label for="id_estado_civil">Estado Civil:</label>
+{{ form.estado_civil.errors }}
+{{ form.estado_civil }}
 
-        <div id="campo_ja_e_campista" class="campo-condicional">
-        <label for="{{ conj_form.ja_e_campista.id_for_label }}">Conjuge já é Campista?</label>
-            {{ conj_form.ja_e_campista.errors }}
-        <select name="{{ conj_form.ja_e_campista.name }}" id="{{ conj_form.ja_e_campista.id_for_label }}">
-        <option value="">---------</option>
-        <option value="sim" {% if conj_form.ja_e_campista.value == "sim" %}selected{% endif %}>Sim</option>
-        <option value="nao" {% if conj_form.ja_e_campista.value == "nao" %}selected{% endif %}>Não</option>
-        </select>
-        </div>
+<!-- Campos exibidos apenas se casado/união -->
+<div id="campo_nome_conjuge" class="campo-condicional">
+    <label for="{{ conj_form.nome.id_for_label }}">Nome do Cônjuge:</label>
+    {{ conj_form.nome.errors }}
+    {{ conj_form.nome }}
+</div>
+
+<div id="campo_conjuge_inscrito" class="campo-condicional">
+    <label for="{{ conj_form.conjuge_inscrito.id_for_label }}">Cônjuge Inscrito?</label>
+    {{ conj_form.conjuge_inscrito.errors }}
+    {{ conj_form.conjuge_inscrito }}
+</div>
+
+<div id="campo_ja_e_campista" class="campo-condicional">
+    <label for="id_conj_ja_e_campista">Cônjuge já é Campista?</label>
+    {{ conj_form.ja_e_campista.errors }}
+    {{ conj_form.ja_e_campista }}
+</div>
+
+<div id="campo_tema_acampamento_conjuge" class="campo-condicional">
+    <label for="{{ conj_form.acampamento.id_for_label }}">
+        Qual tema do Acampamento (cônjuge)?
+    </label>
+    {{ conj_form.acampamento.errors }}
+    {{ conj_form.acampamento }}
+</div>
+
+
+<div id="campo_tempo_uniao" class="campo-condicional">
+    <label for="id_tempo_casado_uniao">Quanto tempo de união?</label>
+    {{ form.tempo_casado_uniao.errors }}
+    {{ form.tempo_casado_uniao }}
+</div>
+
+<div id="campo_casado_igreja" class="campo-condicional">
+    <label for="id_casado_na_igreja">Casado no religioso?</label>
+    {{ form.casado_na_igreja.errors }}
+    {{ form.casado_na_igreja }}
+</div>
+
 
         <label for="id_tamanho_camisa">Tamanho da Camisa:</label>
         {{ form.tamanho_camisa.errors }}
@@ -510,7 +536,7 @@ $(function() {
   }).mask("#id_data_nascimento");
 
   // —————————————
-  // Datepicker (calendário apenas ao clicar no ícone)
+  // Datepicker
   // —————————————
   $('.date').datepicker({
     format: 'dd/mm/yyyy',
@@ -519,28 +545,53 @@ $(function() {
     todayHighlight: true
   });
 
-  // Impede abertura automática no foco, mas permite digitar
   $('#id_data_nascimento').off('focus').on('focus', function(e) {
     e.stopImmediatePropagation();
   });
 
-  // Abre o datepicker ao clicar no ícone
   $('.date .input-group-addon').on('click', function() {
     $(this).siblings('input').datepicker('show');
   });
 
   // —————————————
-  // Campos condicionais de cônjuge
+  // Participante campista → mostra "Qual acampamento?"
+  // —————————————
+  function atualizarCampistaParticipante() {
+    var val = $('#id_ja_e_campista').val();
+    $('#campo_tema_acampamento').toggle(val === 'sim');
+  }
+  $('#id_ja_e_campista').on('change', atualizarCampistaParticipante);
+  atualizarCampistaParticipante();
+
+  // —————————————
+  // Estado civil + Cônjuge campista
   // —————————————
   function atualizarConjuge() {
     var est = $('#id_estado_civil').val();
-    $('.campo-condicional').toggle(est === 'casado' || est === 'uniao_estavel');
+    var mostrar = (est === 'casado' || est === 'uniao_estavel');
+
+    // Exibe campos básicos do cônjuge
+    $('#campo_nome_conjuge, #campo_conjuge_inscrito, #campo_ja_e_campista, #campo_tempo_uniao, #campo_casado_igreja')
+      .toggle(mostrar);
+
+    // Condicional: "Qual tema do acampamento (cônjuge)?"
+    var conjCampista = $('#id_conj_ja_e_campista').val();  // <-- CORRETO AGORA
+    if (mostrar && conjCampista === 'sim') {
+      $('#campo_tema_acampamento_conjuge').show();
+    } else {
+      $('#campo_tema_acampamento_conjuge').hide();
+    }
   }
+
+  // Atualiza quando mudar o estado civil ou se o cônjuge é campista
   $('#id_estado_civil').on('change', atualizarConjuge);
+  $('#id_conj_ja_e_campista').on('change', atualizarConjuge);
+
+  // Rodar ao carregar a página
   atualizarConjuge();
 
   // —————————————
-  // Modais WhatsApp e Política
+  // Modais
   // —————————————
   window.openModal = function(id) {
     $('#' + id).css('display','flex').attr('aria-hidden','false');
@@ -562,5 +613,7 @@ $(function() {
   });
 });
 </script>
+
+
 </body>
 </html>

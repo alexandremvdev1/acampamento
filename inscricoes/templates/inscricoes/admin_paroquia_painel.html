@@ -9,7 +9,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <style>
@@ -49,6 +48,32 @@
       background:#eef2f7; color:#334155;
     }
     .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
+
+    /* ===== Sidebar + nav ===== */
+    .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
+    .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+    .nav-list{ list-style:none; padding:6px; margin:0; }
+    .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none; }
+    .nav-list a:hover{ background:#eef2f7; }
+    .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
+
+    /* KPIs */
+    .kpi{ background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem; }
+    .kpi .small{ color:var(--muted); font-size:.8rem; }
+    .kpi .fs-4{ font-size:1.15rem !important; }
+    .kpi .fw-bold{ font-weight:700 !important; }
+
+    /* Pills (se quiser marcar estados) */
+    .pill{ display:inline-flex; align-items:center; gap:.35rem; padding:.15rem .55rem; font-size:.75rem;
+           border-radius:999px; border:1px solid #e5e7eb; background:#fff; color:var(--muted); }
+    .pill.success{ color:#065f46; border-color:#bbf7d0; background:#ecfdf5; }
+    .pill.warn{ color:#7c2d12; border-color:#fed7aa; background:#fff7ed; }
+    .pill.danger{ color:#7f1d1d; border-color:#fecaca; background:#fff1f2; }
+    .pill.info{ color:#1e3a8a; border-color:#bfdbfe; background:#eff6ff; }
+
+    /* Tabelas (se usar) */
+    .table{ font-size:.875rem; }
+    .table thead th{ font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:#64748b; background:#fff; }
   </style>
 </head>
 <body>
@@ -59,6 +84,8 @@
     <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
 
     <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
       <a class="btn btn-sm btn-light" href="/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
       <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
         {% csrf_token %}
@@ -69,243 +96,171 @@
 </nav>
 
 <main class="container py-3 py-lg-4">
+  <div class="row g-3">
 
-  {# ===== Paróquia INATIVA ===== #}
-  {% if paroquia.status == 'inativa' %}
-    <div class="card-clean p-4 mb-3 text-center">
-      <div class="fs-5 fw-semibold text-danger mb-2">
-        <i class="fa-solid fa-triangle-exclamation"></i> Esta paróquia está INATIVA.
-      </div>
-      <div class="text-muted-2 mb-3">Nenhum conteúdo do painel é exibido.</div>
-      {% if is_admin_geral %}
-        <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-outline-secondary btn-sm">
-          <i class="fa-solid fa-arrow-left"></i> Voltar para Paróquias
-        </a>
-      {% endif %}
-    </div>
-  {% else %}
+    <!-- ===== SIDEBAR (acessos/botões ficam aqui) ===== -->
+    <aside class="col-lg-3">
+      <div class="sidebar-card p-2">
+        <div class="nav-title">Navegação</div>
+        <ul class="nav-list">
+          <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">🏠 <span>Dashboard</span></a></li>
+          <li class="nav-item">
+          <a href="{% url 'inscricoes:admin_paroquia_eventos' paroquia.id %}">🗂️ <span>Eventos</span></a>
+          <li class="nav-item"><a href="{% url 'inscricoes:mp_config' %}">💳 <span>Pagamentos (MP)</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_create_admin' %}">👤 <span>Usuários da paróquia</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:repasse_lista_eventos' %}">💼 <span>Repasses</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:publicacoes_list' %}?paroquia={{ paroquia.id }}">📰 <span>Publicações</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" target="_blank" rel="noopener">🌐 <span>Portal do participante</span></a></li>
+        </ul>
 
-  <!-- HEADER -->
-  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-      <div class="d-flex align-items-center gap-2">
-        {% if paroquia.logo %}
-          <img class="avatar-logo" src="{{ paroquia.logo.url }}" alt="Logo {{ paroquia.nome }}">
-        {% else %}
-          <div class="list-ico"><i class="fa-solid fa-church"></i></div>
-        {% endif %}
-        <div>
-          <h1 class="h6 m-0">{{ paroquia.nome }}</h1>
-          <div class="small text-muted-2">Bem-vindo(a), {{ user.get_full_name|default:user.username }}.</div>
+        <div class="nav-title">Resumo</div>
+        <div class="row g-2 m-0">
+          <div class="col-6">
+            <div class="kpi">
+              <div class="small">Eventos abertos</div>
+              <div class="fs-4 fw-bold">{{ eventos_abertos|default:"0" }}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="kpi">
+              <div class="small">Inscrições</div>
+              <div class="fs-4 fw-bold">{{ total_inscricoes|default:"0" }}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="kpi">
+              <div class="small">Confirmadas</div>
+              <div class="fs-4 fw-bold">{{ total_inscricoes_confirmadas|default:"0" }}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="kpi">
+              <div class="small">Pendentes</div>
+              <div class="fs-4 fw-bold">{{ pendencias_contagem|default:"0" }}</div>
+            </div>
+          </div>
         </div>
       </div>
+    </aside>
 
-      <div class="d-flex gap-2">
-        {% if is_admin_geral %}
-          <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-outline-secondary btn-sm">
-            <i class="fa-solid fa-arrow-left"></i> Paróquias
-          </a>
-        {% endif %}
+    <!-- ===== CONTENT (apenas gráficos no dashboard) ===== -->
+    <section class="col-lg-9">
 
-        <!-- Vídeo do Evento (dropdown) -->
-        <div class="dropdown">
-          <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button"
-                  id="btnVideoEventos" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fa-solid fa-video"></i> Vídeo do Evento
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="btnVideoEventos">
-            {% if eventos %}
-              {% for e in eventos %}
-                <li>
-                  <a class="dropdown-item" href="{% url 'inscricoes:video_evento_form' slug=e.slug %}">
-                    {{ e.nome }}
-                  </a>
-                </li>
-              {% endfor %}
+      {% if paroquia.status == 'inativa' %}
+        <div class="card-clean p-4 mb-3 text-center">
+          <div class="fs-5 fw-semibold text-danger mb-2">
+            <i class="fa-solid fa-triangle-exclamation"></i> Esta paróquia está INATIVA.
+          </div>
+          <div class="text-muted-2 mb-3">Nenhum conteúdo do painel é exibido.</div>
+          {% if is_admin_geral %}
+            <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-outline-secondary btn-sm">
+              <i class="fa-solid fa-arrow-left"></i> Voltar para Paróquias
+            </a>
+          {% endif %}
+        </div>
+      {% else %}
+
+      <!-- HEADER (apenas identificação; sem botões de ação) -->
+      <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div class="d-flex align-items-center gap-2">
+            {% if paroquia.logo %}
+              <img class="avatar-logo" src="{{ paroquia.logo.url }}" alt="Logo {{ paroquia.nome }}">
             {% else %}
-              <li><span class="dropdown-item-text text-muted">Sem eventos</span></li>
+              <div class="list-ico"><i class="fa-solid fa-church"></i></div>
             {% endif %}
-          </ul>
+            <div>
+              <h1 class="h6 m-0">{{ paroquia.nome }}</h1>
+              <div class="small text-muted-2">Bem-vindo(a), {{ user.get_full_name|default:user.username }}.</div>
+            </div>
+          </div>
+          <!-- (sem botões; ações só na sidebar) -->
+          <div class="d-none"></div>
         </div>
-
-        <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-danger btn-sm">
-            <i class="fa-solid fa-right-from-bracket"></i> Sair
-          </button>
-        </form>
       </div>
-    </div>
+
+      <!-- ======== DASHBOARD: SOMENTE GRÁFICOS ======== -->
+      <section class="mb-3">
+        <h2 class="sec-title">Visão geral</h2>
+
+        <!-- Linha 1: KPIs já estão na sidebar; aqui vamos direto aos gráficos -->
+        <div class="row g-3">
+          <!-- Inscrições por dia (últimos 30 dias) -->
+          <div class="col-12 col-xl-6">
+            <div class="card-clean p-3 h-100">
+              <div class="h6 m-0 mb-2">Inscrições por dia (30d)</div>
+              <canvas id="chartInscricoesDia" height="170" aria-label="Inscrições por dia" role="img"></canvas>
+            </div>
+          </div>
+
+          <!-- Inscrições por evento (Top 5 abertos) -->
+          <div class="col-12 col-xl-6">
+            <div class="card-clean p-3 h-100">
+              <div class="h6 m-0 mb-2">Inscrições por evento (abertos)</div>
+              <canvas id="chartPorEvento" height="170" aria-label="Inscrições por evento aberto" role="img"></canvas>
+            </div>
+          </div>
+
+          <!-- Status de pagamento -->
+          <div class="col-12 col-xl-6">
+            <div class="card-clean p-3 h-100">
+              <div class="h6 m-0 mb-2">Status de pagamento</div>
+              <canvas id="chartPagamentos" height="170" aria-label="Status de pagamento" role="img"></canvas>
+            </div>
+          </div>
+
+          <!-- Conversão (inscritos x confirmados) -->
+          <div class="col-12 col-xl-6">
+            <div class="card-clean p-3 h-100">
+              <div class="h6 m-0 mb-2">Conversão (inscritos → confirmados)</div>
+              <canvas id="chartConversao" height="170" aria-label="Conversão" role="img"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Portal do Participante continua disponível (informativo) -->
+      <section class="mb-3" id="portal">
+        <h2 class="sec-title">Portal do Participante</h2>
+        <div class="card-clean p-3">
+          <div class="row g-3 align-items-center">
+            <div class="col-12 col-lg">
+              <div class="small text-muted-2 mb-1">Envie este link para o participante acessar com CPF e efetuar o pagamento:</div>
+              <div class="linkbox" id="portal-link">
+                <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" target="_blank" rel="noopener">
+                  {{ request.scheme }}://{{ request.get_host }}{% url 'inscricoes:minhas_inscricoes_por_cpf' %}
+                </a>
+              </div>
+            </div>
+            <div class="col-12 col-lg-auto d-flex gap-2 justify-content-end">
+              <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" class="btn btn-success btn-sm" target="_blank" rel="noopener">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir portal
+              </a>
+              <button class="btn btn-primary btn-sm" onclick="copyPortalLink(event)">
+                <i class="fa-solid fa-clipboard"></i> Copiar link
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {% endif %} {# fecha status != 'inativa' #}
+
+      <footer class="py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+          <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
+          <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+        </div>
+      </footer>
+    </section>
+
   </div>
-
-  <!-- AÇÕES RÁPIDAS -->
-  <section class="mb-3">
-    <h2 class="sec-title">Ações rápidas</h2>
-    <div class="row g-3">
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="card-clean p-3 h-100">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="h6 m-0">Novo Evento</div>
-            <div class="list-ico"><i class="fa-solid fa-calendar-plus"></i></div>
-          </div>
-          <div class="text-muted-2 mb-3">Crie um novo evento e configure inscrições, datas e políticas.</div>
-          <a href="{% url 'inscricoes:evento_novo' %}" class="btn btn-primary btn-sm">
-            <i class="fa-solid fa-plus"></i> Criar evento
-          </a>
-        </div>
-      </div>
-
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="card-clean p-3 h-100">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="h6 m-0">Pagamentos</div>
-            <div class="list-ico"><i class="fa-solid fa-credit-card"></i></div>
-          </div>
-          <div class="text-muted-2 mb-3">Configure as chaves do Mercado Pago para receber inscrições.</div>
-          <a href="{% url 'inscricoes:mp_config' %}" class="btn btn-info btn-sm text-white">
-            <i class="fa-solid fa-gear"></i> Configurar MP
-          </a>
-        </div>
-      </div>
-
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="card-clean p-3 h-100">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="h6 m-0">Usuários da Paróquia</div>
-            <div class="list-ico"><i class="fa-solid fa-user-shield"></i></div>
-          </div>
-          <div class="text-muted-2 mb-3">Cadastre um novo administrador vinculado a esta paróquia.</div>
-          <a href="{% url 'inscricoes:admin_paroquia_create_admin' %}" class="btn btn-primary btn-sm">
-            <i class="fa-solid fa-user-plus"></i> Novo Usuário
-          </a>
-        </div>
-      </div>
-
-{% if is_admin_geral %}
-<div class="col-12 col-md-6 col-xl-3">
-  <div class="card-clean p-3 h-100">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-      <div class="h6 m-0">Repasses</div>
-      <div class="list-ico"><i class="fa-solid fa-hand-holding-dollar"></i></div>
-    </div>
-    <div class="text-muted-2 mb-3">Consulte o valor a repassar ao sistema por evento.</div>
-    <a href="{% url 'inscricoes:repasse_lista_eventos' %}" class="btn btn-success btn-sm">
-      <i class="fa-solid fa-wallet"></i> Ver Repasses
-    </a>
-  </div>
-</div>
-{% endif %}
-
-
-      <!-- NOVO: Publicações -->
-      <div class="col-12 col-md-6 col-xl-3">
-        <div class="card-clean p-3 h-100">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <div class="h6 m-0">Publicações</div>
-            <div class="list-ico"><i class="fa-solid fa-bullhorn"></i></div>
-          </div>
-          <div class="text-muted-2 mb-3">Crie comunicados e notícias para o site.</div>
-          <a href="{% url 'inscricoes:publicacoes_list' %}?paroquia={{ paroquia.id }}" class="btn btn-primary btn-sm">
-            <i class="fa-solid fa-newspaper"></i> Gerenciar
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- PORTAL DO PARTICIPANTE -->
-  <section class="mb-3" id="portal">
-    <h2 class="sec-title">Portal do Participante</h2>
-    <div class="card-clean p-3">
-      <div class="row g-3 align-items-center">
-        <div class="col-12 col-lg">
-          <div class="small text-muted-2 mb-1">Envie este link para o participante acessar com CPF e efetuar o pagamento:</div>
-          <div class="linkbox" id="portal-link">
-            <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" target="_blank" rel="noopener">
-              {{ request.scheme }}://{{ request.get_host }}{% url 'inscricoes:minhas_inscricoes_por_cpf' %}
-            </a>
-          </div>
-        </div>
-        <div class="col-12 col-lg-auto d-flex gap-2 justify-content-end">
-          <a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" class="btn btn-success btn-sm" target="_blank" rel="noopener">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir portal
-          </a>
-          <button class="btn btn-primary btn-sm" onclick="copyPortalLink(event)">
-            <i class="fa-solid fa-clipboard"></i> Copiar link
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- EVENTOS RECENTES -->
-<!-- EVENTOS RECENTES -->
-<section class="mb-4" id="eventos">
-  <h2 class="sec-title">Eventos recentes</h2>
-
-  {% if eventos %}
-    <div class="row g-3">
-      {% for evento in eventos %}
-      <div class="col-12 col-md-6 col-xl-4">
-        <div class="card-clean p-3 h-100 d-flex flex-column position-relative">
-          
-          <!-- Botão Detalhes maior no canto superior direito -->
-          <a href="{% url 'inscricoes:evento_participantes' evento.id %}" 
-             class="btn btn-success btn-lg position-absolute top-0 end-0 m-2">
-            <i class="fa-solid fa-eye"></i> Detalhes
-          </a>
-
-          <div class="h6 m-0 mb-2 pe-5">{{ evento.nome }}</div>
-          <div class="small text-muted-2 mb-2">
-            Tipo: {{ evento.get_tipo_display|default:evento.tipo }}<br>
-            Início: {{ evento.data_inicio }}<br>
-            Inscrições: {{ evento.status_inscricao }}
-          </div>
-          <div class="mb-3">
-            <div class="small text-muted-2">Link público:</div>
-            <a href="{{ evento.link_inscricao }}" target="_blank" rel="noopener">
-              {{ request.scheme }}://{{ request.get_host }}{{ evento.link_inscricao }}
-            </a>
-          </div>
-          <div class="mt-auto d-flex flex-wrap gap-2">
-            <a href="{% url 'inscricoes:evento_editar' evento.id %}" class="btn btn-primary btn-sm">
-              <i class="fa-solid fa-pen"></i> Editar
-            </a>
-            <a href="{% url 'inscricoes:evento_deletar' evento.id %}" class="btn btn-danger btn-sm"
-               onclick="return confirm('Tem certeza que deseja excluir?');">
-               <i class="fa-solid fa-trash"></i> Excluir
-            </a>
-            <a href="{% url 'inscricoes:editar_politica_reembolso' evento.id %}" class="btn btn-dark btn-sm">
-              <i class="fa-solid fa-file-contract"></i> Política de Reembolso
-            </a>
-            <a href="{% url 'inscricoes:video_evento_form' slug=evento.slug %}" class="btn btn-secondary btn-sm">
-              <i class="fa-solid fa-video"></i> Vídeo
-            </a>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="card-clean p-3">
-      <div class="text-muted-2">Sem eventos cadastrados.</div>
-    </div>
-  {% endif %}
-</section>
-
-
-  {% endif %} {# fecha status != 'inativa' #}
-
-  <footer class="py-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-center">
-      <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
-      <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
-    </div>
-  </footer>
 </main>
 
-<!-- Bootstrap JS (necessário para o dropdown) -->
+<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Chart.js para os gráficos -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <script>
   // Copiar link do portal (com fallback)
@@ -329,6 +284,81 @@
     btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
     setTimeout(()=> btn.innerHTML = old, 1400);
   }
+
+  // ========= DADOS (passe pela view; abaixo há fallbacks de exemplo) =========
+  // labels e valores devem vir como JSON seguro (ex.: via json_script ou |safe)
+  const inscricoesPorDiaLabels = {{ inscricoes_dias_labels|default:'["D-6","D-5","D-4","D-3","D-2","D-1","Hoje"]'|safe }};
+  const inscricoesPorDiaValues = {{ inscricoes_dias_values|default:'[5,8,6,9,7,12,10]'|safe }};
+
+  const porEventoLabels = {{ inscricoes_por_evento_labels|default:'["Retiro Jovens","Encontro Casais","Curso Crisma","Acampamento"]'|safe }};
+  const porEventoValues = {{ inscricoes_por_evento_values|default:'[120, 95, 78, 66]'|safe }};
+
+  const pagamentosData = {{ pagamentos_status_values|default:'{"confirmadas":180,"pendentes":60,"canceladas":12}'|safe }};
+  const conversaoData = {{ conversao_values|default:'{"inscritos":240,"confirmados":180}'|safe }};
+
+  // ========= GRÁFICOS =========
+  // Observação: não defino cores explicitamente para manter o padrão do tema/Chart.js
+  const ctxDia = document.getElementById('chartInscricoesDia');
+  new Chart(ctxDia, {
+    type: 'line',
+    data: {
+      labels: inscricoesPorDiaLabels,
+      datasets: [{
+        label: 'Inscrições',
+        data: inscricoesPorDiaValues,
+        tension: .3,
+        fill: false
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display:false } },
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  const ctxEvento = document.getElementById('chartPorEvento');
+  new Chart(ctxEvento, {
+    type: 'bar',
+    data: {
+      labels: porEventoLabels,
+      datasets: [{ label: 'Inscrições', data: porEventoValues }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  const ctxPag = document.getElementById('chartPagamentos');
+  new Chart(ctxPag, {
+    type: 'doughnut',
+    data: {
+      labels: ['Confirmadas','Pendentes','Canceladas'],
+      datasets: [{
+        data: [pagamentosData.confirmadas || 0, pagamentosData.pendentes || 0, pagamentosData.canceladas || 0]
+      }]
+    },
+    options: { responsive: true }
+  });
+
+  const ctxConv = document.getElementById('chartConversao');
+  new Chart(ctxConv, {
+    type: 'bar',
+    data: {
+      labels: ['Inscritos','Confirmados'],
+      datasets: [{ data: [conversaoData.inscritos || 0, conversaoData.confirmados || 0] }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display:false } },
+      scales: { y: { beginAtZero:true } }
+    }
+  });
 </script>
 </body>
 </html>

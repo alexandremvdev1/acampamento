@@ -1,20 +1,21 @@
-# admin.py
 from django import forms
 from django.apps import apps
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.urls import reverse
 from django.utils.html import format_html
+from django.utils import timezone
 
 from .utils.phones import normalizar_e164_br, validar_e164_br
 from .models import (
     Paroquia, Participante, EventoAcampamento, Inscricao, Pagamento,
     InscricaoSenior, InscricaoJuvenil, InscricaoMirim, InscricaoServos,
-    InscricaoCasais, InscricaoEvento, InscricaoRetiro,   # novos tipos
+    InscricaoCasais, InscricaoEvento, InscricaoRetiro,
     User, PastoralMovimento, Contato, Conjuge, MercadoPagoConfig,
     PoliticaPrivacidade, VideoEventoAcampamento, CrachaTemplate,
     PreferenciasComunicacao, PoliticaReembolso,
     MercadoPagoOwnerConfig, Repasse, SiteImage, LeadLanding, SiteVisit,
+    Grupo, Ministerio, AlocacaoGrupo, AlocacaoMinisterio, Filho
 )
 
 # =========================================================
@@ -28,7 +29,6 @@ class SomenteMinhaParoquiaAdmin(admin.ModelAdmin):
     - Em FKs, filtra opções para a paróquia do usuário (ex.: evento).
     """
     paroquia_field_name = "paroquia"
-    # Se o admin tiver FKs para modelos com 'paroquia', adicione aqui os nomes dos campos:
     fk_limitadas_por_paroquia = ("evento",)
 
     def get_queryset(self, request):
@@ -48,7 +48,6 @@ class SomenteMinhaParoquiaAdmin(admin.ModelAdmin):
             and getattr(user, "tipo_usuario", "") != "admin_geral"
             and getattr(user, "paroquia_id", None)
             and self.paroquia_field_name in form.base_fields):
-            # Oculta o campo paroquia para admin paroquial
             form.base_fields[self.paroquia_field_name].widget = forms.HiddenInput()
             form.base_fields[self.paroquia_field_name].required = False
         return form
@@ -59,11 +58,9 @@ class SomenteMinhaParoquiaAdmin(admin.ModelAdmin):
             and getattr(user, "tipo_usuario", "") != "admin_geral"
             and getattr(user, "paroquia_id", None)):
 
-            # Filtra a própria paróquia quando o campo é 'paroquia'
             if db_field.name == self.paroquia_field_name:
                 kwargs["queryset"] = Paroquia.objects.filter(pk=user.paroquia_id)
 
-            # Filtra FKs relacionadas por paróquia (ex.: evento só da paróquia do usuário)
             if db_field.name in getattr(self, "fk_limitadas_por_paroquia", []):
                 try:
                     kwargs["queryset"] = db_field.remote_field.model.objects.filter(paroquia=user.paroquia)
@@ -74,7 +71,6 @@ class SomenteMinhaParoquiaAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         user = request.user
-        # Define a paróquia automaticamente se o usuário for admin paroquia
         if (not getattr(user, "is_superuser", False)
             and getattr(user, "tipo_usuario", "") != "admin_geral"
             and getattr(user, "paroquia", None)
@@ -193,13 +189,13 @@ class ParticipanteAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar opt-in de marketing (WhatsApp)")
     def marcar_optin_marketing(self, request, queryset):
-        from django.utils import timezone
+        from django.utils import timezone as _tz
         count = 0
         for p in queryset:
             prefs, _ = PreferenciasComunicacao.objects.get_or_create(participante=p)
             if not prefs.whatsapp_marketing_opt_in:
                 prefs.whatsapp_marketing_opt_in = True
-                prefs.whatsapp_optin_data = timezone.now()
+                prefs.whatsapp_optin_data = _tz.now()
                 prefs.whatsapp_optin_fonte = 'admin'
                 prefs.whatsapp_optin_prova = f'Admin: {request.user.username}'
                 prefs.save()
@@ -222,24 +218,183 @@ class ParticipanteAdmin(admin.ModelAdmin):
 # ======================= Eventos ========================
 @admin.register(EventoAcampamento)
 class EventoAcampamentoAdmin(SomenteMinhaParoquiaAdmin):
-    list_display = ('nome', 'tipo', 'paroquia', 'data_inicio', 'data_fim',
-                    'inicio_inscricoes', 'fim_inscricoes', 'slug')
-    list_filter = ('tipo', 'paroquia')
+    list_display = (
+        'nome', 'tipo', 'paroquia', 'data_inicio', 'data_fim',
+        'inicio_inscricoes', 'fim_inscricoes', 'slug',
+        'permitir_inscricao_servos', 'servos_vinculado', 'status_servos'
+    )
+    list_filter = ('tipo', 'paroquia', 'permitir_inscricao_servos')
     prepopulated_fields = {'slug': ('nome',)}
     search_fields = ('nome', 'paroquia__nome')
-    fk_limitadas_por_paroquia = ()  # aqui não precisamos filtrar FKs além de 'paroquia'
+    fk_limitadas_por_paroquia = ()
+    actions = ["ativar_servos", "desativar_servos", "abrir_inscricao_publica", "abrir_evento_servos"]
+
+    fieldsets = (
+        (None, {
+            "fields": (
+                "nome", "tipo", "paroquia",
+                "data_inicio", "data_fim",
+                "inicio_inscricoes", "fim_inscricoes",
+                "valor_inscricao", "banner", "slug",
+            )
+        }),
+        ("Vínculo / Servos", {
+            "fields": ("evento_relacionado", "permitir_inscricao_servos"),
+            "description": "Para eventos de Servos, selecione o evento principal. "
+                           "No evento principal, use a flag para permitir inscrições de servos."
+        }),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        ro = list(super().get_readonly_fields(request, obj))
+        # Bloqueia edição manual do vínculo no principal
+        if obj and obj.tipo != "servos":
+            ro.append("evento_relacionado")
+        return ro
+
+    def servos_vinculado(self, obj):
+        if obj.tipo == "servos":
+            if obj.evento_relacionado:
+                url = reverse("admin:inscricoes_eventoacampamento_change", args=[obj.evento_relacionado.pk])
+                return format_html('<a href="{}">{} (principal)</a>', url, obj.evento_relacionado.nome)
+            return "-"
+        # principal: mostra o servos gerado automaticamente (se houver)
+        ev = obj.servos_evento
+        if not ev:
+            return "-"
+        url = reverse("admin:inscricoes_eventoacampamento_change", args=[ev.pk])
+        return format_html('<a href="{}">{} (servos)</a>', url, ev.nome)
+    servos_vinculado.short_description = "Vínculo"
+
+    def status_servos(self, obj):
+        """Mostra se o servos pode receber inscrição (considera flag + janela de datas do evento de servos)."""
+        if obj.tipo == "servos":
+            principal = obj.evento_relacionado
+            if not principal:
+                return "—"
+            aceitar = principal.permitir_inscricao_servos
+            hoje = timezone.localdate()
+            janela = (obj.inicio_inscricoes <= hoje <= obj.fim_inscricoes)
+            return "Abertas" if (aceitar and janela) else ("Fechadas" if aceitar else "Desabilitadas")
+        # principal
+        ev = obj.servos_evento
+        if not ev:
+            return "—"
+        aceitar = obj.permitir_inscricao_servos
+        hoje = timezone.localdate()
+        janela = (ev.inicio_inscricoes <= hoje <= ev.fim_inscricoes)
+        return "Abertas" if (aceitar and janela) else ("Fechadas" if aceitar else "Desabilitadas")
+    status_servos.short_description = "Inscrições Servos"
+
+    # Ações rápidas
+    @admin.action(description="Ativar inscrições de Servos (nos principais selecionados)")
+    def ativar_servos(self, request, queryset):
+        count = 0
+        for ev in queryset:
+            if ev.tipo == "servos":
+                # liga no principal
+                if ev.evento_relacionado and not ev.evento_relacionado.permitir_inscricao_servos:
+                    ev.evento_relacionado.permitir_inscricao_servos = True
+                    ev.evento_relacionado.save(update_fields=["permitir_inscricao_servos"])
+                    count += 1
+            else:
+                if not ev.permitir_inscricao_servos:
+                    ev.permitir_inscricao_servos = True
+                    ev.save(update_fields=["permitir_inscricao_servos"])
+                    count += 1
+        self.message_user(request, f"Inscrições de servos ativadas em {count} evento(s).", level=messages.SUCCESS)
+
+    @admin.action(description="Desativar inscrições de Servos (nos principais selecionados)")
+    def desativar_servos(self, request, queryset):
+        count = 0
+        for ev in queryset:
+            if ev.tipo == "servos":
+                if ev.evento_relacionado and ev.evento_relacionado.permitir_inscricao_servos:
+                    ev.evento_relacionado.permitir_inscricao_servos = False
+                    ev.evento_relacionado.save(update_fields=["permitir_inscricao_servos"])
+                    count += 1
+            else:
+                if ev.permitir_inscricao_servos:
+                    ev.permitir_inscricao_servos = False
+                    ev.save(update_fields=["permitir_inscricao_servos"])
+                    count += 1
+        self.message_user(request, f"Inscrições de servos desativadas em {count} evento(s).", level=messages.SUCCESS)
+
+    @admin.action(description="Abrir página pública de inscrição (nova aba)")
+    def abrir_inscricao_publica(self, request, queryset):
+        if queryset.count() != 1:
+            self.message_user(request, "Selecione apenas um evento.", level=messages.WARNING)
+            return
+        ev = queryset.first()
+        try:
+            url = ev.link_inscricao
+            self.message_user(
+                request,
+                format_html('Abrir: <a href="{}" target="_blank" rel="noopener">/inscrição</a>', url),
+                level=messages.INFO
+            )
+        except Exception:
+            self.message_user(request, "Não foi possível montar a URL de inscrição.", level=messages.ERROR)
+
+    @admin.action(description="Ir para o evento de Servos vinculado (se existir)")
+    def abrir_evento_servos(self, request, queryset):
+        if queryset.count() != 1:
+            self.message_user(request, "Selecione apenas um evento principal.", level=messages.WARNING)
+            return
+        ev = queryset.first()
+        if ev.tipo == "servos":
+            self.message_user(request, "Este já é o evento de servos.", level=messages.INFO)
+            return
+        servos = ev.servos_evento
+        if not servos:
+            self.message_user(request, "Ainda não há evento de servos vinculado.", level=messages.WARNING)
+            return
+        url = reverse("admin:inscricoes_eventoacampamento_change", args=[servos.pk])
+        self.message_user(
+            request,
+            format_html('Abrir: <a href="{}">evento de servos</a>', url),
+            level=messages.INFO
+        )
+
+
+# ======================= Filhos ========================
+class FilhoInline(admin.StackedInline):
+    model = Filho
+    extra = 1
+    fields = ("nome", "idade", "telefone", "endereco")
+    show_change_link = True
+
+@admin.register(Filho)
+class FilhoAdmin(admin.ModelAdmin):
+    list_display = ("nome", "idade", "telefone", "endereco", "inscricao_participante")
+    search_fields = ("nome", "telefone", "inscricao__participante__nome")
+    list_filter = ("idade",)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        user = request.user
+        if getattr(user, "is_superuser", False) or getattr(user, "tipo_usuario", "") == "admin_geral":
+            return qs.select_related("inscricao__participante")
+        if getattr(user, "paroquia_id", None):
+            return qs.filter(inscricao__paroquia=user.paroquia).select_related("inscricao__participante")
+        return qs.none()
+
+    def inscricao_participante(self, obj):
+        return obj.inscricao.participante.nome if obj.inscricao else "-"
+    inscricao_participante.short_description = "Participante"
 
 
 # ====================== Inscrições ======================
 @admin.register(Inscricao)
 class InscricaoAdmin(SomenteMinhaParoquiaAdmin):
     list_display = (
-        'participante', 'evento', 'paroquia', 'data_inscricao',
-        'foi_selecionado', 'pagamento_confirmado', 'inscricao_concluida'
+        "participante", "evento", "paroquia", "data_inscricao",
+        "foi_selecionado", "pagamento_confirmado", "inscricao_concluida"
     )
-    list_filter = ('evento__tipo', 'evento', 'paroquia', 'foi_selecionado', 'pagamento_confirmado')
-    search_fields = ('participante__nome', 'evento__nome', 'paroquia__nome')
+    list_filter = ("evento__tipo", "evento", "paroquia", "foi_selecionado", "pagamento_confirmado")
+    search_fields = ("participante__nome", "evento__nome", "paroquia__nome")
     fk_limitadas_por_paroquia = ("evento",)
+    inlines = [FilhoInline]
 
 
 # ======================= Pagamento ======================
@@ -278,7 +433,6 @@ class _BaseInscricaoTipoAdmin(SomenteMinhaParoquiaAdmin):
     fk_limitadas_por_paroquia = ("inscricao",)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # limita 'inscricao' às da própria paróquia
         user = request.user
         if (db_field.name == "inscricao"
             and not getattr(user, "is_superuser", False)
@@ -289,22 +443,16 @@ class _BaseInscricaoTipoAdmin(SomenteMinhaParoquiaAdmin):
 
 @admin.register(InscricaoSenior)
 class InscricaoSeniorAdmin(_BaseInscricaoTipoAdmin): ...
-
 @admin.register(InscricaoJuvenil)
 class InscricaoJuvenilAdmin(_BaseInscricaoTipoAdmin): ...
-
 @admin.register(InscricaoMirim)
 class InscricaoMirimAdmin(_BaseInscricaoTipoAdmin): ...
-
 @admin.register(InscricaoServos)
 class InscricaoServosAdmin(_BaseInscricaoTipoAdmin): ...
-
 @admin.register(InscricaoCasais)
 class InscricaoCasaisAdmin(_BaseInscricaoTipoAdmin): ...
-
 @admin.register(InscricaoEvento)
 class InscricaoEventoAdmin(_BaseInscricaoTipoAdmin): ...
-
 @admin.register(InscricaoRetiro)
 class InscricaoRetiroAdmin(_BaseInscricaoTipoAdmin): ...
 
@@ -530,10 +678,6 @@ class SiteVisitAdmin(admin.ModelAdmin):
 
 
 # ================== (Opcional) modelos de comunidade ==================
-# Se você criou Comunicado / EventoComunitario (separados por paróquia),
-# o bloco abaixo registra com o mesmo escopo por paróquia,
-# mas só ativa se os modelos existirem no app.
-
 try:
     Comunicado = apps.get_model('inscricoes', 'Comunicado')
     class ComunicadoAdmin(SomenteMinhaParoquiaAdmin):
@@ -554,3 +698,54 @@ try:
     admin.site.register(EventoComunitario, EventoComunitarioAdmin)
 except LookupError:
     pass
+
+
+# ======================= Grupo ========================
+class GrupoInline(admin.TabularInline):
+    model = Grupo
+    extra = 1
+    fields = ("nome", "cor")
+    show_change_link = True
+
+@admin.register(Grupo)
+class GrupoAdmin(SomenteMinhaParoquiaAdmin):
+    list_display = ("nome", "evento", "cor")
+    search_fields = ("nome", "evento__nome")
+    list_filter = ("evento__paroquia", "evento__tipo")
+    fk_limitadas_por_paroquia = ("evento",)
+
+
+# ====================== Ministério =====================
+class MinisterioInline(admin.TabularInline):
+    model = Ministerio
+    extra = 1
+    fields = ("nome", "descricao")
+    show_change_link = True
+
+@admin.register(Ministerio)
+class MinisterioAdmin(SomenteMinhaParoquiaAdmin):
+    list_display = ("nome", "evento", "descricao_curta")
+    search_fields = ("nome", "evento__nome", "descricao")
+    list_filter = ("evento__paroquia", "evento__tipo")
+    fk_limitadas_por_paroquia = ("evento",)
+
+    def descricao_curta(self, obj):
+        return (obj.descricao[:50] + "...") if obj.descricao else "-"
+    descricao_curta.short_description = "Descrição"
+
+
+# ============ Alocações (Inscrição -> Grupo/Ministério) ============
+class AlocacaoGrupoInline(admin.StackedInline):
+    model = AlocacaoGrupo
+    extra = 0
+    fields = ("grupo",)
+    show_change_link = True
+
+class AlocacaoMinisterioInline(admin.StackedInline):
+    model = AlocacaoMinisterio
+    extra = 0
+    fields = ("ministerio", "funcao")
+    show_change_link = True
+
+# Estende InscricaoAdmin adicionando as inlines
+InscricaoAdmin.inlines += [AlocacaoGrupoInline, AlocacaoMinisterioInline]

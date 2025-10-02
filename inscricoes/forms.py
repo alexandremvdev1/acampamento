@@ -154,11 +154,13 @@ class ParticipanteEnderecoForm(forms.Form):
 
 class BaseInscricaoForm(forms.ModelForm):
     SIM_NAO_CHOICES = [
+        ('', '---------'),
         ('sim', 'Sim'),
         ('nao', 'Não'),
     ]
 
     ESTADO_CIVIL_CHOICES = [
+        ('', '---------'),
         ('solteiro', 'Solteiro(a)'),
         ('casado', 'Casado(a)'),
         ('divorciado', 'Divorciado(a)'),
@@ -166,22 +168,58 @@ class BaseInscricaoForm(forms.ModelForm):
         ('uniao_estavel', 'União Estável'),
     ]
 
+    # Pergunta: Já é campista?
+    ja_e_campista = forms.ChoiceField(
+        choices=SIM_NAO_CHOICES,
+        label="Já é Campista?",
+        required=False,
+        widget=forms.Select(attrs={'id': 'id_ja_e_campista'})
+    )
+
+    # Se sim → Qual tema do acampamento?
+    tema_acampamento = forms.CharField(
+        label="Qual tema do acampamento que participou?",
+        required=False,
+        widget=forms.TextInput(attrs={
+            'id': 'id_tema_acampamento',
+            'placeholder': 'Ex.: Acampamento de Jovens 2023'
+        })
+    )
+
+    # Estado civil
     estado_civil = forms.ChoiceField(
         choices=ESTADO_CIVIL_CHOICES,
         label="Estado Civil",
+        required=False,
         widget=forms.Select(attrs={'id': 'id_estado_civil'})
     )
 
+    # Se casado/união → quanto tempo
+    tempo_casado_uniao = forms.CharField(
+        label="Tempo de união/casamento",
+        required=False,
+        widget=forms.TextInput(attrs={
+            'id': 'id_tempo_casado_uniao',
+            'placeholder': 'Ex.: 5 anos'
+        })
+    )
+
+    # Se casado/união → casado no religioso?
+    casado_na_igreja = forms.ChoiceField(
+        choices=SIM_NAO_CHOICES,
+        label="Casado no religioso?",
+        required=False,
+        widget=forms.Select(attrs={'id': 'id_casado_na_igreja'})
+    )
+
+    # Nome do cônjuge
     nome_conjuge = forms.CharField(
         label="Nome do Cônjuge",
-        required=False,  # Não obrigatório a princípio
+        required=False,
         widget=forms.TextInput(attrs={'id': 'id_nome_conjuge'})
     )
 
-    def clean_nome_conjuge(self):
-        nome = self.cleaned_data.get('nome_conjuge', '')
-        return nome.title() if nome else nome
-
+    # Cônjuge inscrito?
     conjuge_inscrito = forms.ChoiceField(
         label="Cônjuge Inscrito?",
         required=False,
@@ -192,11 +230,21 @@ class BaseInscricaoForm(forms.ModelForm):
     class Meta:
         abstract = True
 
+    def clean_nome_conjuge(self):
+        nome = self.cleaned_data.get('nome_conjuge', '')
+        return nome.title() if nome else nome
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Inicialmente, torne os campos condicionais não obrigatórios
-        self.fields['nome_conjuge'].required = False
-        self.fields['conjuge_inscrito'].required = False
+        # Garantir que os campos condicionais nunca sejam obrigatórios
+        for field in [
+            'nome_conjuge',
+            'conjuge_inscrito',
+            'tempo_casado_uniao',
+            'tema_acampamento'
+        ]:
+            if field in self.fields:
+                self.fields[field].required = False
 
 
 
@@ -204,7 +252,7 @@ class InscricaoSeniorForm(BaseInscricaoForm):
     class Meta(BaseInscricaoForm.Meta):
         model = InscricaoSenior
         fields = [
-            "data_nascimento", "batizado", "estado_civil", "casado_na_igreja", "nome_conjuge",
+            "data_nascimento", "batizado", "estado_civil", "tempo_casado_uniao", "casado_na_igreja", "nome_conjuge",
             "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
             "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
             "altura", "peso", "problema_saude", "qual_problema_saude",
@@ -216,7 +264,7 @@ class InscricaoJuvenilForm(BaseInscricaoForm):
     class Meta(BaseInscricaoForm.Meta):
         model = InscricaoJuvenil
         fields = [
-            "data_nascimento", "batizado", "estado_civil", "casado_na_igreja", "nome_conjuge",
+            "data_nascimento", "batizado", "estado_civil", "tempo_casado_uniao", "casado_na_igreja", "nome_conjuge",
             "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
             "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
             "altura", "peso", "problema_saude", "qual_problema_saude",
@@ -228,7 +276,7 @@ class InscricaoMirimForm(BaseInscricaoForm):
     class Meta(BaseInscricaoForm.Meta):
         model = InscricaoMirim
         fields = [
-            "data_nascimento", "batizado", "estado_civil", "casado_na_igreja", "nome_conjuge",
+            "data_nascimento", "batizado", "estado_civil", "tempo_casado_uniao", "casado_na_igreja", "nome_conjuge",
             "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
             "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
             "altura", "peso", "problema_saude", "qual_problema_saude",
@@ -251,7 +299,7 @@ class InscricaoCasaisForm(BaseInscricaoForm):
     class Meta(BaseInscricaoForm.Meta):
         model = InscricaoCasais
         fields = [
-            "data_nascimento", "batizado", "estado_civil", "casado_na_igreja", "nome_conjuge",
+            "data_nascimento", "batizado", "estado_civil", "tempo_casado_uniao", "casado_na_igreja", "nome_conjuge",
             "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
             "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
             "altura", "peso", "problema_saude", "qual_problema_saude",
@@ -267,7 +315,7 @@ class InscricaoEventoForm(BaseInscricaoForm):
     class Meta(BaseInscricaoForm.Meta):
         model = InscricaoEvento
         fields = [
-            "data_nascimento", "batizado", "estado_civil", "casado_na_igreja", "nome_conjuge",
+            "data_nascimento", "batizado", "estado_civil", "tempo_casado_uniao", "casado_na_igreja", "nome_conjuge",
             "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
             "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
             "altura", "peso", "problema_saude", "qual_problema_saude",
@@ -283,7 +331,7 @@ class InscricaoRetiroForm(BaseInscricaoForm):
     class Meta(BaseInscricaoForm.Meta):
         model = InscricaoRetiro
         fields = [
-            "data_nascimento", "batizado", "estado_civil", "casado_na_igreja", "nome_conjuge",
+            "data_nascimento", "batizado", "estado_civil", "tempo_casado_uniao", "casado_na_igreja", "nome_conjuge",
             "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
             "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
             "altura", "peso", "problema_saude", "qual_problema_saude",
@@ -699,9 +747,88 @@ class ParticipanteForm(forms.ModelForm):
 
 
 class ConjugeForm(forms.ModelForm):
+    SIM_NAO_CHOICES = [
+        ('', '---------'),
+        ('sim', 'Sim'),
+        ('nao', 'Não'),
+    ]
+
+    ja_e_campista = forms.ChoiceField(
+        label="Cônjuge já é Campista?",
+        choices=SIM_NAO_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'id': 'id_conj_ja_e_campista'})
+    )
+
+    acampamento = forms.CharField(   # 👈 usar o MESMO nome do modelo
+        label="Qual tema do acampamento?",
+        required=False,
+        widget=forms.TextInput(attrs={
+            'id': 'id_conj_acampamento',
+            'placeholder': 'Ex.: Acampamento Casais 2022'
+        })
+    )
+
     class Meta:
         model = Conjuge
-        fields = ['nome', 'conjuge_inscrito', 'ja_e_campista']
+        fields = ['nome', 'conjuge_inscrito', 'ja_e_campista', 'acampamento']  # 👈 aqui também
+
+    def clean_nome(self):
+        nome = self.cleaned_data.get('nome', '')
+        return nome.title() if nome else nome
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('ja_e_campista') == 'sim' and not cleaned.get('acampamento'):
+            self.add_error('acampamento', 'Informe o tema do acampamento do cônjuge.')
+        return cleaned
+
+
+from django import forms
+from django.forms import modelformset_factory
+from .models import Filho
+
+class FilhoForm(forms.ModelForm):
+    class Meta:
+        model = Filho
+        fields = ['nome', 'endereco', 'telefone', 'idade']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'placeholder': 'Nome do filho',
+                'class': 'form-control',
+            }),
+            'endereco': forms.TextInput(attrs={
+                'placeholder': 'Endereço',
+                'class': 'form-control',
+            }),
+            'telefone': forms.TextInput(attrs={
+                'placeholder': '(00) 00000-0000',
+                'class': 'form-control',
+            }),
+            'idade': forms.NumberInput(attrs={
+                'min': 0,
+                'max': 30,
+                'class': 'form-control',
+                'placeholder': 'Idade',
+            }),
+        }
+        labels = {
+            'nome': 'Nome',
+            'endereco': 'Endereço',
+            'telefone': 'Telefone',
+            'idade': 'Idade',
+        }
+
+    def clean_nome(self):
+        nome = self.cleaned_data.get('nome', '')
+        return nome.title() if nome else nome
+
+FilhoFormSet = modelformset_factory(
+    Filho,
+    form=FilhoForm,
+    extra=0,  # Começa sem filhos visíveis
+    can_delete=True
+)
 
 # inscricoes/forms.py
 from django import forms
@@ -831,3 +958,118 @@ class ComunicadoForm(forms.ModelForm):
             "texto": forms.Textarea(attrs={"class": "form-control", "rows": 8, "placeholder": "Escreva a publicação..."}),
             "publicado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+# inscricoes/forms.py
+from django import forms
+from .models import Ministerio, AlocacaoMinisterio, Inscricao
+
+class MinisterioForm(forms.ModelForm):
+    class Meta:
+        model = Ministerio
+        fields = ["nome", "descricao"]  # evento será setado na view para "novo"
+
+class AlocacaoMinisterioForm(forms.ModelForm):
+    class Meta:
+        model = AlocacaoMinisterio
+        fields = ["inscricao"]  # ministerio será setado na view
+
+    def __init__(self, *args, **kwargs):
+        evento = kwargs.pop("evento", None)
+        ministerio = kwargs.pop("ministerio", None)
+        super().__init__(*args, **kwargs)
+
+        # Limita inscrições ao mesmo evento e que ainda não estejam alocadas neste ministério
+        if evento:
+            qs = Inscricao.objects.filter(evento=evento)
+            if ministerio:
+                qs = qs.exclude(alocacao_ministerio__ministerio=ministerio)
+            self.fields["inscricao"].queryset = qs.select_related("participante").order_by("participante__nome")
+
+        # Aparência
+        for f in self.fields.values():
+            f.widget.attrs.update({"class": "form-select"})
+
+from django import forms
+from .models import InscricaoCasais
+
+
+class InscricaoCasaisForm(forms.ModelForm):
+    class Meta:
+        model = InscricaoCasais
+        fields = [
+            # Dados básicos
+            "data_nascimento",
+            "altura",
+            "peso",
+            "batizado",
+            "estado_civil",
+            "casado_na_igreja",
+            "tempo_casado_uniao",
+            "paroquia",
+            "pastoral_movimento",
+            "outra_pastoral_movimento",
+            "dizimista",
+            "crismado",
+            "tamanho_camisa",
+
+            # ---------------- SAÚDE ----------------
+            "problema_saude",
+            "qual_problema_saude",
+            "medicamento_controlado",
+            "qual_medicamento_controlado",
+            "protocolo_administracao",
+            "mobilidade_reduzida",
+            "qual_mobilidade_reduzida",
+            "alergia_alimento",
+            "qual_alergia_alimento",
+            "alergia_medicamento",
+            "qual_alergia_medicamento",
+            "diabetes",        # 🔹 novo
+            "pressao_alta",    # 🔹 novo
+            # ----------------------------------------
+
+            "tipo_sanguineo",
+            "indicado_por",
+            "informacoes_extras",
+
+            # Casais
+            "foto_casal",
+        ]
+        widgets = {
+            "data_nascimento": forms.DateInput(attrs={"type": "date"}),
+            "altura": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "peso": forms.NumberInput(attrs={"step": "0.1", "min": "0"}),
+            "informacoes_extras": forms.Textarea(attrs={"rows": 3}),
+            "foto_casal": forms.ClearableFileInput(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Aplica CSS Bootstrap em todos os campos
+        for name, field in self.fields.items():
+            widget = field.widget
+
+            if isinstance(widget, forms.FileInput):
+                css_class = "form-control"
+            elif isinstance(widget, forms.Textarea):
+                css_class = "form-control"
+            elif isinstance(widget, (forms.DateInput, forms.NumberInput, forms.TextInput, forms.EmailInput, forms.URLInput)):
+                css_class = "form-control"
+            elif isinstance(widget, forms.Select):
+                css_class = "form-select"
+            else:
+                css_class = "form-control"
+
+            widget.attrs.update({"class": css_class})
+
+        # 🔹 Restringe opções de estado civil → apenas Casado / União Estável
+        self.fields["estado_civil"].choices = [
+            ("casado", "Casado"),
+            ("uniao_estavel", "União Estável"),
+        ]
+
+        # 🔹 Ajuste de labels mais claros (opcional, mas melhora UX)
+        self.fields["tempo_casado_uniao"].label = "Tempo de união (anos/meses)"
+        self.fields["foto_casal"].label = "Foto do casal"
+

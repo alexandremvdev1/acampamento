@@ -8,7 +8,7 @@ from django.conf.urls.static import static
 from .views import LoginComImagemView
 from .views import (
     buscar_participante_ajax,
-    iniciar_pagamento
+    iniciar_pagamento,
 
 )
 
@@ -31,6 +31,18 @@ urlpatterns = [
     path('admin-geral/usuarios/<int:pk>/editar/', views.admin_geral_edit_usuario, name='admin_geral_edit_usuario'),
     path('admin-geral/usuarios/<int:pk>/deletar/', views.admin_geral_delete_usuario, name='admin_geral_delete_usuario'),
     path('admin-paroquia/', views.admin_paroquia_painel, name='admin_paroquia_painel'),
+    
+    path("evento/<uuid:pk>/toggle-servos/", views.evento_toggle_servos, name="evento_toggle_servos"),
+
+    path("formulario/casais/<uuid:evento_id>/", views.formulario_casais, name="formulario_casais"),
+
+    path("admin-geral/paroquia/<int:pk>/eventos/",views.admin_paroquia_eventos,name="admin_paroquia_eventos",),
+
+    path("inscricao/<int:pk>/toggle-selecao/", views.toggle_selecao_inscricao, name="toggle_selecao_inscricao"),
+
+    path("eventos/<uuid:evento_id>/configuracoes/", views.evento_configuracoes, name="evento_configuracoes"),
+
+    path("inscricao/<int:pk>/ficha-geral/",views.inscricao_ficha_geral,name="inscricao_ficha_geral",),
 
     path('eventos/novo/', views.evento_novo, name='evento_novo'),
     path('eventos/', views.eventos_listar, name='eventos_listar'),

@@ -1,0 +1,247 @@
+{% load static site_images %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Contribuição solidária — eismeaqui.app</title>
+  <meta name="description" content="Entenda como funciona a contribuição solidária de 0,5% por inscrição confirmada: transparência, propósito e prestação de contas."/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .frame { border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; box-shadow:0 10px 24px rgba(2,6,23,.12); background:#fff; }
+    .frame-head { display:flex; gap:.35rem; padding:.6rem .8rem; background:linear-gradient(180deg,#f8fafc,#eef2f7); border-bottom:1px solid #e5e7eb; }
+    .dot { width:.65rem; height:.65rem; border-radius:999px; background:#e11d48; }
+    .dot:nth-child(2){ background:#f59e0b; } .dot:nth-child(3){ background:#10b981; }
+    .kbd { font-variant:all-small-caps; letter-spacing:.06em; padding:.15rem .4rem; border:1px solid #e5e7eb; border-bottom-width:2px; border-radius:.4rem; background:#fff; font-size:.7rem; }
+    .badge { border:1px solid rgba(148,163,184,.35); padding:.25rem .6rem; border-radius:999px; font-size:.75rem; }
+    .grad { background:linear-gradient(135deg, #0ea5e9 0%, #6366f1 55%, #22c55e 100%); }
+    .grad-ink { background:linear-gradient(135deg, #0ea5e9, #6366f1); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .shadow-card { box-shadow:0 10px 24px rgba(2,6,23,.12); }
+    html { scroll-behavior:smooth; } @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+    .anchor-offset { scroll-margin-top: 84px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+  <!-- Header (igual ao site, com link para voltar à home pública) -->
+  <header class="sticky top-0 z-40 backdrop-blur bg-white/80 border-b border-slate-200/70">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+      <a href="/site/" class="flex items-center gap-2 font-semibold text-lg group">
+        <span class="w-2.5 h-2.5 rounded-full grad block"></span>
+        <span>eismeaqui<span class="text-slate-400">.app</span></span>
+      </a>
+      <nav class="hidden md:flex items-center gap-6 text-sm">
+        <a href="#sobre" class="hover:text-slate-600">Sobre</a>
+        <a href="#uso" class="hover:text-slate-600">Como usamos</a>
+        <a href="#exemplos" class="hover:text-slate-600">Exemplos</a>
+        <a href="#fundamentos" class="hover:text-slate-600">Fundamentos</a>
+        <a href="#faq" class="hover:text-slate-600">FAQ</a>
+      </nav>
+      <div class="hidden md:flex items-center gap-2">
+        <a href="/site/" class="px-3 py-1.5 rounded-lg text-white text-sm grad shadow-card hover:opacity-95 transition">
+          Voltar para o site
+        </a>
+      </div>
+      <button id="menuBtn" class="md:hidden p-2 border border-slate-300 rounded-lg" aria-label="Abrir menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="mobileNav" class="md:hidden hidden border-t border-slate-200 bg-white/90">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-2 text-sm">
+        <a href="#sobre" class="py-2">Sobre</a>
+        <a href="#uso" class="py-2">Como usamos</a>
+        <a href="#exemplos" class="py-2">Exemplos</a>
+        <a href="#fundamentos" class="py-2">Fundamentos</a>
+        <a href="#faq" class="py-2">FAQ</a>
+        <a href="/site/" class="py-2">Voltar para o site</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section id="sobre" class="relative overflow-hidden">
+    <div class="absolute inset-0 grad opacity-[.08]"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-10 grid md:grid-cols-2 gap-10 items-center">
+      <div>
+        <div class="inline-flex items-center gap-2 mb-4">
+          <span class="badge">Transparência</span>
+          <span class="badge">Sustentabilidade</span>
+          <span class="badge">Missão</span>
+        </div>
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-tight">
+          Contribuição solidária <span class="grad-ink">0,5% por inscrição</span>
+        </h1>
+        <p class="mt-4 text-slate-600 text-lg">
+          Essa contribuição é aplicada apenas sobre inscrições <strong>pagas/confirmadas</strong>. Ela mantém os servidores,
+          a evolução contínua do sistema e apoia a evangelização pela internet — inspirados no testemunho de
+          <strong>São Carlo Acutis</strong>.
+        </p>
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          <a href="/site/" class="px-4 py-2 rounded-xl text-white grad shadow-card hover:shadow-lg transition">
+            Voltar para o site
+          </a>
+          <span class="text-slate-500 text-sm">Sem mensalidade. Sem fidelidade.</span>
+        </div>
+      </div>
+      <div class="relative">
+        <div class="frame">
+          <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          {% site_image "pagamentos" "w-full h-56 sm:h-64 md:h-[360px] object-cover" alt="Estrutura de pagamentos e operação do sistema" %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Como usamos a contribuição -->
+  <section id="uso" class="py-12 bg-white anchor-offset">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-2xl font-bold">Como a contribuição é utilizada</h2>
+      <p class="text-slate-600 mt-2">Priorizamos simplicidade, resultados e responsabilidade.</p>
+
+      <div class="mt-6 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <h3 class="font-semibold">Servidores e segurança</h3>
+          <p class="mt-2 text-sm text-slate-600">Infraestrutura, backups, monitoramento, certificados e atualizações de segurança.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <h3 class="font-semibold">Evolução do sistema</h3>
+          <p class="mt-2 text-sm text-slate-600">Novas funções, melhorias de desempenho e usabilidade, relatórios e integrações.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <h3 class="font-semibold">Atendimento e materiais</h3>
+          <p class="mt-2 text-sm text-slate-600">Suporte pastoral/operacional, guias, modelos de comunicação e capacitações.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <h3 class="font-semibold">Envio de e-mails e notificações</h3>
+          <p class="mt-2 text-sm text-slate-600">Confirmações, lembretes e comunicações essenciais do fluxo de inscrições.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <h3 class="font-semibold">Apoio à missão</h3>
+          <p class="mt-2 text-sm text-slate-600">Evangelização digital e concessão de gratuidades quando necessário.</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <h3 class="font-semibold">Transparência</h3>
+          <p class="mt-2 text-sm text-slate-600">Prestação de contas simples e clara para organizadores e paróquias.</p>
+        </div>
+      </div>
+
+      <p class="mt-6 text-xs text-slate-500">
+        Observação: as taxas do processador de pagamento (Mercado Pago) são cobradas à parte pelo próprio provedor.
+      </p>
+    </div>
+  </section>
+
+  <!-- Exemplos práticos -->
+  <section id="exemplos" class="py-12 bg-slate-50 anchor-offset">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-2xl font-bold">Exemplos práticos</h2>
+      <div class="mt-6 grid md:grid-cols-3 gap-6">
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="text-sm text-slate-500">Ingresso R$ 50,00</div>
+          <div class="mt-1 text-3xl font-extrabold">R$ 0,25</div>
+          <p class="mt-2 text-sm text-slate-600">Contribuição por inscrição confirmada (0,5%).</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="text-sm text-slate-500">Ingresso R$ 100,00</div>
+          <div class="mt-1 text-3xl font-extrabold">R$ 0,50</div>
+          <p class="mt-2 text-sm text-slate-600">Contribuição por inscrição confirmada (0,5%).</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <div class="text-sm text-slate-500">Ingresso R$ 200,00</div>
+          <div class="mt-1 text-3xl font-extrabold">R$ 1,00</div>
+          <p class="mt-2 text-sm text-slate-600">Contribuição por inscrição confirmada (0,5%).</p>
+        </div>
+      </div>
+      <p class="mt-4 text-sm text-slate-600">
+        As taxas do provedor de pagamento (ex.: Mercado Pago) são cobradas separadamente por eles e não fazem parte da contribuição solidária.
+      </p>
+    </div>
+  </section>
+
+  <!-- Fundamentos espirituais (apenas 1 citação de São Carlo Acutis) -->
+  <section id="fundamentos" class="py-12 bg-white anchor-offset">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-2xl font-bold">Fundamentos espirituais</h2>
+      <div class="mt-6 grid md:grid-cols-1 gap-6">
+        <blockquote class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card">
+          <p class="italic text-slate-800">“A Eucaristia é a minha autoestrada para o céu.”</p>
+          <footer class="mt-2 text-sm text-slate-600">São Carlo Acutis</footer>
+        </blockquote>
+      </div>
+      <p class="mt-6 text-slate-600">
+        Com essa contribuição, mantemos o serviço acessível e confiável para a comunidade, favorecendo a evangelização e a boa
+        organização dos encontros. O propósito é servir — com simplicidade, zelo e transparência.
+      </p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="py-12 bg-slate-50 anchor-offset">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-2xl font-bold text-center">Perguntas frequentes</h2>
+      <div class="mt-8 grid md:grid-cols-2 gap-6">
+        <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card">
+          <summary class="font-semibold cursor-pointer">A contribuição é obrigatória?</summary>
+          <p class="mt-2 text-slate-600">Ela é parte do modelo do serviço e só incide quando a inscrição é paga/confirmada.</p>
+        </details>
+        <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card">
+          <summary class="font-semibold cursor-pointer">Há alguma mensalidade?</summary>
+          <p class="mt-2 text-slate-600">Não. Não há mensalidade, nem fidelidade.</p>
+        </details>
+        <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card">
+          <summary class="font-semibold cursor-pointer">Como recebo o valor das inscrições?</summary>
+          <p class="mt-2 text-slate-600">Direto na conta da paróquia/organização, via provedor de pagamentos integrado (ex.: Mercado Pago).</p>
+        </details>
+        <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card">
+          <summary class="font-semibold cursor-pointer">Podemos obter isenção em casos especiais?</summary>
+          <p class="mt-2 text-slate-600">Quando necessário, buscamos soluções solidárias. Fale conosco.</p>
+        </details>
+      </div>
+
+      <div class="text-center mt-10">
+        <a href="/site/" class="px-5 py-3 rounded-2xl text-white grad shadow-card hover:shadow-lg transition">
+          Voltar para o site
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rodapé -->
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid md:grid-cols-3 gap-8">
+      <div>
+        <div class="flex items-center gap-2 font-semibold text-lg"><span class="w-2.5 h-2.5 rounded-full grad block"></span> eismeaqui<span class="text-slate-400">.app</span></div>
+        <p class="mt-2 text-sm text-slate-600">Sistema de inscrições e gestão de eventos católicos.</p>
+      </div>
+      <div>
+        <h4 class="font-semibold">Navegação</h4>
+        <ul class="mt-2 text-sm text-slate-600 space-y-1">
+          <li><a href="#sobre" class="hover:underline">Sobre</a></li>
+          <li><a href="#uso" class="hover:underline">Como usamos</a></li>
+          <li><a href="#exemplos" class="hover:underline">Exemplos</a></li>
+          <li><a href="#fundamentos" class="hover:underline">Fundamentos</a></li>
+          <li><a href="#faq" class="hover:underline">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="font-semibold">Fale com a gente</h4>
+        <p class="mt-2 text-sm text-slate-600">E-mail: contato@eismeaqui.app</p>
+        <p class="text-sm text-slate-600">WhatsApp: (xx) xxxxx-xxxx</p>
+      </div>
+    </div>
+    <div class="py-4 text-center text-xs text-slate-500">© <span id="year"></span> eismeaqui.app — Todos os direitos reservados</div>
+  </footer>
+
+  <script>
+    // Menu mobile
+    const menuBtn = document.getElementById('menuBtn');
+    const mobileNav = document.getElementById('mobileNav');
+    if (menuBtn && mobileNav) {
+      menuBtn.addEventListener('click', () => mobileNav.classList.toggle('hidden'));
+    }
+    // Ano atual
+    const yearEl = document.getElementById('year');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

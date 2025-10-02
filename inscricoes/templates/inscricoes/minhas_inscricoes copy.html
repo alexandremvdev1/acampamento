@@ -1,0 +1,286 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Minhas Inscrições</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f8fafc;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e5e7eb;
+      --ok:#16a34a;--warn:#f59e0b;--danger:#dc2626;--brand:#0ea5e9;--brand-600:#0284c7;
+      --pix:#009443;--cardpay:#2563eb;--focus: #60a5fa;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0}
+    body{background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+    a{color:inherit}
+
+    .wrap{max-width:960px;margin:28px auto;padding:0 16px}
+    header{display:grid;place-items:center;margin-bottom:14px}
+    .logo-topo{margin-bottom:10px}
+    .logo-topo img{max-width:110px;height:auto;display:block}
+
+    h1.title{margin:0 0 6px;text-align:center;font-size:clamp(20px,3.5vw,28px)}
+    .subtitle{color:var(--muted);font-size:14px;text-align:center}
+
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 28px rgba(0,0,0,.06);padding:18px;margin-top:14px}
+
+    /* Form */
+    form[role="search"]{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:10px 0 4px}
+    .field{
+      position:relative;flex:1 1 360px;min-width:240px
+    }
+    label[for="cpf_mask"]{position:absolute;left:12px;top:-10px;padding:0 6px;background:var(--card);font-size:12px;color:var(--muted)}
+    input[type=text]{
+      width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--line);font-size:16px;background:#fff
+    }
+    input[type=text]:focus{outline:3px solid rgba(96,165,250,.25);border-color:var(--focus)}
+    input[aria-invalid="true"]{border-color:var(--danger)}
+    .hint{font-size:12px;color:var(--muted);margin-top:4px;text-align:center}
+    .err{font-size:13px;color:var(--danger);text-align:center;margin:6px 0;min-height:1em}
+    .btn{appearance:none;border:1px solid var(--line);background:#fff;color:#111827;padding:12px 16px;border-radius:10px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary{background:var(--brand);border-color:transparent;color:#fff}
+    .btn-primary:hover{background:var(--brand-600)}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
+
+    /* Grid */
+    .header-line{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 0 10px}
+    .who{color:#334155;font-weight:700}
+    .cpf{color:var(--muted);font-size:14px}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+    .item{background:#f3f4f6;border-radius:12px;padding:14px;border:1px solid var(--line)}
+    .item h3{margin:0 0 6px;font-size:16px}
+    .muted{color:var(--muted);font-size:13px}
+    .small{font-size:12px;color:var(--muted)}
+    .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin-top:6px;font-size:14px}
+    .kv .k{color:var(--muted)}
+    .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800}
+    .badge.ok{background:rgba(22,163,74,.12);color:var(--ok)}
+    .badge.warn{background:rgba(245,158,11,.12);color:var(--warn)}
+    .badge.danger{background:rgba(220,38,38,.12);color:var(--danger)}
+
+    .pay-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .pay-actions .btn{flex:1 1 200px;justify-content:center}
+    .btn-pay{background:var(--pix);color:#fff;border-color:transparent}
+    .btn-card{background:var(--cardpay);color:#fff;border-color:transparent}
+    .btn-light{background:#fff;border:1px solid var(--line);color:#111827}
+
+    footer{margin:26px 0;text-align:center;font-size:13px;color:#64748b}
+
+    @media (max-width: 576px){
+      .wrap{padding:0 12px}
+      .pay-actions .btn{flex:1 1 100%}
+    }
+
+    /* Loading no botão */
+    .btn--loading{position:relative;pointer-events:none}
+    .btn--loading::after{
+      content:"";width:16px;height:16px;border:2px solid rgba(255,255,255,.7);border-top-color:transparent;border-radius:50%;
+      animation:spin 0.9s linear infinite
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      {% if politica and politica.logo %}
+        <div class="logo-topo" aria-hidden="true">
+          <img src="{{ politica.logo.url }}" alt="Logo">
+        </div>
+      {% endif %}
+      <h1 class="title">Minhas Inscrições</h1>
+      <p class="subtitle">Consulte suas inscrições informando o CPF</p>
+    </header>
+
+    <main>
+      <section class="card" aria-labelledby="busca-inscricoes">
+        
+
+        {% include "partials/flash_messages.html" %}
+
+        <form method="post" role="search" novalidate id="frmCpf">
+          {% csrf_token %}
+          <div class="field">
+            <label for="cpf_mask">CPF do participante</label>
+            <!-- Visível (com máscara) -->
+            <input
+              type="text"
+              id="cpf_mask"
+              inputmode="numeric"
+              pattern="\d*"
+              placeholder="000.000.000-00"
+              value="{{ cpf_informado|default_if_none:'' }}"
+              maxlength="14"
+              aria-label="CPF do participante"
+              aria-describedby="cpf_hint cpf_error"
+              autocomplete="off"
+              required
+            >
+            <!-- Oculto (somente números) — é este que vai para o servidor -->
+            <input type="hidden" name="cpf" id="cpf">
+          </div>
+
+          <button class="btn btn-primary" type="submit" id="btnBuscar" aria-live="polite">
+            Buscar
+          </button>
+        </form>
+
+        <div id="cpf_hint" class="hint">Digite 11 dígitos. Ex.: 123.456.789-09</div>
+        <div id="cpf_error" class="err" aria-live="polite"></div>
+
+        {% if participante %}
+          <div class="header-line" style="margin-top:14px">
+            <div class="who">{{ participante.nome }}</div>
+            <div class="cpf">CPF: {{ participante.cpf }}</div>
+          </div>
+
+          {% if inscricoes %}
+            <div class="grid" role="list">
+              {% for ins in inscricoes %}
+                <article class="item" role="listitem" aria-labelledby="evt-{{ forloop.counter }}">
+                  <h3 id="evt-{{ forloop.counter }}">{{ ins.evento.nome }}</h3>
+
+                  <div class="row">
+                    {% if ins.pagamento_confirmado %}
+                      <span class="badge ok" title="Pagamento confirmado">✔ Pagamento confirmado</span>
+                    {% elif ins.foi_selecionado %}
+                      <span class="badge warn" title="Selecionado, aguardando pagamento">⏳ Selecionado — aguarda pagamento</span>
+                    {% else %}
+                      <span class="badge danger" title="Ainda não selecionado">• Não selecionado</span>
+                    {% endif %}
+                  </div>
+
+                  <div class="kv">
+                    <div class="k">Paróquia</div><div>{{ ins.evento.paroquia.nome }}</div>
+                    <div class="k">Periodo</div>
+                    <div>
+                      {{ ins.evento.data_inicio|date:"d/m/Y" }}
+                      {% if ins.evento.data_fim %} – {{ ins.evento.data_fim|date:"d/m/Y" }}{% endif %}
+                    </div>
+                    <div class="k">Valor</div><div>R$ {{ ins.evento.valor_inscricao|floatformat:2 }}</div>
+                  </div>
+
+                  {% if ins.foi_selecionado and not ins.pagamento_confirmado %}
+                    <div class="pay-actions" aria-label="Formas de pagamento">
+                      <a class="btn btn-pay"  href="{% url 'inscricoes:iniciar_pagamento_pix' ins.id %}" aria-label="Pagar com PIX">Pagar com PIX</a>
+                      <a class="btn btn-card" href="{% url 'inscricoes:aguardando_pagamento' ins.id %}" aria-label="Pagar com cartão">Pagar com Cartão</a>
+                    </div>
+                  {% endif %}
+
+                  <div class="row" style="margin-top:8px">
+                    <a class="btn btn-light" href="{% url 'inscricoes:ver_inscricao' ins.id %}">Ver detalhes</a>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="muted" style="margin-top:8px">Nenhuma inscrição localizada para este CPF.</p>
+          {% endif %}
+        {% else %}
+          <p class="muted" style="margin-top:8px">Digite seu CPF acima para ver seus eventos e realizar o pagamento.</p>
+        {% endif %}
+      </section>
+    </main>
+
+    <footer>
+      Desenvolvido por <strong>Alexandre Martins Vieira</strong>
+    </footer>
+  </div>
+
+  <script>
+  (function () {
+    const maskInput   = document.getElementById('cpf_mask');
+    const hiddenInput = document.getElementById('cpf');
+    const btnBuscar   = document.getElementById('btnBuscar');
+    const errBox      = document.getElementById('cpf_error');
+    const form        = document.getElementById('frmCpf');
+    const LS_KEY      = 'portal_cpf';
+
+    function onlyDigits(s){ return (s||'').replace(/\D/g,''); }
+
+    function formatCPF(value) {
+      const digits = onlyDigits(value).slice(0, 11);
+      let out = '';
+      if (digits.length > 0) out = digits.slice(0, 3);
+      if (digits.length >= 4) out += '.' + digits.slice(3, 6);
+      if (digits.length >= 7) out += '.' + digits.slice(6, 9);
+      if (digits.length >= 10) out += '-' + digits.slice(9, 11);
+      return { mask: out, digits };
+    }
+
+    // Validação de CPF (cálculo dos dígitos verificadores)
+    function cpfIsValid(raw) {
+      const c = onlyDigits(raw);
+      if (c.length !== 11) return false;
+      if (/^(\d)\1{10}$/.test(c)) return false; // todos iguais
+
+      // primeiro dígito
+      let sum = 0;
+      for (let i=0;i<9;i++) sum += parseInt(c[i],10) * (10 - i);
+      let d1 = 11 - (sum % 11);
+      if (d1 > 9) d1 = 0;
+      if (d1 !== parseInt(c[9],10)) return false;
+
+      // segundo dígito
+      sum = 0;
+      for (let i=0;i<10;i++) sum += parseInt(c[i],10) * (11 - i);
+      let d2 = 11 - (sum % 11);
+      if (d2 > 9) d2 = 0;
+      return d2 === parseInt(c[10],10);
+    }
+
+    function apply(value) {
+      const { mask, digits } = formatCPF(value);
+      maskInput.value = mask;
+      hiddenInput.value = digits;
+
+      // feedback de validade
+      const valid = digits.length === 11 && cpfIsValid(digits);
+      maskInput.setAttribute('aria-invalid', (!valid && digits.length>0) ? 'true' : 'false');
+      errBox.textContent = (!valid && digits.length>0) ? 'CPF inválido. Verifique os dígitos.' : '';
+      btnBuscar.disabled = !valid;
+      return valid;
+    }
+
+    // Restaurar último CPF válido (se o servidor não preencheu)
+    if (!maskInput.value) {
+      const last = localStorage.getItem(LS_KEY);
+      if (last) apply(last);
+    } else {
+      apply(maskInput.value);
+    }
+
+    // Digitação
+    maskInput.addEventListener('input', () => apply(maskInput.value));
+
+    // Colar
+    maskInput.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text') || '';
+      apply(text);
+    });
+
+    // Envio
+    form.addEventListener('submit', (e) => {
+      const ok = apply(maskInput.value);
+      if (!ok) {
+        e.preventDefault();
+        maskInput.focus();
+        return false;
+      }
+      // loading no botão
+      btnBuscar.classList.add('btn--loading');
+      btnBuscar.setAttribute('aria-busy','true');
+
+      // guarda último CPF válido
+      localStorage.setItem(LS_KEY, maskInput.value);
+    });
+  })();
+  </script>
+</body>
+</html>

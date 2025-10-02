@@ -7,10 +7,7 @@
 
   <!-- Bootstrap + Font Awesome -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <style>
     :root{
@@ -25,45 +22,36 @@
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .navbar-brand{ font-size:1rem; }
 
-    .card-clean{
-      border:none; box-shadow:0 10px 24px rgba(17,24,39,.08);
-      transition:transform .12s ease, box-shadow .12s ease; border-radius:.9rem; background:#fff;
-      border:1px solid #e5e7eb;
-    }
+    .card-clean{ border:none; box-shadow:0 10px 24px rgba(17,24,39,.08); transition:transform .12s ease, box-shadow .12s ease; border-radius:.9rem; background:#fff; border:1px solid #e5e7eb; }
     .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
     .text-muted-2{ color:var(--muted); }
-    .sec-title{
-      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
-      margin:0 0 .75rem; font-weight:700;
-    }
+    .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700; }
     .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
 
-    /* Deixa inputs com “cara” de form-control sem precisar add_class */
+    /* Sidebar (estilo GovDocs) */
+    .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
+    .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+    .nav-list{ list-style:none; padding:6px; margin:0; }
+    .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none; }
+    .nav-list a:hover{ background:#eef2f7; }
+    .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
+
+    /* Form auto estilo */
     .form-auto input,
     .form-auto select,
     .form-auto textarea{
-      display:block; width:100%;
-      padding:.55rem .75rem; border:1px solid #e5e7eb; border-radius:.5rem;
-      background:#fff; color:#0f172a; font-size:.95rem; outline:none;
+      display:block; width:100%; padding:.55rem .75rem; border:1px solid #e5e7eb; border-radius:.5rem; background:#fff; color:#0f172a; font-size:.95rem; outline:none;
     }
     .form-auto input:focus,
     .form-auto select:focus,
-    .form-auto textarea:focus{
-      border-color:#bfdbfe; box-shadow:0 0 0 .2rem var(--ring);
-    }
+    .form-auto textarea:focus{ border-color:#bfdbfe; box-shadow:0 0 0 .2rem var(--ring); }
     .form-auto .help{ font-size:.85rem; color:var(--muted); }
     .form-auto .errorlist{ list-style:none; padding:0; margin:.4rem 0 0; }
-    .form-auto .errorlist li{
-      background:#fee2e2; border:1px solid #fecaca; color:#991b1b;
-      border-radius:.5rem; padding:.45rem .6rem; font-size:.85rem;
-    }
+    .form-auto .errorlist li{ background:#fee2e2; border:1px solid #fecaca; color:#991b1b; border-radius:.5rem; padding:.45rem .6rem; font-size:.85rem; }
 
     /* Preview de arquivos */
     .file-preview{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.25rem }
-    .file-preview__item{
-      width:120px; min-height:84px; border:1px solid #e5e7eb; border-radius:.5rem;
-      background:#f7f9fc; display:grid; place-items:center; padding:.4rem; color:#64748b; font-size:.8rem;
-    }
+    .file-preview__item{ width:120px; min-height:84px; border:1px solid #e5e7eb; border-radius:.5rem; background:#f7f9fc; display:grid; place-items:center; padding:.4rem; color:#64748b; font-size:.8rem; }
     .file-preview__item img{ width:100%; height:100%; object-fit:cover; border-radius:.4rem }
   </style>
 </head>
@@ -84,75 +72,98 @@
 </nav>
 
 <main class="container py-3 py-lg-4">
+  <div class="row g-3">
 
-  <!-- HEADER -->
-  <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-      <div>
-        <h1 class="h6 m-0">Criar Novo Evento</h1>
-        <div class="small text-muted-2">Preencha as informações do evento da sua paróquia.</div>
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="col-lg-3">
+      <div class="sidebar-card p-2">
+        <div class="nav-title">Navegação</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_painel' %}">🏠 <span>Dashboard</span></a></li>
+          <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">🗓️ <span>Novo evento</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:mp_config' %}">💳 <span>Pagamentos (MP)</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_create_admin' %}">👤 <span>Usuários da paróquia</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:repasse_lista_eventos' %}">💼 <span>Repasses</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:publicacoes_list' %}?paroquia={{ paroquia.id }}">📰 <span>Publicações</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" target="_blank" rel="noopener">🌐 <span>Portal do participante</span></a></li>
+        </ul>
       </div>
-      <div class="d-flex gap-2">
-        <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="btn btn-outline-secondary btn-sm">
-          <i class="fa-solid fa-arrow-left"></i> Voltar
-        </a>
+    </aside>
+
+    <!-- ===== CONTENT ===== -->
+    <section class="col-lg-9">
+
+      <!-- HEADER -->
+      <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <h1 class="h6 m-0">Criar Novo Evento</h1>
+            <div class="small text-muted-2">Preencha as informações do evento da sua paróquia.</div>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="btn btn-outline-secondary btn-sm">
+              <i class="fa-solid fa-arrow-left"></i> Voltar
+            </a>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <!-- FORM -->
-  <section class="mb-4">
-    <h2 class="sec-title">Dados do evento</h2>
+      <!-- FORM -->
+      <section class="mb-4">
+        <h2 class="sec-title">Dados do evento</h2>
 
-    <div class="card-clean p-3 p-lg-4">
-      <form method="post" enctype="multipart/form-data" class="form-auto">
-        {% csrf_token %}
-        {{ form.hidden_fields }}
+        <div class="card-clean p-3 p-lg-4">
+          <form method="post" enctype="multipart/form-data" class="form-auto">
+            {% csrf_token %}
+            {{ form.hidden_fields }}
 
-        <div class="row g-3">
-          {% for field in form.visible_fields %}
-            <div class="col-12 {% if field.field.widget.input_type != 'file' %}col-md-6{% endif %}">
-              <label for="{{ field.id_for_label }}" class="form-label fw-semibold small text-muted-2 mb-1">
-                {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
-              </label>
+            <div class="row g-3">
+              {% for field in form.visible_fields %}
+                <div class="col-12 {% if field.field.widget.input_type != 'file' %}col-md-6{% endif %}">
+                  <label for="{{ field.id_for_label }}" class="form-label fw-semibold small text-muted-2 mb-1">
+                    {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+                  </label>
 
-              {{ field }}
+                  {{ field }}
 
-              {% if field.help_text %}
-                <div class="help mt-1">{{ field.help_text|safe }}</div>
-              {% endif %}
+                  {% if field.help_text %}
+                    <div class="help mt-1">{{ field.help_text|safe }}</div>
+                  {% endif %}
 
-              {% if field.errors %}
-                <ul class="errorlist">
-                  {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
-                </ul>
-              {% endif %}
+                  {% if field.errors %}
+                    <ul class="errorlist">
+                      {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+                    </ul>
+                  {% endif %}
 
-              {% if field.field.widget.input_type == 'file' %}
-                <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
-              {% endif %}
+                  {% if field.field.widget.input_type == 'file' %}
+                    <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
+                  {% endif %}
+                </div>
+              {% endfor %}
             </div>
-          {% endfor %}
-        </div>
 
-        <div class="d-flex justify-content-end gap-2 mt-3">
-          <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="btn btn-outline-secondary">
-            <i class="fa-solid fa-xmark"></i> Cancelar
-          </a>
-          <button type="submit" class="btn btn-primary">
-            <i class="fa-solid fa-floppy-disk"></i> Salvar
-          </button>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+              <a href="{% url 'inscricoes:admin_paroquia_painel' %}" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-xmark"></i> Cancelar
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Salvar
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
-    </div>
-  </section>
+      </section>
 
-  <footer class="py-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-center">
-      <small>© {{ current_year }} Sistema de Eventos — Todos os direitos reservados</small>
-      <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
-    </div>
-  </footer>
+      <footer class="py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+          <small>© {{ current_year }} Sistema de Eventos — Todos os direitos reservados</small>
+          <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+        </div>
+      </footer>
+    </section>
+
+  </div>
 </main>
 
 <script>

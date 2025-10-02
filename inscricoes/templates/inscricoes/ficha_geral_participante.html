@@ -1,0 +1,461 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Inscrição — {{ inscricao.participante.nome }} ({{ inscricao.evento.nome }})</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    :root{ --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+           --g1:#0b1020; --g2:#111a3a; --base-font:14px; }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+
+    /* Navbar */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    /* Sidebar */
+    .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
+    .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+    .nav-list{ list-style:none; padding:6px; margin:0; }
+    .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none; }
+    .nav-list a:hover{ background:#eef2f7; }
+    .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
+
+    .sticky-topbar{
+      position: sticky; top: 0; z-index: 20;
+      background:#ffffffd6; backdrop-filter: blur(6px);
+      border:1px solid #e5e7eb; border-radius:.9rem;
+    }
+
+    .card-clean{
+      border:1px solid #e5e7eb; border-radius:.9rem; background:#fff;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
+    }
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+
+    .text-muted-2{ color:var(--muted); }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
+    }
+
+    .chip{
+      display:inline-flex; align-items:center; gap:.5rem;
+      padding:.35rem .7rem; border-radius:999px; border:1px solid #e5e7eb; background:#fff;
+      font-weight:700; font-size:.85rem;
+    }
+
+    .kpi{ background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.6rem .8rem; }
+    .kpi .small{ color:var(--muted); font-size:.78rem; }
+    .kpi .fs-5{ font-size:1rem !important; }
+
+    .avatar{
+      width:60px; height:60px; border-radius:999px; object-fit:cover; border:1px solid #e5e7eb;
+      background:#f1f5f9;
+    }
+
+    .dl-mini dt{ font-size:.75rem; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+    .dl-mini dd{ margin-bottom:.6rem; }
+
+    .badge-soft{ background:#eef2f7; color:#334155; border:1px solid #e5e7eb; }
+
+    .table-sm .btn-icon{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; }
+
+    /* Link “ink” */
+    a.link-ink{ color:var(--ink); text-decoration:none; }
+    a.link-ink:hover{ text-decoration:underline; }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">← Participantes</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:relatorios_evento' inscricao.evento.id %}">📊 Relatórios</a>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+  <div class="row g-3">
+
+    <!-- SIDEBAR -->
+    <aside class="col-lg-3">
+      <div class="sidebar-card p-2">
+        <div class="nav-title">Evento</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_eventos' inscricao.paroquia.id %}">🗂️ <span>Lista de eventos</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">👥 <span>Participantes</span></a></li>
+        </ul>
+
+        <!-- Removido o bloco "Ações" para não duplicar botões -->
+
+        <div class="nav-title">Resumo</div>
+        <div class="row g-2 m-0">
+          <div class="col-6">
+            <div class="kpi">
+              <div class="small">Selecionado</div>
+              <div class="fs-5 fw-bold">
+                {% if inscricao.foi_selecionado %}Sim{% else %}Não{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="kpi">
+              <div class="small">Pagamento</div>
+              <div class="fs-5 fw-bold">
+                {% if inscricao.pagamento_confirmado %}Confirmado{% else %}Pendente{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="kpi">
+              <div class="small">Status</div>
+              <div class="fs-5 fw-bold">
+                {% if inscricao.inscricao_concluida %}Concluída{% else %}Em andamento{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTEÚDO -->
+    <section class="col-lg-9">
+
+      <!-- HEADER (foto + botões + badges) -->
+      <div class="sticky-topbar p-3 mb-3 bg-white">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+          <div class="d-flex align-items-center gap-3">
+            {% if inscricao.participante.foto %}
+              <img src="{{ inscricao.participante.foto.url }}" class="avatar" alt="Foto de {{ inscricao.participante.nome }}">
+            {% else %}
+              <img src="{% static 'img/user-placeholder.png' %}" class="avatar" alt="Foto">
+            {% endif %}
+            <div>
+              <h1 class="h6 m-0">{{ inscricao.participante.nome }}</h1>
+              <div class="small text-muted-2">
+                {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- AÇÕES no topo -->
+          <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+            <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}" class="btn btn-primary btn-sm">
+              <i class="fa-solid fa-pen"></i> Editar
+            </a>
+            <a href="{% url 'inscricoes:ficha_inscricao' inscricao.id %}" class="btn btn-warning btn-sm" target="_blank" rel="noopener">
+              <i class="fa-solid fa-file-lines"></i> Imprimir Ficha
+            </a>
+            <a href="{% url 'inscricoes:imprimir_cracha' inscricao.id %}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+              <i class="fa-solid fa-id-card"></i> Crachá
+            </a>
+            <a href="{% url 'inscricoes:incluir_pagamento' inscricao.id %}" class="btn btn-success btn-sm">
+              <i class="fa-solid fa-dollar-sign"></i> Pagamento
+            </a>
+
+            {% if inscricao.participante.qr_token %}
+              <span class="d-inline-flex align-items-center gap-2 ms-1">
+                <img src="{% url 'inscricoes:qr_code_png' inscricao.participante.qr_token %}"
+                     alt="QR" style="width:42px;height:42px;border:1px solid #e5e7eb;border-radius:.5rem;">
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Badges de status -->
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+          {% if inscricao.foi_selecionado %}
+            <span class="badge rounded-pill text-bg-primary">Selecionado</span>
+          {% else %}
+            <span class="badge rounded-pill badge-soft">Não selecionado</span>
+          {% endif %}
+
+          {% if inscricao.pagamento_confirmado %}
+            <span class="badge rounded-pill text-bg-success">Pagamento Confirmado</span>
+          {% else %}
+            <span class="badge rounded-pill text-bg-warning text-dark">Pagamento Pendente</span>
+          {% endif %}
+
+          {% if inscricao.inscricao_concluida %}
+            <span class="badge rounded-pill text-bg-secondary">Concluída</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- DADOS PRINCIPAIS -->
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-id-badge me-1"></i> Dados da inscrição</h2>
+        <div class="card-clean p-3">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <dl class="dl-mini">
+                <dt>Evento</dt><dd><a class="link-ink" href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">{{ inscricao.evento.nome }}</a> <span class="text-muted-2">({{ inscricao.evento.get_tipo_display|default:inscricao.evento.tipo }})</span></dd>
+                <dt>Paróquia</dt><dd>{{ inscricao.paroquia.nome }}</dd>
+                <dt>Data da inscrição</dt><dd>{{ inscricao.data_inscricao|date:"d/m/Y H:i" }}</dd>
+              </dl>
+            </div>
+            <div class="col-md-6">
+              <dl class="dl-mini">
+                <dt>CPF</dt><dd>{{ inscricao.participante.cpf }}</dd>
+                <dt>E-mail</dt><dd><a href="mailto:{{ inscricao.participante.email }}" class="link-ink">{{ inscricao.participante.email }}</a></dd>
+                <dt>Telefone</dt><dd><a href="tel:{{ inscricao.participante.telefone }}" class="link-ink">{{ inscricao.participante.telefone }}</a></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DADOS ADICIONAIS (por tipo) -->
+      {% with s=inscricao.inscricaosenior j=inscricao.inscricaojuvenil m=inscricao.inscricaomirim sv=inscricao.inscricaoservos c=inscricao.inscricaocasais e=inscricao.inscricaoevento r=inscricao.inscricaoretiro %}
+      {% if s or j or m or sv or c or e or r %}
+      {% with base=s|default:j|default:m|default:sv|default:c|default:e|default:r %}
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-circle-info me-1"></i> Dados adicionais</h2>
+        <div class="card-clean p-3">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <dl class="dl-mini">
+                <dt>Data de nascimento</dt><dd>{{ base.data_nascimento|date:"d/m/Y" }}</dd>
+                <dt>Altura / Peso</dt>
+                <dd>
+                  {% if base.altura %}{{ base.altura }} m{% else %}-{% endif %} /
+                  {% if base.peso %}{{ base.peso }} kg{% else %}-{% endif %}
+                </dd>
+                <dt>Tamanho da camisa</dt><dd>{{ base.tamanho_camisa|default:"—" }}</dd>
+              </dl>
+            </div>
+            <div class="col-md-4">
+              <dl class="dl-mini">
+                <dt>Estado civil</dt><dd>{{ base.get_estado_civil_display|default:"—" }}</dd>
+                {% if base.tempo_casado_uniao %}<dt>Tempo casado/união</dt><dd>{{ base.tempo_casado_uniao }}</dd>{% endif %}
+                {% if base.nome_conjuge %}<dt>Cônjuge</dt><dd>{{ base.nome_conjuge }} {% if base.conjuge_inscrito %}<span class="badge rounded-pill badge-soft ms-1">{{ base.get_conjuge_inscrito_display }}</span>{% endif %}</dd>{% endif %}
+                <dt>Paróquia</dt><dd>{{ base.paroquia|default:"—" }}</dd>
+                <dt>Pastoral/Mov.</dt><dd>{% if base.pastoral_movimento %}{{ base.pastoral_movimento.nome }}{% elif base.outra_pastoral_movimento %}{{ base.outra_pastoral_movimento }}{% else %}—{% endif %}</dd>
+              </dl>
+            </div>
+            <div class="col-md-4">
+              <dl class="dl-mini">
+                <dt>Batizado</dt><dd>{{ base.get_batizado_display|default:"—" }}</dd>
+                <dt>Crismado</dt><dd>{{ base.get_crismado_display|default:"—" }}</dd>
+                <dt>Tipo sanguíneo</dt><dd>{{ base.tipo_sanguineo|default:"—" }}</dd>
+                <dt>Indicado por</dt><dd>{{ base.indicado_por|default:"—" }}</dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <h6 class="text-muted-2 mb-2">Saúde</h6>
+              <ul class="list-unstyled small m-0">
+                <li><strong>Problema de saúde:</strong> {{ base.get_problema_saude_display|default:"—" }}{% if base.qual_problema_saude %} — {{ base.qual_problema_saude }}{% endif %}</li>
+                <li><strong>Medicamento controlado:</strong> {{ base.get_medicamento_controlado_display|default:"—" }}{% if base.qual_medicamento_controlado %} — {{ base.qual_medicamento_controlado }}{% endif %}</li>
+                {% if base.protocolo_administracao %}<li><strong>Protocolo:</strong> {{ base.protocolo_administracao }}</li>{% endif %}
+                <li><strong>Mobilidade reduzida:</strong> {{ base.get_mobilidade_reduzida_display|default:"—" }}{% if base.qual_mobilidade_reduzida %} — {{ base.qual_mobilidade_reduzida }}{% endif %}</li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-muted-2 mb-2">Alergias</h6>
+              <ul class="list-unstyled small m-0">
+                <li><strong>Alimento:</strong> {{ base.get_alergia_alimento_display|default:"—" }}{% if base.qual_alergia_alimento %} — {{ base.qual_alergia_alimento }}{% endif %}</li>
+                <li><strong>Medicamento:</strong> {{ base.get_alergia_medicamento_display|default:"—" }}{% if base.qual_alergia_medicamento %} — {{ base.qual_alergia_medicamento }}{% endif %}</li>
+              </ul>
+            </div>
+          </div>
+
+          {% if base.informacoes_extras %}
+            <div class="mt-3">
+              <h6 class="text-muted-2 mb-2">Informações extras</h6>
+              <div class="small">{{ base.informacoes_extras|linebreaks }}</div>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endwith %}
+      {% endif %}
+      {% endwith %}
+
+      <!-- PAREAMENTO / CÔNJUGE -->
+      {% if inscricao.par or inscricao.conjuge %}
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-user-group me-1"></i> Pareamento / Cônjuge</h2>
+        <div class="card-clean p-3">
+          {% if inscricao.par %}
+            <div class="mb-2">
+              <div class="small text-muted-2">Inscrição pareada</div>
+              <div>
+                <a class="link-ink fw-semibold" href="{% url 'inscricoes:ver_inscricao' inscricao.par.id %}">
+                  {{ inscricao.par.participante.nome }}
+                </a>
+                <span class="badge rounded-pill badge-soft ms-2">{{ inscricao.par.evento.nome }}</span>
+              </div>
+            </div>
+          {% endif %}
+          {% if inscricao.conjuge %}
+            <div class="mt-2">
+              <div class="small text-muted-2">Dados do cônjuge</div>
+              <div><strong>Nome:</strong> {{ inscricao.conjuge.nome|default:"—" }}</div>
+              <div class="small">
+                <strong>Inscrito?</strong> {{ inscricao.conjuge.get_conjuge_inscrito_display }},
+                <strong>Campista?</strong> {{ inscricao.conjuge.get_ja_e_campista_display }}
+                {% if inscricao.conjuge.acampamento %} — <strong>Acampamento:</strong> {{ inscricao.conjuge.acampamento }}{% endif %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- GRUPO / MINISTÉRIO -->
+      {% if inscricao.alocacao_grupo or inscricao.alocacao_ministerio %}
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-people-line me-1"></i> Alocação</h2>
+        <div class="card-clean p-3">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="small text-muted-2">Grupo</div>
+              <div>
+                {% if inscricao.alocacao_grupo and inscricao.alocacao_grupo.grupo %}
+                  {{ inscricao.alocacao_grupo.grupo.nome }}
+                  {% if inscricao.alocacao_grupo.grupo.cor %}<span class="badge rounded-pill badge-soft ms-2">{{ inscricao.alocacao_grupo.grupo.cor }}</span>{% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="small text-muted-2">Ministério</div>
+              <div>
+                {% if inscricao.alocacao_ministerio and inscricao.alocacao_ministerio.ministerio %}
+                  {{ inscricao.alocacao_ministerio.ministerio.nome }}
+                {% else %}
+                  —
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- CONTATOS -->
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-address-book me-1"></i> Contatos</h2>
+        <div class="card-clean p-3">
+          {% with lista=inscricao.contatos.all %}
+          {% if lista %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>Parentesco</th>
+                    <th>Campista?</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {% for c in lista %}
+                  <tr>
+                    <td>{{ c.nome }}</td>
+                    <td><a class="link-ink" href="tel:{{ c.telefone }}">{{ c.telefone }}</a></td>
+                    <td>{{ c.get_grau_parentesco_display }}</td>
+                    <td>
+                      {% if c.ja_e_campista %}
+                        <span class="badge rounded-pill text-bg-success">Sim</span>
+                      {% else %}
+                        <span class="badge rounded-pill text-bg-secondary">Não</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted-2">Nenhum contato cadastrado.</div>
+          {% endif %}
+          {% endwith %}
+        </div>
+      </section>
+
+      <!-- FILHOS -->
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-children me-1"></i> Filhos</h2>
+        <div class="card-clean p-3">
+          {% with filhos=inscricao.filhos.all %}
+          {% if filhos %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nome</th>
+                    <th style="width:90px" class="text-center">Idade</th>
+                    <th>Telefone</th>
+                    <th>Endereço</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {% for f in filhos %}
+                  <tr>
+                    <td>{{ f.nome }}</td>
+                    <td class="text-center">{{ f.idade }}</td>
+                    <td>{{ f.telefone|default:"—" }}</td>
+                    <td>{{ f.endereco|default:"—" }}</td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted-2">Nenhum filho cadastrado.</div>
+          {% endif %}
+          {% endwith %}
+        </div>
+      </section>
+
+      <!-- ENDEREÇO DO PARTICIPANTE -->
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-location-dot me-1"></i> Endereço</h2>
+        <div class="card-clean p-3">
+          <div class="row g-3">
+            <div class="col-md-4"><strong>CEP:</strong> {{ inscricao.participante.CEP }}</div>
+            <div class="col-md-8"><strong>Endereço:</strong> {{ inscricao.participante.endereco }}, {{ inscricao.participante.numero }}</div>
+            <div class="col-md-4"><strong>Bairro:</strong> {{ inscricao.participante.bairro }}</div>
+            <div class="col-md-4"><strong>Cidade:</strong> {{ inscricao.participante.cidade }}</div>
+            <div class="col-md-4"><strong>Estado:</strong> {{ inscricao.participante.estado }}</div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+          <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
+          <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+        </div>
+      </footer>
+
+    </section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -14,6 +14,7 @@ from django.http import HttpResponseForbidden
 from django.views.decorators.cache import never_cache
 from typing import Optional
 from django.core.exceptions import FieldError
+
 # ——— Django
 from django.conf import settings
 from django.contrib import messages
@@ -118,9 +119,14 @@ def _tem_personalizado(insc: Inscricao) -> bool:
         "juvenil": "inscricaojuvenil",
         "mirim":   "inscricaomirim",
         "servos":  "inscricaoservos",
+        "casais":  "inscricaocasais",
+        "evento":  "inscricaoevento",
+        "retiro":  "inscricaoretiro",
     }
-    rel = rel_por_tipo.get(insc.evento.tipo.lower())
+    tipo_eff = _tipo_formulario_evento(insc.evento)
+    rel = rel_por_tipo.get(tipo_eff)
     return bool(rel and getattr(insc, rel, None))
+
 
 def _tem_contato(insc: Inscricao) -> bool:
     return bool(
@@ -601,6 +607,7 @@ def evento_participantes(request, evento_id):
     return render(request, 'inscricoes/evento_participantes.html', context)
 
 
+
 def inscricao_evento_publico(request, slug):
     evento = get_object_or_404(EventoAcampamento, slug=slug)
     # Aqui você pode colocar lógica para mostrar o formulário de inscrição, dados do evento, etc.
@@ -869,10 +876,19 @@ def inscricao_inicial(request, slug):
     def _fmt_cpf(d: str) -> str:
         return f"{d[0:3]}.{d[3:6]}.{d[6:9]}-{d[9:11]}" if len(d) == 11 else d
 
-    evento   = get_object_or_404(EventoAcampamento, slug=slug)
+    evento = get_object_or_404(EventoAcampamento, slug=slug)
     politica = PoliticaPrivacidade.objects.first()
     hoje = dj_tz.localdate()
-    is_casais = (evento.tipo or '').lower() == 'casais'
+
+    # Usa o tipo efetivo (pode "virar" casais quando servos vinculado a casais)
+    tipo_eff = _tipo_formulario_evento(evento)
+    is_casais = (tipo_eff == 'casais')
+
+    # 🚨 Para 'casais' (inclusive servos->casais) → manda direto pro form de casais
+    if is_casais:
+        # Garante inscrição do participante antes: fluxo original já faz isso na primeira etapa,
+        # então aqui só redirecionamos caso a página específica de casais exista.
+        return redirect('inscricoes:formulario_casais', evento_id=evento.id)
 
     # Fora do período?
     if hoje < evento.inicio_inscricoes or hoje > evento.fim_inscricoes:
@@ -881,43 +897,42 @@ def inscricao_inicial(request, slug):
             'politica': politica
         })
 
-    # --- Retomar endereço sem depender de sessão antiga ---
+    # --- Retomar endereço ---
     if request.GET.get("retomar") == "1" and request.GET.get("pid"):
         try:
             participante_id = int(request.GET["pid"])
             participante = Participante.objects.get(id=participante_id)
-            # Garante que exista inscrição desse participante neste evento
             Inscricao.objects.get(participante=participante, evento=evento)
             request.session["participante_id"] = participante.id
         except (ValueError, Participante.DoesNotExist, Inscricao.DoesNotExist):
             pass
 
-    # Se já preencheu o formulário inicial (etapa Endereço)
+    # --- Etapa endereço ---
     if 'participante_id' in request.session:
         endereco_form = ParticipanteEnderecoForm(request.POST or None)
         if request.method == 'POST' and endereco_form.is_valid():
             participante = Participante.objects.get(id=request.session['participante_id'])
-            participante.CEP      = endereco_form.cleaned_data['CEP']
+            participante.CEP = endereco_form.cleaned_data['CEP']
             participante.endereco = endereco_form.cleaned_data['endereco']
-            participante.numero   = endereco_form.cleaned_data['numero']
-            participante.bairro   = endereco_form.cleaned_data['bairro']
-            participante.cidade   = endereco_form.cleaned_data['cidade']
-            participante.estado   = endereco_form.cleaned_data['estado']
+            participante.numero = endereco_form.cleaned_data['numero']
+            participante.bairro = endereco_form.cleaned_data['bairro']
+            participante.cidade = endereco_form.cleaned_data['cidade']
+            participante.estado = endereco_form.cleaned_data['estado']
             participante.save()
 
-            del request.session['participante_id']
-
             inscricao = Inscricao.objects.get(participante=participante, evento=evento)
+
+            del request.session['participante_id']
             return redirect('inscricoes:formulario_personalizado', inscricao_id=inscricao.id)
 
         return render(request, 'inscricoes/inscricao_inicial.html', {
             'endereco_form': endereco_form,
             'evento': evento,
             'politica': politica,
-            'is_casais': is_casais,  # para o template, se precisar
+            'is_casais': is_casais,
         })
 
-    # Exibir o formulário inicial (CPF + Nome + Telefone + Email)
+    # --- Etapa inicial (CPF, nome, telefone, email) ---
     inicial_form = ParticipanteInicialForm(request.POST or None)
 
     if request.method == 'POST' and inicial_form.is_valid():
@@ -931,79 +946,32 @@ def inscricao_inicial(request, slug):
             }
         )
         if not created:
-            participante.nome     = inicial_form.cleaned_data['nome']
-            participante.email    = inicial_form.cleaned_data['email']
+            participante.nome = inicial_form.cleaned_data['nome']
+            participante.email = inicial_form.cleaned_data['email']
             participante.telefone = inicial_form.cleaned_data['telefone']
             participante.save()
 
         request.session['participante_id'] = participante.id
 
-        # --- NOVO: captura opcional do CPF do cônjuge (apenas casais) ---
-        cpf_conjuge_post = (request.POST.get('cpf_conjuge') or '').strip() if is_casais else ''
-        cpf_conjuge_digits = _digits(cpf_conjuge_post)
-        cpf_conjuge_fmt = _fmt_cpf(cpf_conjuge_digits) if len(cpf_conjuge_digits) == 11 else ''
-
-        # Já existe inscrição?
-        inscricao_existente = Inscricao.objects.filter(
+        inscricao, _ = Inscricao.objects.get_or_create(
             participante=participante,
-            evento=evento
-        ).first()
+            evento=evento,
+            paroquia=evento.paroquia
+        )
 
-        if inscricao_existente:
-            # Atualiza cpf_conjuge e tenta parear
-            if is_casais and cpf_conjuge_digits and not inscricao_existente.cpf_conjuge:
-                inscricao_existente.cpf_conjuge = cpf_conjuge_fmt or cpf_conjuge_post
-                inscricao_existente.save(update_fields=['cpf_conjuge'])
-                try:
-                    inscricao_existente.tentar_vincular_conjuge()
-                except Exception:
-                    pass
+        prog = _proxima_etapa_forms(inscricao)
+        if prog and prog.get("next_url"):
+            return redirect(prog["next_url"])
 
-            prog = _proxima_etapa_forms(inscricao_existente)
-            if prog and prog.get("next_url"):
-                return redirect(prog["next_url"])
-            return redirect('inscricoes:ver_inscricao', pk=inscricao_existente.id)
+        return redirect('inscricoes:ver_inscricao', pk=inscricao.id)
 
-        # Cria inscrição
-        try:
-            inscricao = Inscricao.objects.create(
-                participante=participante,
-                evento=evento,
-                paroquia=evento.paroquia,
-                cpf_conjuge=(cpf_conjuge_fmt or (cpf_conjuge_post or None)) if is_casais else None,
-            )
-        except IntegrityError:
-            inscricao = Inscricao.objects.get(participante=participante, evento=evento)
-            # Se veio agora o cpf_conjuge, atualiza e tenta parear
-            if is_casais and cpf_conjuge_digits and not inscricao.cpf_conjuge:
-                inscricao.cpf_conjuge = cpf_conjuge_fmt or cpf_conjuge_post
-                inscricao.save(update_fields=['cpf_conjuge'])
-                try:
-                    inscricao.tentar_vincular_conjuge()
-                except Exception:
-                    pass
-            prog = _proxima_etapa_forms(inscricao)
-            if prog and prog.get("next_url"):
-                return redirect(prog["next_url"])
-            return redirect('inscricoes:ver_inscricao', pk=inscricao.id)
-
-        # Tenta parear imediatamente (se o outro já existir)
-        if is_casais and (cpf_conjuge_digits or cpf_conjuge_post):
-            try:
-                inscricao.tentar_vincular_conjuge()
-            except Exception:
-                pass
-
-        # Depois de criar, segue para preencher endereço
-        return redirect('inscricoes:inscricao_inicial', slug=evento.slug)
-
-    # GET inicial
     return render(request, 'inscricoes/inscricao_inicial.html', {
         'form': inicial_form,
         'evento': evento,
         'politica': politica,
-        'is_casais': is_casais,  # para o template exibir o campo "CPF do cônjuge"
+        'is_casais': is_casais,
     })
+
 
 # inscricoes/views_ajax.py  (ou no seu views.py, se preferir)
 import re
@@ -1101,82 +1069,129 @@ def formulario_personalizado(request, inscricao_id):
     politica = PoliticaPrivacidade.objects.first()
 
     # Mapeia tipo de evento → (FormClass, atributo OneToOne na Inscricao)
-    # Observação: como os modelos não definem related_name no OneToOne,
-    # o Django cria o reverso como o nome do modelo em minúsculo.
     form_map = {
         'senior':  (InscricaoSeniorForm,  'inscricaosenior'),
         'juvenil': (InscricaoJuvenilForm, 'inscricaojuvenil'),
         'mirim':   (InscricaoMirimForm,   'inscricaomirim'),
         'servos':  (InscricaoServosForm,  'inscricaoservos'),
-        # NOVOS:
         'casais':  (InscricaoCasaisForm,  'inscricaocasais'),
         'evento':  (InscricaoEventoForm,  'inscricaoevento'),
         'retiro':  (InscricaoRetiroForm,  'inscricaoretiro'),
     }
 
-    tipo = (evento.tipo or '').lower()
-    if tipo not in form_map:
+    # usa o tipo efetivo (servos->casais quando vinculado)
+    tipo_eff = _tipo_formulario_evento(evento)
+    if tipo_eff not in form_map:
         raise Http404("Tipo de evento inválido.")
 
-    FormClass, rel_name = form_map[tipo]
+    FormClass, rel_name = form_map[tipo_eff]
     instancia = getattr(inscricao, rel_name, None)
-    conj_inst = getattr(inscricao, 'conjuge', None)
+    conj_inst = getattr(inscricao, 'conjuge', None)  # pode existir de eventos casais
 
     if request.method == 'POST':
         form = FormClass(request.POST, request.FILES, instance=instancia)
-        conj_form = ConjugeForm(request.POST, instance=conj_inst)
-        if form.is_valid() and conj_form.is_valid():
+        conj_form = ConjugeForm(request.POST, instance=conj_inst) if tipo_eff == "casais" else None
+
+        # validação: cônjuge só é obrigatório para casais
+        if form.is_valid() and (tipo_eff != "casais" or (conj_form and conj_form.is_valid())):
             # Salva dados do formulário principal
             obj = form.save(commit=False)
             obj.inscricao = inscricao
+            obj.paroquia = inscricao.paroquia  # se seu modelo possui campo paroquia
             obj.save()
 
-            # Salva dados do Cônjuge (mantido igual — útil p/ “casais”)
-            conj = conj_form.save(commit=False)
-            conj.inscricao = inscricao
-            conj.save()
+            # Salva dados do Cônjuge (apenas para 'casais' efetivo)
+            if tipo_eff == "casais":
+                conj = conj_form.save(commit=False)
+                conj.inscricao = inscricao
+                conj.save()
 
             return redirect('inscricoes:formulario_contato', inscricao_id=inscricao.id)
     else:
         form = FormClass(instance=instancia)
-        conj_form = ConjugeForm(instance=conj_inst)
+        conj_form = ConjugeForm(instance=conj_inst) if tipo_eff == "casais" else None
 
-    # Campos que o JS vai mostrar/ocultar
+    # Campos condicionais controlados via JS
     campos_condicionais = [
-        'nome_conjuge',
-        'casado_na_igreja',
-        'conjuge_inscrito',
+        # Participante principal
         'ja_e_campista',
+        'tema_acampamento',
+
+        # Cônjuge (apenas quando casais efetivo)
+        'nome_conjuge',
+        'conjuge_inscrito',
+        'ja_e_campista_conjuge',
+        'tema_acampamento_conjuge',
+
+        # Casado/união estável
+        'estado_civil',
+        'tempo_casado_uniao',
+        'casado_na_igreja',
     ]
 
-    # Caso queira esconder o bloco de cônjuge nos outros tipos, use esta flag no template
-    exibir_conjuge = (tipo == 'casais')
+    exibir_conjuge = (tipo_eff == 'casais')
 
     return render(request, 'inscricoes/formulario_personalizado.html', {
-        'form':                form,
-        'conj_form':           conj_form,
-        'inscricao':           inscricao,
-        'evento':              evento,
+        'form': form,
+        'conj_form': conj_form,
+        'inscricao': inscricao,
+        'evento': evento,
         'campos_condicionais': campos_condicionais,
-        'politica':            politica,
-        'exibir_conjuge':      exibir_conjuge,
+        'politica': politica,
+        'exibir_conjuge': exibir_conjuge,
     })
+
+@require_POST
+def evento_toggle_servos(request, pk):
+    ev = get_object_or_404(EventoAcampamento, pk=pk)
+
+    # Só faz sentido no PRINCIPAL (não no próprio evento de servos)
+    if (ev.tipo or "").lower() == "servos":
+        return JsonResponse({"ok": False, "msg": "Ação permitida apenas no evento principal."}, status=400)
+
+    permitir = (request.POST.get("permitir") or "").lower() in ("1", "true", "on", "yes", "sim")
+    ev.permitir_inscricao_servos = permitir
+    ev.save(update_fields=["permitir_inscricao_servos"])
+
+    msg = "Inscrições de servos ativadas." if permitir else "Inscrições de servos desativadas."
+    return JsonResponse({"ok": True, "permitir": permitir, "msg": msg})
+
+
+from django.forms import modelformset_factory
+from .models import Filho
+from .forms import ContatoForm, FilhoForm
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.forms import modelformset_factory
+from .models import Inscricao, PoliticaPrivacidade, Filho
+from .forms import ContatoForm, FilhoForm
 
 
 def formulario_contato(request, inscricao_id):
-    # Recupera a inscrição com base no ID
+    # Recupera a inscrição
     inscricao = get_object_or_404(Inscricao, id=inscricao_id)
 
-    # Recupera o evento associado à inscrição
+    # Evento e política
     evento = inscricao.evento
-
-    # Recupera a política de privacidade
     politica = PoliticaPrivacidade.objects.first()
+
+    # Só cria formset de filhos se for evento de casais
+    filhos_formset = None
+    filhos_qs = Filho.objects.none()
+    if evento.tipo == "casais":
+        FilhoFormSet = modelformset_factory(Filho, form=FilhoForm, extra=8, can_delete=True)
+        filhos_qs = Filho.objects.filter(inscricao=inscricao)
 
     if request.method == 'POST':
         form = ContatoForm(request.POST)
-        if form.is_valid():
-            # Processar os dados do formulário
+
+        if evento.tipo == "casais":
+            filhos_formset = FilhoFormSet(request.POST, queryset=filhos_qs)
+        else:
+            filhos_formset = None
+
+        if form.is_valid() and (not filhos_formset or filhos_formset.is_valid()):
+            # Atualiza os dados da inscrição
             inscricao.responsavel_1_nome = form.cleaned_data['responsavel_1_nome']
             inscricao.responsavel_1_telefone = form.cleaned_data['responsavel_1_telefone']
             inscricao.responsavel_1_grau_parentesco = form.cleaned_data['responsavel_1_grau_parentesco']
@@ -1192,13 +1207,21 @@ def formulario_contato(request, inscricao_id):
             inscricao.contato_emergencia_grau_parentesco = form.cleaned_data['contato_emergencia_grau_parentesco']
             inscricao.contato_emergencia_ja_e_campista = form.cleaned_data['contato_emergencia_ja_e_campista']
 
-            # Salvar a instância da inscrição
             inscricao.save()
 
-            # Redireciona para o formulário de dados de saúde
+            # Salva filhos (apenas se evento for casais)
+            if filhos_formset:
+                filhos = filhos_formset.save(commit=False)
+                for filho in filhos:
+                    filho.inscricao = inscricao
+                    filho.save()
+                for f in filhos_formset.deleted_objects:
+                    f.delete()
+
             return redirect('inscricoes:formulario_saude', inscricao_id=inscricao.id)
+
     else:
-        # Inicializa o formulário com os dados existentes da inscrição
+        # Pré-popula formulário
         form = ContatoForm(initial={
             'responsavel_1_nome': inscricao.responsavel_1_nome,
             'responsavel_1_telefone': inscricao.responsavel_1_telefone,
@@ -1214,12 +1237,20 @@ def formulario_contato(request, inscricao_id):
             'contato_emergencia_ja_e_campista': inscricao.contato_emergencia_ja_e_campista,
         })
 
+        if evento.tipo == "casais":
+            filhos_formset = FilhoFormSet(queryset=filhos_qs)
+
     return render(request, 'inscricoes/formulario_contato.html', {
         'form': form,
+        'filhos_formset': filhos_formset,  # pode ser None se não for casais
         'inscricao': inscricao,
         'evento': evento,
         'politica': politica,
+        'range_filhos': range(1, 9),  # para o select do template
+        'filhos_qs': filhos_qs,
     })
+
+
 
 def formulario_saude(request, inscricao_id):
     inscricao = get_object_or_404(Inscricao, id=inscricao_id)
@@ -3588,3 +3619,352 @@ def comunicado_detalhe(request, pk: int):
     except Exception:
         pass
     return render(request, "inscricoes/comunicado_detalhe.html", {"c": obj})
+
+from datetime import date
+from django.shortcuts import render, get_object_or_404
+from django.db.models import Q, Count, OuterRef, Subquery, IntegerField, Value, CharField, Case, When
+from django.db.models.functions import Coalesce
+from django.core.paginator import Paginator
+from django.utils.dateparse import parse_date
+
+def admin_paroquia_eventos(request, pk):
+    paroquia = get_object_or_404(Paroquia, pk=pk)
+
+    # ---- Filtros GET
+    q      = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "").strip().upper()   # "ABERTO" | "FECHADO" | "ENCERRADO"
+    tipo   = (request.GET.get("tipo") or "").strip()
+    de     = parse_date(request.GET.get("de") or "")
+    ate    = parse_date(request.GET.get("ate") or "")
+
+    hoje = date.today()
+
+    # ---- Query base
+    qs = (
+        EventoAcampamento.objects
+        .filter(paroquia=paroquia)
+        .select_related("paroquia")
+        .order_by("-data_inicio")
+    )
+
+    # ---- Filtros
+    if q:
+        qs = qs.filter(Q(nome__icontains=q) | Q(slug__icontains=q))
+    if tipo:
+        qs = qs.filter(tipo=tipo)
+    if de:
+        qs = qs.filter(data_inicio__gte=de)
+    if ate:
+        qs = qs.filter(data_inicio__lte=ate)
+
+    # Status (via datas, pois 'status_inscricao' é property)
+    if status == "ABERTO":
+        qs = qs.filter(inicio_inscricoes__lte=hoje, fim_inscricoes__gte=hoje)
+    elif status == "FECHADO":
+        qs = qs.filter(inicio_inscricoes__gt=hoje)
+    elif status == "ENCERRADO":
+        qs = qs.filter(fim_inscricoes__lt=hoje)
+
+    # ---- Subqueries (independe de related_name)
+    inscritos_sq = (
+        Inscricao.objects
+        .filter(evento=OuterRef("pk"))
+        .values("evento")
+        .annotate(c=Count("id"))
+        .values("c")[:1]
+    )
+    confirmados_sq = (
+        Inscricao.objects
+        .filter(evento=OuterRef("pk"), pagamento_confirmado=True)
+        .values("evento")
+        .annotate(c=Count("id"))
+        .values("c")[:1]
+    )
+
+    # ---- Anotações + status_code para usar na UI se quiser
+    qs = qs.annotate(
+        total_inscritos=Coalesce(Subquery(inscritos_sq, output_field=IntegerField()), Value(0)),
+        total_confirmados=Coalesce(Subquery(confirmados_sq, output_field=IntegerField()), Value(0)),
+        status_code=Case(
+            When(inicio_inscricoes__lte=hoje, fim_inscricoes__gte=hoje, then=Value("ABERTO")),
+            When(inicio_inscricoes__gt=hoje, then=Value("FECHADO")),
+            default=Value("ENCERRADO"),
+            output_field=CharField(),
+        ),
+    )
+
+    # ---- Paginação
+    paginator  = Paginator(qs, 12)
+    page_obj   = paginator.get_page(request.GET.get("page"))
+    eventos_pg = page_obj.object_list
+
+    # ---- KPIs (gerais da paróquia)
+    # Inscrições totais/confirmadas por paróquia
+    insc_paroquia = Inscricao.objects.filter(evento__paroquia=paroquia)
+    total_inscricoes = insc_paroquia.count()
+    total_inscricoes_confirmadas = insc_paroquia.filter(pagamento_confirmado=True).count()
+
+    # KPIs de eventos (base no queryset já filtrado)
+    total_eventos = paginator.count
+    eventos_abertos = qs.filter(inicio_inscricoes__lte=hoje, fim_inscricoes__gte=hoje).count()
+
+    # Tipos para o <select>
+    try:
+        tipos_evento = EventoAcampamento.TIPO_ACAMPAMENTO
+    except AttributeError:
+        tipos_evento = []
+
+    ctx = {
+        "paroquia": paroquia,
+        "eventos": eventos_pg,
+        "is_paginated": page_obj.has_other_pages(),
+        "page_obj": page_obj,
+        "paginator": paginator,
+
+        # KPIs sidebar
+        "total_eventos": total_eventos,
+        "eventos_abertos": eventos_abertos,
+        "total_inscricoes": total_inscricoes,
+        "total_inscricoes_confirmadas": total_inscricoes_confirmadas,
+
+        "tipos_evento": tipos_evento,
+    }
+    return render(request, "inscricoes/evento_list.html", ctx)
+
+def _pode_gerir_inscricao(user, inscricao: Inscricao) -> bool:
+    if getattr(user, "is_superuser", False):
+        return True
+    if getattr(user, "tipo_usuario", "") == "admin_geral":
+        return True
+    # admin da própria paróquia
+    return getattr(user, "paroquia_id", None) == inscricao.paroquia_id
+
+@require_POST
+def toggle_selecao_inscricao(request, pk: int):
+    inscricao = get_object_or_404(Inscricao, pk=pk)
+
+    if not _pode_gerir_inscricao(request.user, inscricao):
+        return HttpResponseForbidden("Sem permissão.")
+
+    # esperado: selected="true" | "false"
+    selected_raw = request.POST.get("selected", "").lower().strip()
+    selected = selected_raw in ("1", "true", "t", "on", "yes", "y")
+
+    with transaction.atomic():
+        antes = inscricao.foi_selecionado
+        inscricao.foi_selecionado = selected
+        inscricao.save(update_fields=["foi_selecionado"])
+
+    return JsonResponse({
+        "ok": True,
+        "inscricao_id": inscricao.id,
+        "selected": inscricao.foi_selecionado,
+        "changed": antes != inscricao.foi_selecionado,
+        "msg": "Participante selecionado" if inscricao.foi_selecionado else "Participante desmarcado",
+    })
+
+@login_required
+def inscricao_ficha_geral(request, pk: int):
+    qs = (
+        Inscricao.objects
+        .select_related("participante", "evento", "paroquia")
+        .prefetch_related(
+            "contatos",
+            "filhos",
+            "alocacao_grupo__grupo",
+            "alocacao_ministerio__ministerio",
+        )
+    )
+    inscricao = get_object_or_404(qs, pk=pk)
+
+    # Permissão: admin_geral/super vê tudo; admin_paroquia só da própria paróquia
+    u = request.user
+    if (not getattr(u, "is_superuser", False)
+        and getattr(u, "tipo_usuario", "") != "admin_geral"
+        and getattr(u, "paroquia_id", None) != inscricao.paroquia_id):
+        return HttpResponseForbidden("Você não tem permissão para ver esta inscrição.")
+
+    return render(
+        request,
+        "inscricoes/ficha_geral_participante.html",  # seu arquivo de template
+        {"inscricao": inscricao},
+    )
+
+from django.shortcuts import render, get_object_or_404
+from django.urls import reverse
+from .models import EventoAcampamento
+
+def evento_configuracoes(request, evento_id):
+    # evento_id é UUID (vide urls)
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+
+    contexto = {
+        "evento": evento,
+        # links prontos para usar no template
+        "url_politica": reverse("inscricoes:editar_politica_reembolso", args=[evento.pk]),
+        "url_video": reverse("inscricoes:video_evento_form", kwargs={"slug": evento.slug}),
+        "url_participantes": reverse("inscricoes:evento_participantes", args=[evento.pk]),
+        "url_admin_paroquia": reverse("inscricoes:admin_paroquia_eventos", args=[evento.paroquia_id]),
+    }
+    return render(request, "inscricoes/evento_configuracoes.html", contexto)
+
+def _digits(s: str | None) -> str:
+    return re.sub(r"\D", "", s or "")
+
+import re
+from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect, render
+
+def _digits(s: str | None) -> str:
+    """Remove tudo que não é dígito."""
+    return re.sub(r"\D", "", s or "")
+
+
+def _serialize_for_session(data):
+    """Converte objetos não serializáveis (ex.: date, ForeignKey) em valores simples."""
+    serialized = {}
+    for k, v in data.items():
+        if isinstance(v, date):
+            serialized[k] = v.isoformat()
+        elif isinstance(v, Paroquia):  # ForeignKey -> id
+            serialized[k] = v.id
+        else:
+            serialized[k] = v
+    return serialized
+
+
+def _deserialize_from_session(data):
+    """Converte strings ISO de volta para date e ids para objetos (ex.: Paroquia)."""
+    deserialized = {}
+    for k, v in data.items():
+        if isinstance(v, str):
+            try:
+                deserialized[k] = date.fromisoformat(v)
+            except ValueError:
+                deserialized[k] = v
+        elif k == "paroquia" and isinstance(v, int):
+            try:
+                deserialized[k] = Paroquia.objects.get(id=v)
+            except Paroquia.DoesNotExist:
+                deserialized[k] = None
+        else:
+            deserialized[k] = v
+    return deserialized
+
+
+@transaction.atomic
+def formulario_casais(request, evento_id):
+    evento = get_object_or_404(EventoAcampamento, id=evento_id)
+
+    # política de privacidade (se existir)
+    politica = None
+    try:
+        from .models import PoliticaPrivacidade
+        politica = PoliticaPrivacidade.objects.first()
+    except ImportError:
+        pass
+
+    # 🔹 etapa atual (1 = cônjuge 1, 2 = cônjuge 2)
+    etapa = request.session.get("casais_etapa", 1)
+
+    # inicializa os forms sempre
+    form_participante = ParticipanteInicialForm(request.POST or None)
+    form_inscricao = InscricaoCasaisForm(request.POST or None, request.FILES or None)
+
+    # =================== ETAPA 1 ===================
+    if etapa == 1 and request.method == "POST":
+        if form_participante.is_valid() and form_inscricao.is_valid():
+            cpf = _digits(form_participante.cleaned_data["cpf"])
+            participante, _ = Participante.objects.update_or_create(
+                cpf=cpf,
+                defaults={
+                    "nome": form_participante.cleaned_data["nome"],
+                    "email": form_participante.cleaned_data["email"],
+                    "telefone": form_participante.cleaned_data["telefone"],
+                }
+            )
+
+            # guarda dados do cônjuge 1 na sessão (serializados)
+            request.session["conjuge1"] = {
+                "participante_id": participante.id,
+                "dados_inscricao": _serialize_for_session({
+                    k: v for k, v in form_inscricao.cleaned_data.items()
+                    if k in InscricaoCasaisForm.Meta.fields
+                })
+            }
+            request.session["casais_etapa"] = 2
+            return redirect("inscricoes:formulario_casais", evento_id=evento.id)
+
+    # =================== ETAPA 2 ===================
+    elif etapa == 2 and request.method == "POST":
+        if form_participante.is_valid() and form_inscricao.is_valid():
+            cpf = _digits(form_participante.cleaned_data["cpf"])
+            participante2, _ = Participante.objects.update_or_create(
+                cpf=cpf,
+                defaults={
+                    "nome": form_participante.cleaned_data["nome"],
+                    "email": form_participante.cleaned_data["email"],
+                    "telefone": form_participante.cleaned_data["telefone"],
+                }
+            )
+
+            # recupera cônjuge 1 da sessão
+            c1 = request.session.get("conjuge1")
+            if not c1:
+                request.session["casais_etapa"] = 1
+                return redirect("inscricoes:formulario_casais", evento_id=evento.id)
+
+            participante1 = Participante.objects.get(id=c1["participante_id"])
+            dados1 = _deserialize_from_session(c1["dados_inscricao"])
+            dados2 = _deserialize_from_session({
+                k: v for k, v in form_inscricao.cleaned_data.items()
+                if k in InscricaoCasaisForm.Meta.fields
+            })
+
+            # cria inscrições
+            insc1 = Inscricao.objects.create(
+                participante=participante1,
+                evento=evento,
+                paroquia=evento.paroquia,
+                cpf_conjuge=participante2.cpf,
+            )
+            insc2 = Inscricao.objects.create(
+                participante=participante2,
+                evento=evento,
+                paroquia=evento.paroquia,
+                cpf_conjuge=participante1.cpf,
+            )
+
+            # cria dados extras casais
+            InscricaoCasais.objects.create(inscricao=insc1, **dados1)
+            InscricaoCasais.objects.create(inscricao=insc2, **dados2)
+
+            # limpa sessão
+            request.session.pop("conjuge1", None)
+            request.session.pop("casais_etapa", None)
+
+            return redirect("inscricoes:ver_inscricao", pk=insc1.id)
+
+    # =================== RENDERIZAÇÃO ===================
+    return render(request, "inscricoes/formulario_casais.html", {
+        "evento": evento,
+        "politica": politica,
+        "form": form_participante,
+        "form_insc": form_inscricao,
+        "etapa": etapa,
+    })
+
+# --- helper: resolve o tipo de formulário efetivo do evento ---
+def _tipo_formulario_evento(evento) -> str:
+    """
+    Retorna o 'tipo efetivo' de formulário que deve ser usado para o evento.
+    Regra: se evento.tipo == 'servos' e estiver vinculado a um evento relacionado
+    cujo tipo seja 'casais', o formulário a usar é o de 'casais'.
+    Caso contrário, retorna evento.tipo em minúsculas.
+    """
+    tipo = (getattr(evento, "tipo", "") or "").lower()
+    if tipo == "servos":
+        rel = getattr(evento, "evento_relacionado", None)
+        if rel and (getattr(rel, "tipo", "") or "").lower() == "casais":
+            return "casais"
+    return tipo

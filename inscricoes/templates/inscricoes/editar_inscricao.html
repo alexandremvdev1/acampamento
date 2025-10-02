@@ -11,7 +11,6 @@
   <!-- Font Awesome -->
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <style>
@@ -28,6 +27,14 @@
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .navbar-brand{ font-size:1rem; }
+
+    /* Sidebar */
+    .sidebar-card{ border:1px solid var(--line); border-radius:.9rem; background:#fff; box-shadow:var(--shadow); }
+    .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+    .nav-list{ list-style:none; padding:6px; margin:0; }
+    .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none; }
+    .nav-list a:hover{ background:#eef2f7; }
+    .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
 
     /* Topbar fixa */
     .sticky-topbar{
@@ -50,7 +57,7 @@
       margin:0 0 .75rem; font-weight:700; display:flex; align-items:center; gap:.5rem;
     }
 
-    /* Inputs (funciona mesmo sem add_class) */
+    /* Inputs */
     .form-group label{ font-weight:700; color:var(--muted); font-size:.95rem }
     .form-group input[type="text"],
     .form-group input[type="email"],
@@ -73,7 +80,7 @@
       border:1px solid rgba(239,68,68,.35); padding:.5rem .6rem; border-radius:.5rem; font-size:.9rem;
     }
 
-    /* Chips simples (id / evento) */
+    /* Chips */
     .chip{
       border:1px solid var(--line); border-radius:999px;
       padding:.35rem .7rem; background:#fff; box-shadow:var(--shadow);
@@ -95,12 +102,11 @@
 <!-- NAVBAR -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:evento_participantes' evento_id=inscricao.evento.pk %}">
-      <i class="fa-solid fa-arrow-left me-2"></i> Participantes
-    </a>
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
     <span class="navbar-text text-white-50 d-none d-md-inline">{{ inscricao.evento.nome }}</span>
     <div class="d-flex align-items-center gap-2 ms-auto">
-      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:evento_participantes' evento_id=inscricao.evento.pk %}">Voltar</a>
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:evento_participantes' evento_id=inscricao.evento.pk %}">← Participantes</a>
+      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:relatorios_evento' inscricao.evento.id %}">📊 Relatórios</a>
       <button type="submit" form="form-editar" class="btn btn-sm btn-warning">
         <i class="fa-solid fa-floppy-disk me-1"></i> Salvar
       </button>
@@ -109,145 +115,170 @@
 </nav>
 
 <main class="container py-3 py-lg-4">
+  <div class="row g-3">
 
-  <!-- HEADER FIXO -->
-  <div class="sticky-topbar p-3 mb-3">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-      <div>
-        <h1 class="h6 m-0">Editar Inscrição</h1>
-        <div class="small text-muted-2">{{ inscricao.participante.nome }}</div>
-      </div>
-      <div class="d-flex flex-wrap gap-2">
-        <span class="chip"><i class="fa-solid fa-id-badge"></i> {{ inscricao.id }}</span>
-        <span class="chip"><i class="fa-solid fa-calendar"></i> {{ inscricao.evento.nome }}</span>
-      </div>
-    </div>
-  </div>
+    <!-- SIDEBAR (foco no evento) -->
+    <aside class="col-lg-3">
+      <div class="sidebar-card p-2">
+        <div class="nav-title">Evento</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_painel' %}">🏠 <span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_eventos' inscricao.paroquia.id %}">🗂️ <span>Lista de eventos</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">👥 <span>Participantes</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:relatorios_evento' inscricao.evento.id %}">📊 <span>Relatórios</span></a></li>
+        </ul>
 
-  <!-- MENSAGENS DJANGO -->
-  {% if messages %}
-    <div class="mb-3">
-      {% for message in messages %}
-        <div class="alert {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% elif 'warning' in message.tags %}alert-warning{% else %}alert-info{% endif %} mb-2" role="alert">
-          {{ message }}
+        <div class="nav-title">Ações</div>
+        <ul class="nav-list">
+          <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">✏️ <span>Editar inscrição</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.id %}">🧾 <span>Ficha Geral</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:ficha_inscricao' inscricao.id %}" target="_blank" rel="noopener">📝 <span>Imprimir Ficha</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:imprimir_cracha' inscricao.id %}" target="_blank" rel="noopener">🪪 <span>Imprimir Crachá</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:incluir_pagamento' inscricao.id %}">💳 <span>Incluir Pagamento</span></a></li>
+        </ul>
+
+        <div class="nav-title">Resumo</div>
+        <div class="row g-2 m-0">
+          <div class="col-6">
+            <div class="kpi">
+              <div class="small">Selecionado</div>
+              <div class="fs-5 fw-bold">{% if inscricao.foi_selecionado %}Sim{% else %}Não{% endif %}</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="kpi">
+              <div class="small">Pagamento</div>
+              <div class="fs-5 fw-bold">{% if inscricao.pagamento_confirmado %}Confirmado{% else %}Pendente{% endif %}</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="kpi">
+              <div class="small">Status</div>
+              <div class="fs-5 fw-bold">{% if inscricao.inscricao_concluida %}Concluída{% else %}Em andamento{% endif %}</div>
+            </div>
+          </div>
         </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-
-  <!-- NAVEGAÇÃO LOCAL -->
-  <section class="card-clean p-3 p-md-4 mb-3">
-    <h2 class="sec-title"><i class="fa-solid fa-sitemap"></i> Seções</h2>
-    <div class="d-flex flex-wrap gap-2">
-      <a href="#sec-participante" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-user me-1"></i> Participante</a>
-      <a href="#sec-inscricao" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-file-pen me-1"></i> Inscrição</a>
-      {% if base_form %}<a href="#sec-especifico" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-sliders me-1"></i> Específico</a>{% endif %}
-      {% if conjuge_form %}<a href="#sec-conjuge" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-ring me-1"></i> Cônjuge</a>{% endif %}
-      {% if contato_forms %}<a href="#sec-contatos" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-triangle-exclamation me-1"></i> Emergência</a>{% endif %}
-      {% if pagamento_form %}<a href="#sec-pagamento" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-credit-card me-1"></i> Pagamento</a>{% endif %}
-    </div>
-  </section>
-
-  <form id="form-editar" method="post" enctype="multipart/form-data">
-    {% csrf_token %}
-
-    <!-- PARTICIPANTE -->
-    <section class="card-clean p-3 p-md-4 mb-3" id="sec-participante">
-      <h2 class="sec-title"><i class="fa-solid fa-user"></i> Dados do Participante</h2>
-      <div class="row g-3">
-        {% for field in participante_form %}
-          <div class="form-group {% if field.field.widget.input_type == 'file' %}col-12{% else %}col-12 col-md-6{% endif %}">
-            <label for="{{ field.id_for_label }}">
-              {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
-            </label>
-            {{ field }}
-            {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-            {% if field.errors %}
-              <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-            {% endif %}
-            {% if field.field.widget.input_type == 'file' %}
-              <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
-            {% endif %}
-          </div>
-        {% endfor %}
       </div>
-    </section>
+    </aside>
 
-    <!-- INSCRIÇÃO -->
-    <section class="card-clean p-3 p-md-4 mb-3" id="sec-inscricao">
-      <h2 class="sec-title"><i class="fa-solid fa-file-pen"></i> Dados da Inscrição</h2>
-      <div class="row g-3">
-        {% for field in inscricao_form %}
-          <div class="form-group {% if field.field.widget.input_type == 'file' %}col-12{% else %}col-12 col-md-6{% endif %}">
-            <label for="{{ field.id_for_label }}">
-              {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
-            </label>
-            {{ field }}
-            {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-            {% if field.errors %}
-              <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-            {% endif %}
-            {% if field.field.widget.input_type == 'file' %}
-              <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
-            {% endif %}
+    <!-- CONTEÚDO -->
+    <section class="col-lg-9">
+
+      <!-- HEADER / “fixo” -->
+      <div class="sticky-topbar p-3 mb-3 bg-white">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <h1 class="h6 m-0">Editar Inscrição</h1>
+            <div class="small text-muted-2">{{ inscricao.participante.nome }}</div>
           </div>
-        {% endfor %}
-      </div>
-    </section>
-
-    {% if base_form %}
-    <!-- ESPECÍFICO -->
-    <section class="card-clean p-3 p-md-4 mb-3" id="sec-especifico">
-      <h2 class="sec-title"><i class="fa-solid fa-sliders"></i> Formulário Específico</h2>
-      <div class="row g-3">
-        {% for field in base_form %}
-          <div class="form-group {% if field.field.widget.input_type == 'file' %}col-12{% else %}col-12 col-md-6{% endif %}">
-            <label for="{{ field.id_for_label }}">
-              {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
-            </label>
-            {{ field }}
-            {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-            {% if field.errors %}
-              <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-            {% endif %}
-            {% if field.field.widget.input_type == 'file' %}
-              <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
-            {% endif %}
+          <div class="d-flex flex-wrap gap-2">
+            <span class="chip"><i class="fa-solid fa-id-badge"></i> {{ inscricao.id }}</span>
+            <span class="chip"><i class="fa-solid fa-calendar"></i> {{ inscricao.evento.nome }}</span>
           </div>
-        {% endfor %}
+        </div>
       </div>
-    </section>
-    {% endif %}
 
-    {% if conjuge_form %}
-    <!-- CÔNJUGE -->
-    <section class="card-clean p-3 p-md-4 mb-3" id="sec-conjuge">
-      <h2 class="sec-title"><i class="fa-solid fa-ring"></i> Dados do Cônjuge</h2>
-      <div class="row g-3">
-        {% for field in conjuge_form %}
-          <div class="form-group col-12 col-md-6">
-            <label for="{{ field.id_for_label }}">
-              {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
-            </label>
-            {{ field }}
-            {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-            {% if field.errors %}
-              <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-    </section>
-    {% endif %}
+      <!-- MENSAGENS DJANGO -->
+      {% if messages %}
+        <div class="mb-3">
+          {% for message in messages %}
+            <div class="alert {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% elif 'warning' in message.tags %}alert-warning{% else %}alert-info{% endif %} mb-2" role="alert">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
 
-    {% if contato_forms %}
-    <!-- CONTATOS -->
-    <section class="card-clean p-3 p-md-4 mb-3" id="sec-contatos">
-      <h2 class="sec-title"><i class="fa-solid fa-triangle-exclamation"></i> Contatos de Emergência</h2>
-      {% for contato_form in contato_forms %}
-        <div class="card-clean p-3 mb-3">
+      <!-- NAVEGAÇÃO LOCAL -->
+      <section class="card-clean p-3 p-md-4 mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-sitemap"></i> Seções</h2>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="#sec-participante" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-user me-1"></i> Participante</a>
+          <a href="#sec-inscricao" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-file-pen me-1"></i> Inscrição</a>
+          {% if base_form %}<a href="#sec-especifico" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-sliders me-1"></i> Específico</a>{% endif %}
+          {% if conjuge_form %}<a href="#sec-conjuge" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-ring me-1"></i> Cônjuge</a>{% endif %}
+          {% if contato_forms %}<a href="#sec-contatos" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-triangle-exclamation me-1"></i> Emergência</a>{% endif %}
+          {% if pagamento_form %}<a href="#sec-pagamento" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-credit-card me-1"></i> Pagamento</a>{% endif %}
+        </div>
+      </section>
+
+      <form id="form-editar" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- PARTICIPANTE -->
+        <section class="card-clean p-3 p-md-4 mb-3" id="sec-participante">
+          <h2 class="sec-title"><i class="fa-solid fa-user"></i> Dados do Participante</h2>
           <div class="row g-3">
-            {% for field in contato_form %}
+            {% for field in participante_form %}
+              <div class="form-group {% if field.field.widget.input_type == 'file' %}col-12{% else %}col-12 col-md-6{% endif %}">
+                <label for="{{ field.id_for_label }}">
+                  {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+                {% if field.errors %}
+                  <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                {% endif %}
+                {% if field.field.widget.input_type == 'file' %}
+                  <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <!-- INSCRIÇÃO -->
+        <section class="card-clean p-3 p-md-4 mb-3" id="sec-inscricao">
+          <h2 class="sec-title"><i class="fa-solid fa-file-pen"></i> Dados da Inscrição</h2>
+          <div class="row g-3">
+            {% for field in inscricao_form %}
+              <div class="form-group {% if field.field.widget.input_type == 'file' %}col-12{% else %}col-12 col-md-6{% endif %}">
+                <label for="{{ field.id_for_label }}">
+                  {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+                {% if field.errors %}
+                  <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                {% endif %}
+                {% if field.field.widget.input_type == 'file' %}
+                  <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        {% if base_form %}
+        <!-- ESPECÍFICO -->
+        <section class="card-clean p-3 p-md-4 mb-3" id="sec-especifico">
+          <h2 class="sec-title"><i class="fa-solid fa-sliders"></i> Formulário Específico</h2>
+          <div class="row g-3">
+            {% for field in base_form %}
+              <div class="form-group {% if field.field.widget.input_type == 'file' %}col-12{% else %}col-12 col-md-6{% endif %}">
+                <label for="{{ field.id_for_label }}">
+                  {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+                {% if field.errors %}
+                  <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                {% endif %}
+                {% if field.field.widget.input_type == 'file' %}
+                  <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+
+        {% if conjuge_form %}
+        <!-- CÔNJUGE -->
+        <section class="card-clean p-3 p-md-4 mb-3" id="sec-conjuge">
+          <h2 class="sec-title"><i class="fa-solid fa-ring"></i> Dados do Cônjuge</h2>
+          <div class="row g-3">
+            {% for field in conjuge_form %}
               <div class="form-group col-12 col-md-6">
                 <label for="{{ field.id_for_label }}">
                   {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
@@ -260,50 +291,76 @@
               </div>
             {% endfor %}
           </div>
-        </div>
-      {% endfor %}
-    </section>
-    {% endif %}
+        </section>
+        {% endif %}
 
-    {% if pagamento_form %}
-    <!-- PAGAMENTO -->
-    <section class="card-clean p-3 p-md-4 mb-3" id="sec-pagamento">
-      <h2 class="sec-title"><i class="fa-solid fa-credit-card"></i> Pagamento</h2>
-      <div class="row g-3">
-        {% for field in pagamento_form %}
-          <div class="form-group col-12 col-md-6">
-            <label for="{{ field.id_for_label }}">
-              {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
-            </label>
-            {{ field }}
-            {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-            {% if field.errors %}
-              <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-            {% endif %}
+        {% if contato_forms %}
+        <!-- CONTATOS -->
+        <section class="card-clean p-3 p-md-4 mb-3" id="sec-contatos">
+          <h2 class="sec-title"><i class="fa-solid fa-triangle-exclamation"></i> Contatos de Emergência</h2>
+          {% for contato_form in contato_forms %}
+            <div class="card-clean p-3 mb-3">
+              <div class="row g-3">
+                {% for field in contato_form %}
+                  <div class="form-group col-12 col-md-6">
+                    <label for="{{ field.id_for_label }}">
+                      {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
+                    </label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+                    {% if field.errors %}
+                      <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </section>
+        {% endif %}
+
+        {% if pagamento_form %}
+        <!-- PAGAMENTO -->
+        <section class="card-clean p-3 p-md-4 mb-3" id="sec-pagamento">
+          <h2 class="sec-title"><i class="fa-solid fa-credit-card"></i> Pagamento</h2>
+          <div class="row g-3">
+            {% for field in pagamento_form %}
+              <div class="form-group col-12 col-md-6">
+                <label for="{{ field.id_for_label }}">
+                  {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+                {% if field.errors %}
+                  <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+                {% endif %}
+              </div>
+            {% endfor %}
           </div>
-        {% endfor %}
-      </div>
+        </section>
+        {% endif %}
+
+        <!-- AÇÕES -->
+        <div class="d-flex flex-wrap justify-content-end gap-2">
+          <a href="#top" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-up me-1"></i> Topo</a>
+          <a href="{% url 'inscricoes:evento_participantes' evento_id=inscricao.evento.pk %}" class="btn btn-outline-dark">
+            <i class="fa-solid fa-xmark me-1"></i> Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk me-1"></i> Salvar Alterações
+          </button>
+        </div>
+      </form>
+
+      <footer class="py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+          <small>© {% now "Y" %} — Todos os direitos reservados</small>
+          <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+        </div>
+      </footer>
+
     </section>
-    {% endif %}
-
-    <!-- AÇÕES -->
-    <div class="d-flex flex-wrap justify-content-end gap-2">
-      <a href="#top" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-up me-1"></i> Topo</a>
-      <a href="{% url 'inscricoes:evento_participantes' evento_id=inscricao.evento.pk %}" class="btn btn-outline-dark">
-        <i class="fa-solid fa-xmark me-1"></i> Cancelar
-      </a>
-      <button type="submit" class="btn btn-primary">
-        <i class="fa-solid fa-floppy-disk me-1"></i> Salvar Alterações
-      </button>
-    </div>
-  </form>
-
-  <footer class="py-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-center">
-      <small>© {{ current_year }} — Todos os direitos reservados</small>
-      <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
-    </div>
-  </footer>
+  </div>
 </main>
 
 <!-- Bootstrap JS -->
