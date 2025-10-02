@@ -74,7 +74,6 @@
 
     .table-sm .btn-icon{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; }
 
-    /* Link “ink” */
     a.link-ink{ color:var(--ink); text-decoration:none; }
     a.link-ink:hover{ text-decoration:underline; }
   </style>
@@ -104,8 +103,6 @@
           <li class="nav-item"><a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">👥 <span>Participantes</span></a></li>
         </ul>
 
-        <!-- Removido o bloco "Ações" para não duplicar botões -->
-
         <div class="nav-title">Resumo</div>
         <div class="row g-2 m-0">
           <div class="col-6">
@@ -133,6 +130,57 @@
             </div>
           </div>
         </div>
+
+        {# ====== NOVO: ALOCAÇÃO RÁPIDA NA SIDEBAR, EMBAIXO DO RESUMO ====== #}
+        {% if inscricao.evento.tipo|lower == "servos" %}
+          <div class="nav-title">Alocação (Servos)</div>
+
+          <!-- Ministério -->
+          <form method="post" action="{% url 'inscricoes:alocar_ministerio' inscricao.id %}" class="p-2 border rounded mb-2">
+            {% csrf_token %}
+            <label class="small text-muted-2 fw-semibold mb-1 d-block">Ministério</label>
+            <select name="ministerio_id" class="form-select form-select-sm mb-2">
+              <option value="">— Selecionar —</option>
+              {% for m in ministerios %}
+                <option value="{{ m.id }}"
+                  {% if inscricao.alocacao_ministerio and inscricao.alocacao_ministerio.ministerio_id == m.id %}selected{% endif %}>
+                  {{ m.nome }}
+                </option>
+              {% endfor %}
+            </select>
+
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="is_coord_sidebar" name="is_coordenador"
+                     {% if inscricao.alocacao_ministerio and inscricao.alocacao_ministerio.is_coordenador %}checked{% endif %}>
+              <label class="form-check-label small" for="is_coord_sidebar">É coordenador(a)</label>
+            </div>
+
+            <button class="btn btn-outline-primary btn-sm w-100">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Ministério
+            </button>
+          </form>
+
+          <!-- Grupo -->
+          <form method="post" action="{% url 'inscricoes:alocar_grupo' inscricao.id %}" class="p-2 border rounded">
+            {% csrf_token %}
+            <label class="small text-muted-2 fw-semibold mb-1 d-block">Grupo</label>
+            <select name="grupo_id" class="form-select form-select-sm mb-2">
+              <option value="">— Selecionar —</option>
+              {% for g in grupos %}
+                <option value="{{ g.id }}"
+                  {% if inscricao.alocacao_grupo and inscricao.alocacao_grupo.grupo_id == g.id %}selected{% endif %}>
+                  {{ g.nome }}{% if g.cor %} — {{ g.cor }}{% endif %}
+                </option>
+              {% endfor %}
+            </select>
+
+            <button class="btn btn-outline-secondary btn-sm w-100">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Grupo
+            </button>
+          </form>
+        {% endif %}
+        {# ====== FIM DO BLOCO NOVO ====== #}
+
       </div>
     </aside>
 
@@ -323,7 +371,7 @@
       </section>
       {% endif %}
 
-      <!-- GRUPO / MINISTÉRIO -->
+      <!-- GRUPO / MINISTÉRIO (RESUMO) -->
       {% if inscricao.alocacao_grupo or inscricao.alocacao_ministerio %}
       <section class="mb-3">
         <h2 class="sec-title"><i class="fa-solid fa-people-line me-1"></i> Alocação</h2>
@@ -345,6 +393,9 @@
               <div>
                 {% if inscricao.alocacao_ministerio and inscricao.alocacao_ministerio.ministerio %}
                   {{ inscricao.alocacao_ministerio.ministerio.nome }}
+                  {% if inscricao.alocacao_ministerio.is_coordenador %}
+                    <span class="badge rounded-pill text-bg-primary ms-2">Coordenador(a)</span>
+                  {% endif %}
                 {% else %}
                   —
                 {% endif %}

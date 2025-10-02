@@ -1701,24 +1701,82 @@ class Ministerio(models.Model):
     def __str__(self):
         return f"{self.nome} ({self.evento.nome})"
 
+    # — Helpers convenientes —
+    @property
+    def coordenador_alocacao(self):
+        """Retorna a AlocacaoMinisterio marcada como coordenador (ou None)."""
+        return self.inscricoes.filter(is_coordenador=True).select_related(
+            "inscricao__participante"
+        ).first()
+
+    @property
+    def coordenador_participante(self):
+        """Retorna o Participante do coordenador (ou None)."""
+        a = self.coordenador_alocacao
+        return a.inscricao.participante if a else None
+
 
 class AlocacaoMinisterio(models.Model):
-    inscricao = models.OneToOneField("Inscricao", on_delete=models.CASCADE, related_name="alocacao_ministerio")
-    ministerio = models.ForeignKey("Ministerio", on_delete=models.SET_NULL, null=True, blank=True, related_name="inscricoes")
-    funcao = models.CharField(max_length=100, blank=True, null=True, help_text="Ex.: Coordenação, Liturgia, Música...")
+    inscricao = models.OneToOneField(
+        "Inscricao",
+        on_delete=models.CASCADE,
+        related_name="alocacao_ministerio",
+        help_text="A inscrição deste servo (no evento de Servos).",
+    )
+    ministerio = models.ForeignKey(
+        "Ministerio",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="inscricoes"
+    )
+    funcao = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        help_text="Ex.: Coordenação, Liturgia, Música..."
+    )
+    # ✅ NOVO: flag de coordenador
+    is_coordenador = models.BooleanField(
+        default=False,
+        verbose_name="É coordenador(a) do ministério?"
+    )
     data_alocacao = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Garante **apenas um** coordenador por ministério
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ministerio"],
+                condition=Q(is_coordenador=True),
+                name="uniq_um_coordenador_por_ministerio",
+            )
+        ]
 
     def clean(self):
         super().clean()
+
+        # Mesmo evento
         if self.ministerio and (self.inscricao.evento_id != self.ministerio.evento_id):
             raise ValidationError({"ministerio": "Ministério deve pertencer ao mesmo evento da inscrição."})
-        # só permitir ministério se o evento da inscrição for Servos
+
+        # Só em eventos 'servos'
         if (self.inscricao.evento.tipo or "").lower() != "servos":
             raise ValidationError({"inscricao": "Atribuição de ministério só é permitida para eventos de Servos."})
 
-    def __str__(self):
-        return f"{self.inscricao.participante.nome} → {self.ministerio.nome if self.ministerio else 'Sem ministério'}"
+        # Validação amigável: impedir 2 coordenadores
+        if self.is_coordenador and self.ministerio_id:
+            qs = AlocacaoMinisterio.objects.filter(
+                ministerio_id=self.ministerio_id,
+                is_coordenador=True
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError({"is_coordenador": "Este ministério já possui um(a) coordenador(a)."})
 
+    def __str__(self):
+        tag = " (Coord.)" if self.is_coordenador else ""
+        nome_min = self.ministerio.nome if self.ministerio else "Sem ministério"
+        return f"{self.inscricao.participante.nome}{tag} → {nome_min}"
 
 class AlocacaoGrupo(models.Model):
     inscricao = models.OneToOneField("Inscricao", on_delete=models.CASCADE, related_name="alocacao_grupo")

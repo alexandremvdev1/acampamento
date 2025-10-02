@@ -145,7 +145,8 @@ urlpatterns = [
     path('admin-paroquia/usuarios/<int:user_id>/excluir/',views.admin_paroquia_delete_admin,name='admin_paroquia_delete_admin'),
 
     path('ajax/buscar-conjuge/', views.ajax_buscar_conjuge, name='ajax_buscar_conjuge'),
-
+    path("inscricao/<int:inscricao_id>/alocar-ministerio/", views.alocar_ministerio, name="alocar_ministerio"),
+    path("inscricao/<int:inscricao_id>/alocar-grupo/", views.alocar_grupo, name="alocar_grupo"),
     path("admin-paroquia/financeiro/repasses/", views.repasse_lista_eventos, name="repasse_lista_eventos"),
     path("admin-paroquia/financeiro/repasse/<uuid:evento_id>/", views.repasse_evento_detalhe, name="repasse_evento_detalhe"),
     path("admin-paroquia/financeiro/repasse/<uuid:evento_id>/gerar-pix/", views.gerar_pix_repasse_evento, name="gerar_pix_repasse_evento"),

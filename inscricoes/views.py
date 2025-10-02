@@ -65,7 +65,11 @@ from .models import (
     InscricaoRetiro,
     Repasse,
     MercadoPagoOwnerConfig,
-    BaseInscricao
+    BaseInscricao,
+    Ministerio,
+    Grupo,
+    AlocacaoGrupo,
+    AlocacaoMinisterio
 )
 
 from .forms import (
@@ -358,6 +362,14 @@ def admin_geral_delete_usuario(request, pk):
         return redirect('inscricoes:admin_geral_list_usuarios')
     return render(request, 'inscricoes/admin_geral_confirm_delete.html', {'obj': usuario, 'tipo': 'Usuário'})
 
+def _model_has_field(model, field_name: str) -> bool:
+    try:
+        model._meta.get_field(field_name)
+        return True
+    except Exception:
+        return False
+
+
 @login_required  # se preferir: @login_required(login_url="inscricoes:login")
 def admin_paroquia_painel(request, paroquia_id: Optional[int] = None):
     """
@@ -402,8 +414,10 @@ def admin_paroquia_painel(request, paroquia_id: Optional[int] = None):
         messages.error(request, "⚠️ Você não tem permissão para acessar este painel.")
         return redirect("inscricoes:logout")
 
-    # --- Eventos da paróquia (ordenação com fallbacks robustos) ---
-    qs = EventoAcampamento.objects.filter(paroquia=paroquia)
+    # =========================
+    #   LISTA DE EVENTOS
+    # =========================
+    qs_evt = EventoAcampamento.objects.filter(paroquia=paroquia)
     eventos = None
     for ordering in [
         ("-data_inicio", "-created_at"),
@@ -412,23 +426,160 @@ def admin_paroquia_painel(request, paroquia_id: Optional[int] = None):
         ("-pk",),
     ]:
         try:
-            eventos = qs.order_by(*ordering)
+            eventos = qs_evt.order_by(*ordering)
             break
         except FieldError:
             continue
     if eventos is None:
-        eventos = qs  # sem ordenação se nada funcionou
+        eventos = qs_evt
 
-    return render(
-        request,
-        "inscricoes/admin_paroquia_painel.html",
-        {
-            "paroquia": paroquia,
-            "eventos": eventos,
-            "is_admin_paroquia": is_admin_paroquia,
-            "is_admin_geral": is_admin_geral,
-        },
-    )
+    # =========================
+    #   FILTROS AUXILIARES
+    # =========================
+    now = timezone.now()
+    today = date.today()
+
+    # Eventos abertos (detecção por múltiplos caminhos):
+    # 1) status == 'aberto'
+    # 2) inscricoes_abertas == True
+    # 3) data_fim >= hoje (fallback)
+    aberto_q = Q()
+    if _model_has_field(EventoAcampamento, "status"):
+        aberto_q |= Q(status__iexact="aberto")
+    if _model_has_field(EventoAcampamento, "inscricoes_abertas"):
+        aberto_q |= Q(inscricoes_abertas=True)
+    if _model_has_field(EventoAcampamento, "data_fim"):
+        aberto_q |= Q(data_fim__gte=today)
+
+    eventos_abertos_qs = qs_evt.filter(aberto_q) if aberto_q else qs_evt.none()
+    eventos_abertos = eventos_abertos_qs.count()
+
+    # =========================
+    #   KPIs (reais)
+    # =========================
+    insc_qs = Inscricao.objects.filter(evento__paroquia=paroquia)
+
+    total_inscricoes = insc_qs.count()
+
+    # Confirmadas: priorizamos campo booleano pagamento_confirmado
+    if _model_has_field(Inscricao, "pagamento_confirmado"):
+        total_inscricoes_confirmadas = insc_qs.filter(pagamento_confirmado=True).count()
+    else:
+        # fallback: se houver campo status, considere 'confirmada'
+        if _model_has_field(Inscricao, "status"):
+            total_inscricoes_confirmadas = insc_qs.filter(status__iexact="confirmada").count()
+        else:
+            total_inscricoes_confirmadas = 0  # sem referência
+
+    # Pendentes = total - confirmadas (ignorando canceladas aqui)
+    pendencias_contagem = max(total_inscricoes - total_inscricoes_confirmadas, 0)
+
+    # =========================
+    #   GRÁFICO: INSCRIÇÕES POR DIA (30 dias)
+    # =========================
+    start_30 = now - timedelta(days=29)  # inclui hoje (janela de 30 dias)
+    if _model_has_field(Inscricao, "data_inscricao"):
+        by_day = (
+            insc_qs.filter(data_inscricao__date__gte=start_30.date())
+            .annotate(dia=TruncDate("data_inscricao"))
+            .values("dia")
+            .annotate(qtd=Count("id"))
+            .order_by("dia")
+        )
+    else:
+        by_day = []
+
+    # Gera e garante todos os dias (inclusive os sem inscrições) para linhas contínuas
+    labels_dias = []
+    values_dias = []
+    dia_map = {row["dia"]: row["qtd"] for row in by_day} if by_day else {}
+    for i in range(30):
+        d = (start_30 + timedelta(days=i)).date()
+        labels_dias.append(d.strftime("%d/%m"))
+        values_dias.append(int(dia_map.get(d, 0)))
+
+    # =========================
+    #   GRÁFICO: INSCRIÇÕES POR EVENTO (apenas eventos "abertos", top 5)
+    # =========================
+    if eventos_abertos_qs.exists():
+        por_evento = (
+            insc_qs.filter(evento__in=eventos_abertos_qs)
+            .values(nome=F("evento__nome"))
+            .annotate(qtd=Count("id"))
+            .order_by("-qtd")[:5]
+        )
+        por_evento_labels = [row["nome"] for row in por_evento]
+        por_evento_values = [int(row["qtd"]) for row in por_evento]
+    else:
+        por_evento_labels, por_evento_values = [], []
+
+    # =========================
+    #   GRÁFICO: STATUS DE PAGAMENTO
+    # =========================
+    # Vamos montar: confirmadas, pendentes e (se existir) canceladas
+    confirmadas = total_inscricoes_confirmadas
+    canceladas = 0
+    if _model_has_field(Inscricao, "cancelada"):
+        canceladas = insc_qs.filter(cancelada=True).count()
+    elif _model_has_field(Inscricao, "status"):
+        canceladas = insc_qs.filter(status__iexact="cancelada").count()
+
+    pendentes = max(total_inscricoes - confirmadas - canceladas, 0)
+
+    pagamentos_status_values = {
+        "confirmadas": confirmadas,
+        "pendentes": pendentes,
+        "canceladas": canceladas,
+    }
+
+    # =========================
+    #   GRÁFICO: CONVERSÃO (inscritos x confirmados)
+    # =========================
+    conversao_values = {
+        "inscritos": total_inscricoes,
+        "confirmados": confirmadas,
+    }
+
+    # =========================
+    #   CONTEXTO + JSON SAFE
+    # =========================
+    ctx = {
+        "paroquia": paroquia,
+        "eventos": eventos,
+        "is_admin_paroquia": is_admin_paroquia,
+        "is_admin_geral": is_admin_geral,
+
+        # KPIs reais
+        "eventos_abertos": eventos_abertos,
+        "total_inscricoes": total_inscricoes,
+        "total_inscricoes_confirmadas": total_inscricoes_confirmadas,
+        "pendencias_contagem": pendentes,
+
+        # Séries/Gráficos (já como JSON seguro p/ template)
+        "inscricoes_dias_labels": mark_safe(json.dumps(labels_dias)),
+        "inscricoes_dias_values": mark_safe(json.dumps(values_dias)),
+        "inscricoes_por_evento_labels": mark_safe(json.dumps(por_evento_labels)),
+        "inscricoes_por_evento_values": mark_safe(json.dumps(por_evento_values)),
+        "pagamentos_status_values": mark_safe(json.dumps(pagamentos_status_values)),
+        "conversao_values": mark_safe(json.dumps(conversao_values)),
+    }
+
+    return render(request, "inscricoes/admin_paroquia_painel.html", ctx)
+
+from typing import Optional
+import json
+from datetime import timedelta, date
+
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Count, Q, F, IntegerField
+from django.db.models.functions import Coalesce, TruncDate
+from django.core.exceptions import FieldError
+from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.safestring import mark_safe
 
 @login_required
 def evento_novo(request):
@@ -3875,17 +4026,32 @@ def inscricao_ficha_geral(request, pk: int):
     )
     inscricao = get_object_or_404(qs, pk=pk)
 
-    # Permissão: admin_geral/super vê tudo; admin_paroquia só da própria paróquia
+    # Permissão: superuser/admin_geral vê tudo; admin_paroquia só da própria paróquia
     u = request.user
     if (not getattr(u, "is_superuser", False)
         and getattr(u, "tipo_usuario", "") != "admin_geral"
         and getattr(u, "paroquia_id", None) != inscricao.paroquia_id):
         return HttpResponseForbidden("Você não tem permissão para ver esta inscrição.")
 
+    # Listas para os selects da sidebar (somente para eventos de SERVOS)
+    ministerios = []
+    grupos = []
+    if (inscricao.evento.tipo or "").lower() == "servos":
+        ministerios = list(
+            Ministerio.objects.filter(evento_id=inscricao.evento_id).order_by("nome")
+        )
+        grupos = list(
+            Grupo.objects.filter(evento_id=inscricao.evento_id).order_by("nome")
+        )
+
     return render(
         request,
-        "inscricoes/ficha_geral_participante.html",  # seu arquivo de template
-        {"inscricao": inscricao},
+        "inscricoes/ficha_geral_participante.html",
+        {
+            "inscricao": inscricao,
+            "ministerios": ministerios,  # usados no <select> de Ministério
+            "grupos": grupos,            # usados no <select> de Grupo
+        },
     )
 
 from django.shortcuts import render, get_object_or_404
@@ -4067,4 +4233,93 @@ def _tipo_formulario_evento(evento) -> str:
             return "casais"
     return tipo
 
+def _eh_evento_servos(inscricao: Inscricao) -> bool:
+    return (getattr(inscricao.evento, "tipo", "") or "").lower() == "servos"
 
+
+@login_required
+@require_POST
+def alocar_ministerio(request, inscricao_id: int):
+    inscricao = get_object_or_404(
+        Inscricao.objects.select_related("evento", "paroquia"), id=inscricao_id
+    )
+
+    # (opcional) segurança: só da mesma paróquia ou admin_geral/superuser
+    u = request.user
+    if (not getattr(u, "is_superuser", False)
+        and getattr(u, "tipo_usuario", "") != "admin_geral"
+        and getattr(u, "paroquia_id", None) != inscricao.paroquia_id):
+        messages.error(request, "Você não tem permissão para alterar esta inscrição.")
+        return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
+
+    # só faz sentido para eventos de servos
+    if (inscricao.evento.tipo or "").lower() != "servos":
+        messages.error(request, "Alocação de ministério só é permitida em eventos de Servos.")
+        return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
+
+    ministerio_id = request.POST.get("ministerio_id") or None
+    is_coord = bool(request.POST.get("is_coordenador"))
+
+    # cria/atualiza OneToOne
+    alo, _ = AlocacaoMinisterio.objects.get_or_create(inscricao=inscricao)
+    if ministerio_id:
+        try:
+            m = Ministerio.objects.get(id=ministerio_id, evento_id=inscricao.evento_id)
+        except Ministerio.DoesNotExist:
+            messages.error(request, "Ministério inválido para este evento.")
+            return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
+        alo.ministerio = m
+        # campo extra para coordenador (certifique-se de ter adicionado no model)
+        alo.is_coordenador = is_coord
+    else:
+        alo.ministerio = None
+        alo.is_coordenador = False
+    alo.full_clean()
+    alo.save()
+
+    messages.success(request, "Ministério salvo com sucesso.")
+    # volta para a MESMA página
+    return redirect(request.META.get(
+        "HTTP_REFERER",
+        reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id])
+    ))
+
+
+@login_required
+@require_POST
+def alocar_grupo(request, inscricao_id: int):
+    inscricao = get_object_or_404(
+        Inscricao.objects.select_related("evento", "paroquia"), id=inscricao_id
+    )
+
+    u = request.user
+    if (not getattr(u, "is_superuser", False)
+        and getattr(u, "tipo_usuario", "") != "admin_geral"
+        and getattr(u, "paroquia_id", None) != inscricao.paroquia_id):
+        messages.error(request, "Você não tem permissão para alterar esta inscrição.")
+        return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
+
+    if (inscricao.evento.tipo or "").lower() != "servos":
+        messages.error(request, "Alocação de grupo só é permitida em eventos de Servos.")
+        return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
+
+    grupo_id = request.POST.get("grupo_id") or None
+
+    alo, _ = AlocacaoGrupo.objects.get_or_create(inscricao=inscricao)
+    if grupo_id:
+        try:
+            g = Grupo.objects.get(id=grupo_id, evento_id=inscricao.evento_id)
+        except Grupo.DoesNotExist:
+            messages.error(request, "Grupo inválido para este evento.")
+            return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
+        alo.grupo = g
+    else:
+        alo.grupo = None
+    alo.full_clean()
+    alo.save()
+
+    messages.success(request, "Grupo salvo com sucesso.")
+    return redirect(request.META.get(
+        "HTTP_REFERER",
+        reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id])
+    ))
