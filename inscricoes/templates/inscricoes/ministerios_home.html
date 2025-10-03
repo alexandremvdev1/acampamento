@@ -1,0 +1,203 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Ministérios — {{ paroquia.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap + Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+      --g1:#0b1020; --g2:#111a3a; --base-font:14px;
+    }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    /* Sidebar */
+    .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
+    .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+    .nav-list{ list-style:none; padding:6px; margin:0; }
+    .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none; }
+    .nav-list a:hover{ background:#eef2f7; }
+    .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
+
+    /* Header sticky */
+    .sticky-topbar{
+      position: sticky; top: 0; z-index: 20;
+      background:#ffffffd6; backdrop-filter: blur(6px);
+      border:1px solid #e5e7eb; border-radius:.9rem;
+    }
+
+    /* Cards limpos */
+    .card-clean{
+      border:1px solid #e5e7eb; border-radius:.9rem; background:#fff;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+      transition:transform .12s ease, box-shadow .12s ease;
+    }
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
+
+    .text-muted-2{ color:var(--muted); }
+    .sec-title{
+      font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em;
+      margin:0 0 .75rem; font-weight:700;
+    }
+    .badge-soft{ background:#eef2f7; color:#334155; border:1px solid #e5e7eb; }
+    .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
+
+    /* Tabela */
+    .table{ font-size:.875rem; }
+    .table thead th{ font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:#64748b; background:#fff; }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:admin_paroquia_eventos' paroquia.id %}">← Eventos</a>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+  <div class="row g-3">
+
+    <!-- SIDEBAR -->
+    <aside class="col-lg-3">
+      <div class="sidebar-card p-2">
+        <div class="nav-title">Navegação</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_painel' %}">🏠 <span>Dashboard</span></a></li>
+          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_eventos' paroquia.id %}">🗂️ <span>Eventos</span></a></li>
+
+          <!-- Aqui o botão de Ministérios fica sempre visível -->
+          <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">⛪ <span>Ministérios</span></a></li>
+
+
+        </ul>
+      </div>
+    </aside>
+
+    <!-- CONTEÚDO -->
+    <section class="col-lg-9">
+
+      <!-- HEADER -->
+      <div class="sticky-topbar p-3 mb-3 bg-white">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <h1 class="h6 m-0">Ministérios — {{ paroquia.nome }}</h1>
+            <div class="small text-muted-2">Gerencie os ministérios dos eventos (especialmente os do tipo Servos).</div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge rounded-pill badge-soft">{{ eventos_servos|length }} evento(s) Servos</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVENTOS SERVOS -->
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-people-line me-1"></i> Eventos — Servos</h2>
+        <div class="card-clean p-3">
+          {% if eventos_servos %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Evento</th>
+                    <th>Período</th>
+                    <th class="text-end" style="width:260px;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for ev in eventos_servos %}
+                    <tr>
+                      <td class="fw-semibold text-nowrap">{{ ev.nome }}</td>
+                      <td class="text-nowrap">
+                        {% if ev.data_inicio %}{{ ev.data_inicio|date:"d/m/Y" }}{% endif %}
+                        {% if ev.data_fim %} — {{ ev.data_fim|date:"d/m/Y" }}{% endif %}
+                      </td>
+                      <td class="text-end">
+                        <div class="btn-group">
+                          <!-- VER LISTA DE MINISTÉRIOS DO EVENTO -->
+                          <a href="{% url 'inscricoes:ministerios_evento' ev.id %}"
+                             class="btn btn-outline-secondary btn-sm">
+                            <i class="fa-solid fa-list"></i> Ver ministérios
+                          </a>
+                          <!-- CADASTRAR NOVO MINISTÉRIO NO EVENTO -->
+                          <a href="{% url 'inscricoes:ministerio_create' ev.id %}"
+                             class="btn btn-primary btn-sm">
+                            <i class="fa-solid fa-plus"></i> Cadastrar
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted-2">Nenhum evento do tipo <strong>Servos</strong> nesta paróquia.</div>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- OUTROS EVENTOS (informativo) -->
+      {% if outros_eventos %}
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-regular fa-calendar me-1"></i> Outros eventos</h2>
+        <div class="card-clean p-3">
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Evento</th>
+                  <th>Tipo</th>
+                  <th>Período</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ev in outros_eventos %}
+                  <tr>
+                    <td class="text-nowrap">{{ ev.nome }}</td>
+                    <td class="text-nowrap">{{ ev.get_tipo_display|default:ev.tipo }}</td>
+                    <td class="text-nowrap">
+                      {% if ev.data_inicio %}{{ ev.data_inicio|date:"d/m/Y" }}{% endif %}
+                      {% if ev.data_fim %} — {{ ev.data_fim|date:"d/m/Y" }}{% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="form-text mt-2">Ministérios só se aplicam a eventos do tipo <strong>Servos</strong>.</div>
+        </div>
+      </section>
+      {% endif %}
+
+      <footer class="py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+          <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
+          <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+        </div>
+      </footer>
+
+    </section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

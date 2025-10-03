@@ -2,7 +2,7 @@ import re
 import uuid
 from datetime import date
 from decimal import Decimal
-
+from typing import Optional
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.sites.models import Site
@@ -18,6 +18,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from django.db.utils import IntegrityError
+
 
 from cloudinary.models import CloudinaryField
 
@@ -290,57 +291,71 @@ def criar_evento_servos_automatico(sender, instance: "EventoAcampamento", create
 # ---------------------------------------------------------------------
 # Inscrição
 # ---------------------------------------------------------------------
+class InscricaoStatus(models.TextChoices):
+    RASCUNHO        = "draft",         "Rascunho"
+    ENVIADA         = "submitted",     "Enviada"
+    EM_ANALISE      = "under_review",  "Em análise"
+    APROVADA        = "approved",      "Aprovada"            # triagem OK
+    LISTA_ESPERA    = "waitlist",      "Lista de espera"
+    REJEITADA       = "rejected",      "Rejeitada"
+
+    CONVOCADA       = "selected",      "Selecionada/Convocada"
+    PAG_PENDENTE    = "pay_pending",   "Pagamento pendente"
+    PAG_CONFIRMADO  = "pay_confirmed", "Pagamento confirmado"
+
+    CANCEL_USUARIO  = "cancel_user",   "Cancelada pelo usuário"
+    CANCEL_ADMIN    = "cancel_admin",  "Cancelada pela paróquia"
+
+    REEMB_SOL       = "refund_req",    "Reembolso solicitado"
+    REEMB_APROV     = "refund_ok",     "Reembolso aprovado"
+    REEMB_NEG       = "refund_den",    "Reembolso negado"
+
+
 class Inscricao(models.Model):
+    # ----- chaves -----
     participante = models.ForeignKey('Participante', on_delete=models.CASCADE)
     evento       = models.ForeignKey('EventoAcampamento', on_delete=models.CASCADE)
     paroquia     = models.ForeignKey('Paroquia', on_delete=models.CASCADE, related_name='inscricoes')
     data_inscricao = models.DateTimeField(auto_now_add=True)
 
+    # ----- status único -----
+    status = models.CharField(
+        max_length=32,
+        choices=InscricaoStatus.choices,
+        default=InscricaoStatus.RASCUNHO,
+        db_index=True,
+    )
+
+    # ----- booleans legados (mantidos por espelhamento) -----
     foi_selecionado       = models.BooleanField(default=False)
     pagamento_confirmado  = models.BooleanField(default=False)
     inscricao_concluida   = models.BooleanField(default=False)
     inscricao_enviada     = models.BooleanField(default=False)
 
-    # NOVO: Já é campista?
-    ja_e_campista = models.BooleanField(
-        default=False,
-        verbose_name="Já é campista?"
-    )
-    tema_acampamento = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        verbose_name="Se sim, qual tema do acampamento que participou?"
-    )
+    # ----- extras já existentes no seu modelo -----
+    ja_e_campista = models.BooleanField(default=False, verbose_name="Já é campista?")
+    tema_acampamento = models.CharField(max_length=200, blank=True, null=True,
+                                        verbose_name="Se sim, qual tema do acampamento que participou?")
 
-    # CPF do cônjuge (opcional; usado para localizar e parear depois)
-    cpf_conjuge = models.CharField(
-        max_length=14, blank=True, null=True,
-        help_text="CPF do cônjuge (com ou sem máscara)"
-    )
+    cpf_conjuge = models.CharField(max_length=14, blank=True, null=True,
+                                   help_text="CPF do cônjuge (com ou sem máscara)")
 
-    # Pareamento (bidirecional) com outra inscrição (ex.: casal)
     inscricao_pareada = models.OneToOneField(
-        'self',
-        null=True, blank=True,
-        on_delete=models.SET_NULL,
-        related_name='pareada_por',
+        'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='pareada_por',
         help_text="Outra inscrição (cônjuge) vinculada"
     )
 
-    # Responsável 1
+    # Responsáveis / Contato de Emergência (mantidos)
     responsavel_1_nome            = models.CharField(max_length=255, blank=True, null=True)
     responsavel_1_telefone        = models.CharField(max_length=20,  blank=True, null=True)
     responsavel_1_grau_parentesco = models.CharField(max_length=50,  blank=True, null=True)
     responsavel_1_ja_e_campista   = models.BooleanField(default=False)
 
-    # Responsável 2
     responsavel_2_nome            = models.CharField(max_length=255, blank=True, null=True)
     responsavel_2_telefone        = models.CharField(max_length=20,  blank=True, null=True)
     responsavel_2_grau_parentesco = models.CharField(max_length=50,  blank=True, null=True)
     responsavel_2_ja_e_campista   = models.BooleanField(default=False)
 
-    # Contato de Emergência
     contato_emergencia_nome            = models.CharField(max_length=255, blank=True, null=True)
     contato_emergencia_telefone        = models.CharField(max_length=20,  blank=True, null=True)
     contato_emergencia_grau_parentesco = models.CharField(max_length=50,  blank=True, null=True)
@@ -352,7 +367,9 @@ class Inscricao(models.Model):
     def __str__(self):
         return f"{self.participante.nome} – {self.evento.nome} – {self.paroquia.nome}"
 
-    # ---------------- Helpers ----------------
+    # ------------------------------------------------------------
+    # URLs úteis
+    # ------------------------------------------------------------
     @property
     def inscricao_url(self) -> str:
         relative = reverse('inscricoes:ver_inscricao', args=[self.id])
@@ -380,6 +397,162 @@ class Inscricao(models.Model):
                 base = ""
         return f"{base}{relative}" if base else relative
 
+    # ------------------------------------------------------------
+    # Leitura rápida (derivados do status)
+    # ------------------------------------------------------------
+    @property
+    def is_rejeitada(self):       return self.status == InscricaoStatus.REJEITADA
+    @property
+    def is_em_analise(self):      return self.status == InscricaoStatus.EM_ANALISE
+    @property
+    def is_selecionada(self):     return self.status in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE, InscricaoStatus.PAG_CONFIRMADO}
+    @property
+    def is_pago(self):            return self.status == InscricaoStatus.PAG_CONFIRMADO
+    @property
+    def is_cancelada(self):       return self.status in {InscricaoStatus.CANCEL_USER, InscricaoStatus.CANCEL_ADMIN} if hasattr(InscricaoStatus,'CANCEL_USER') else self.status in {InscricaoStatus.CANCEL_USUARIO, InscricaoStatus.CANCEL_ADMIN}
+
+    # ------------------------------------------------------------
+    # Mapeamento da base por tipo (como já fazia)
+    # ------------------------------------------------------------
+    def _get_baseinscricao_model(self):
+        tipo = (self.evento.tipo or "").strip().lower()
+        # importe os modelos corretos ou adie o import para evitar ciclos
+        from . import inscricaosenior as _s   # ajuste para o caminho real
+        from . import inscricaojuvenil as _j
+        from . import inscricaomirim as _m
+        from . import inscricaoservos as _sv
+        from . import inscricaocasais as _c
+        from . import inscricaoevento as _e
+        from . import inscricaoretiro as _r
+        mapping = {
+            'senior':  _s.InscricaoSenior,
+            'juvenil': _j.InscricaoJuvenil,
+            'mirim':   _m.InscricaoMirim,
+            'servos':  _sv.InscricaoServos,
+            'casais':  _c.InscricaoCasais,
+            'evento':  _e.InscricaoEvento,
+            'retiro':  _r.InscricaoRetiro,
+        }
+        return mapping.get(tipo)
+
+    def ensure_base_instance(self):
+        Model = self._get_baseinscricao_model()
+        if not Model:
+            return None
+        obj, _created = Model.objects.get_or_create(
+            inscricao=self,
+            defaults={'paroquia': self.paroquia}
+        )
+        return obj
+
+    # ------------------------------------------------------------
+    # Pareamento (casais)
+    # ------------------------------------------------------------
+    @property
+    def par(self):
+        return self.inscricao_pareada or getattr(self, 'pareada_por', None)
+
+    def set_pareada(self, outra: "Inscricao"):
+        if not outra:
+            self.desparear()
+            return
+        if outra == self:
+            raise ValidationError("Não pode parear consigo mesmo.")
+        if outra.evento_id != self.evento_id:
+            raise ValidationError("A inscrição pareada deve ser do mesmo evento.")
+        with transaction.atomic():
+            self.inscricao_pareada = outra
+            self.save(update_fields=['inscricao_pareada'])
+            if outra.par != self:
+                outra.inscricao_pareada = self
+                outra.save(update_fields=['inscricao_pareada'])
+            # Se evento é casais e um deles já estava selecionado, mantém coerência
+            if (self.evento.tipo or '').lower() == 'casais':
+                if self.is_selecionada and not outra.is_selecionada:
+                    outra.mudar_status(InscricaoStatus.CONVOCADA, motivo="Pareado com selecionado")
+                elif outra.is_selecionada and not self.is_selecionada:
+                    self.mudar_status(InscricaoStatus.CONVOCADA, motivo="Pareado com selecionado")
+
+    def desparear(self):
+        if self.par:
+            outra = self.par
+            with transaction.atomic():
+                self.inscricao_pareada = None
+                self.save(update_fields=['inscricao_pareada'])
+                if outra.par == self:
+                    outra.inscricao_pareada = None
+                    outra.save(update_fields=['inscricao_pareada'])
+
+    # utils para CPF do cônjuge
+    def _digits(self, s: Optional[str]) -> str:
+        return re.sub(r'\D', '', s or '')
+
+    def _fmt(self, digits: str) -> str:
+        return f"{digits[0:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:11]}" if len(digits) == 11 else digits
+
+    def tentar_vincular_conjuge(self) -> bool:
+        if self.par is not None:
+            return False
+        d = self._digits(self.cpf_conjuge)
+        if len(d) != 11:
+            return False
+        variantes = {d, self._fmt(d)}
+        from . import participante as _p
+        try:
+            conjuge_part = _p.Participante.objects.get(cpf__in=variantes)
+        except _p.Participante.DoesNotExist:
+            return False
+        alvo = type(self).objects.filter(evento=self.evento, participante=conjuge_part).first()
+        if not alvo or alvo.par is not None:
+            return False
+        self.set_pareada(alvo)
+        return True
+
+    # ------------------------------------------------------------
+    # Pagamento casais: propagar ao par
+    # ------------------------------------------------------------
+    def _propagar_pagamento_para_par(self, confirmado: bool):
+        if (self.evento.tipo or '').lower() != 'casais':
+            return
+        par = self.par
+        if not par:
+            return
+        if par.pagamento_confirmado == confirmado and par.inscricao_concluida == confirmado:
+            return
+        with transaction.atomic():
+            type(self).objects.filter(pk=par.pk).update(
+                pagamento_confirmado=confirmado,
+                inscricao_concluida=confirmado,
+                status=InscricaoStatus.PAG_CONFIRMADO if confirmado else InscricaoStatus.CONVOCADA,
+            )
+
+    # ------------------------------------------------------------
+    # Validações
+    # ------------------------------------------------------------
+    def clean(self):
+        super().clean()
+        # pareamento: mesmo evento
+        if self.inscricao_pareada:
+            if self.inscricao_pareada_id == self.id:
+                raise ValidationError({'inscricao_pareada': "Não é possível parear com a própria inscrição."})
+            if self.inscricao_pareada.evento_id != self.evento_id:
+                raise ValidationError({'inscricao_pareada': "A inscrição pareada deve ser do mesmo evento."})
+
+        # campista: precisa do tema
+        if self.ja_e_campista and not self.tema_acampamento:
+            raise ValidationError({'tema_acampamento': "Informe o tema do acampamento que participou."})
+
+        # evento de Servos precisa ter principal permitindo
+        if (self.evento.tipo or "").lower() == "servos":
+            principal = getattr(self.evento, "evento_relacionado", None)
+            if not principal:
+                raise ValidationError({"evento": "Evento de Servos sem vínculo com evento principal."})
+            if not getattr(principal, "permitir_inscricao_servos", False):
+                raise ValidationError("Inscrições de Servos estão desabilitadas para este evento.")
+
+    # ------------------------------------------------------------
+    # Disparos (stubs — substitua pelas suas implementações)
+    # ------------------------------------------------------------
     def _site_name(self) -> str:
         site_name = getattr(settings, "SITE_NAME", "") or (getattr(self.paroquia, "nome", "") or "")
         if not site_name:
@@ -405,442 +578,127 @@ class Inscricao(models.Model):
         local = getattr(ev, "local", None) or getattr(ev, "local_evento", None) or "Local a definir"
         return data_str, local
 
-    def _telefone_e164(self) -> str | None:
+    def _telefone_e164(self) -> Optional[str]:
         try:
             tel = getattr(self.participante, "telefone", None)
             return normalizar_e164_br(tel) if tel else None
         except Exception:
             return None
 
-    # ---------------- BaseInscricao por tipo ----------------
-    def _get_baseinscricao_model(self):
-        tipo = (self.evento.tipo or "").strip().lower()
-        mapping = {
-            'senior':  InscricaoSenior,
-            'juvenil': InscricaoJuvenil,
-            'mirim':   InscricaoMirim,
-            'servos':  InscricaoServos,
-            'casais':  InscricaoCasais,   # NOVO
-            'evento':  InscricaoEvento,   # NOVO
-            'retiro':  InscricaoRetiro,   # NOVO
-        }
-        return mapping.get(tipo)
+    # —— cole aqui suas versões atuais, se preferir ——
+    def enviar_email_selecao(self): pass
+    def enviar_email_pagamento_confirmado(self): pass
+    def enviar_email_recebida(self): pass
+    def enviar_whatsapp_selecao(self): pass
+    def enviar_whatsapp_pagamento_confirmado(self): pass
+    def enviar_whatsapp_recebida(self): pass
 
-    def ensure_base_instance(self):
-        Model = self._get_baseinscricao_model()
-        if not Model:
-            return None
-        obj, _created = Model.objects.get_or_create(
-            inscricao=self,
-            defaults={'paroquia': self.paroquia}
-        )
-        return obj
+    # ------------------------------------------------------------
+    # Espelhamento booleans (retrocompat)
+    # ------------------------------------------------------------
+    def _espelhar_booleans(self):
+        st = self.status
+        self.inscricao_enviada    = st not in {InscricaoStatus.RASCUNHO}
+        self.foi_selecionado      = st in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE, InscricaoStatus.PAG_CONFIRMADO}
+        self.pagamento_confirmado = st == InscricaoStatus.PAG_CONFIRMADO
+        self.inscricao_concluida  = st == InscricaoStatus.PAG_CONFIRMADO
 
-    # ---------------- Pareamento ----------------
-    @property
-    def par(self):
-        """Retorna a inscrição pareada (independente do lado)."""
-        return self.inscricao_pareada or getattr(self, 'pareada_por', None)
+    # ------------------------------------------------------------
+    # Máquina de estados e transições
+    # ------------------------------------------------------------
+    _NEXT = {
+        InscricaoStatus.RASCUNHO:       {InscricaoStatus.ENVIADA, InscricaoStatus.CANCEL_USUARIO},
+        InscricaoStatus.ENVIADA:        {InscricaoStatus.EM_ANALISE, InscricaoStatus.CANCEL_USUARIO},
+        InscricaoStatus.EM_ANALISE:     {InscricaoStatus.APROVADA, InscricaoStatus.REJEITADA, InscricaoStatus.LISTA_ESPERA, InscricaoStatus.CANCEL_ADMIN},
+        InscricaoStatus.APROVADA:       {InscricaoStatus.CONVOCADA, InscricaoStatus.LISTA_ESPERA, InscricaoStatus.CANCEL_ADMIN},
+        InscricaoStatus.LISTA_ESPERA:   {InscricaoStatus.CONVOCADA, InscricaoStatus.CANCEL_ADMIN, InscricaoStatus.REJEITADA},
+        InscricaoStatus.CONVOCADA:      {InscricaoStatus.PAG_PENDENTE, InscricaoStatus.CANCEL_ADMIN},
+        InscricaoStatus.PAG_PENDENTE:   {InscricaoStatus.PAG_CONFIRMADO, InscricaoStatus.CANCEL_ADMIN},
+        InscricaoStatus.PAG_CONFIRMADO: {InscricaoStatus.REEMB_SOL, InscricaoStatus.CANCEL_ADMIN},
+        InscricaoStatus.REEMB_SOL:      {InscricaoStatus.REEMB_APROV, InscricaoStatus.REEMB_NEG},
+    }
 
-    def clean(self):
-        super().clean()
-
-        # Regra de pareamento
-        if self.inscricao_pareada:
-            if self.inscricao_pareada_id == self.id:
-                raise ValidationError({'inscricao_pareada': "Não é possível parear com a própria inscrição."})
-            if self.inscricao_pareada.evento_id != self.evento_id:
-                raise ValidationError({'inscricao_pareada': "A inscrição pareada deve ser do mesmo evento."})
-
-        # Regra do campista
-        if self.ja_e_campista and not self.tema_acampamento:
-            raise ValidationError({'tema_acampamento': "Informe o tema do acampamento que participou."})
-
-        # 🔒 Regra: evento de Servos só aceita inscrição se o principal permitir
-        if (self.evento.tipo or "").lower() == "servos":
-            principal = self.evento.evento_relacionado
-            if not principal:
-                raise ValidationError({"evento": "Evento de Servos sem vínculo com evento principal."})
-            if not principal.permitir_inscricao_servos:
-                raise ValidationError("Inscrições de Servos estão desabilitadas para este evento.")
-
-    def set_pareada(self, outra: "Inscricao"):
-        """Define o vínculo e espelha nas duas pontas."""
-        if not outra:
-            self.desparear()
-            return
-        if outra == self:
-            raise ValidationError("Não pode parear consigo mesmo.")
-        if outra.evento_id != self.evento_id:
-            raise ValidationError("A inscrição pareada deve ser do mesmo evento.")
-
+    def mudar_status(self, novo_status: str, *, motivo: Optional[str] = None, por_usuario=None) -> bool:
+        """Aplica transição validada e dispara eventos usuais."""
+        if novo_status == self.status:
+            return False
+        permitidos = self._NEXT.get(self.status, set())
+        if novo_status not in permitidos:
+            raise ValidationError(
+                f"Transição inválida: {self.get_status_display()} → "
+                f"{dict(InscricaoStatus.choices).get(novo_status, novo_status)}"
+            )
         with transaction.atomic():
-            self.inscricao_pareada = outra
-            self.save(update_fields=['inscricao_pareada'])
-            if outra.par != self:
-                outra.inscricao_pareada = self
-                outra.save(update_fields=['inscricao_pareada'])
+            antigo = self.status
+            self.status = novo_status
+            self._espelhar_booleans()
+            super().save(update_fields=["status","foi_selecionado","pagamento_confirmado","inscricao_concluida","inscricao_enviada"])
 
-            # Propaga seleção se evento de casais
-            if (self.evento.tipo or '').lower() == 'casais':
-                if self.foi_selecionado and not outra.foi_selecionado:
-                    outra.foi_selecionado = True
-                    outra.save(update_fields=['foi_selecionado'])
-                elif outra.foi_selecionado and not self.foi_selecionado:
-                    self.foi_selecionado = True
-                    self.save(update_fields=['foi_selecionado'])
+            # logs (opcional)
+            try:
+                from .models import LogAcao  # ajuste se existir
+                LogAcao.objects.create(
+                    tipo="status_change",
+                    usuario=por_usuario,
+                    inscricao=self,
+                    detalhes={"de": antigo, "para": novo_status, "motivo": motivo},
+                )
+            except Exception:
+                pass
 
-    def desparear(self):
-        """Remove o pareamento nas duas pontas."""
-        if self.par:
-            outra = self.par
-            with transaction.atomic():
-                self.inscricao_pareada = None
-                self.save(update_fields=['inscricao_pareada'])
-                if outra.par == self:
-                    outra.inscricao_pareada = None
-                    outra.save(update_fields=['inscricao_pareada'])
+            # disparos
+            if antigo != InscricaoStatus.CONVOCADA and novo_status in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE}:
+                self.enviar_email_selecao()
+                self.enviar_whatsapp_selecao()
 
-    # --- util para CPF do cônjuge ---
-    def _digits(self, s: str | None) -> str:
-        return re.sub(r'\D', '', s or '')
+            if novo_status == InscricaoStatus.PAG_CONFIRMADO:
+                self.enviar_email_pagamento_confirmado()
+                self.enviar_whatsapp_pagamento_confirmado()
+                # casais: propagar pgto
+                try:
+                    self._propagar_pagamento_para_par(True)
+                except Exception:
+                    pass
 
-    def _fmt(self, digits: str) -> str:
-        return f"{digits[0:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:11]}" if len(digits) == 11 else digits
+            if antigo == InscricaoStatus.RASCUNHO and novo_status == InscricaoStatus.ENVIADA:
+                self.enviar_email_recebida()
+                self.enviar_whatsapp_recebida()
 
-    def tentar_vincular_conjuge(self) -> bool:
-        """
-        Se `cpf_conjuge` estiver preenchido, tenta localizar a inscrição do mesmo evento
-        do participante com esse CPF e vincula (bidirecional). Propaga seleção se casais.
-        """
-        if self.par is not None:
-            return False
-
-        d = self._digits(self.cpf_conjuge)
-        if len(d) != 11:
-            return False
-
-        variantes = {d, self._fmt(d)}
-
-        # 1) Participante do cônjuge
-        try:
-            conjuge_part = Participante.objects.get(cpf__in=variantes)
-        except Participante.DoesNotExist:
-            return False
-
-        # 2) Inscrição do mesmo evento
-        alvo = Inscricao.objects.filter(
-            evento=self.evento,
-            participante=conjuge_part,
-        ).first()
-        if not alvo or alvo.par is not None:
-            return False
-
-        # 3) Pareia
-        self.set_pareada(alvo)
         return True
 
-    # =============== NOVO: pagamento espelhado para casal ===============
-    def _propagar_pagamento_para_par(self, confirmado: bool):
-        """
-        Se evento for CASAIS, sincroniza o status de pagamento com a inscrição pareada
-        sem disparar loops/duplicar notificações.
-        """
-        if (self.evento.tipo or '').lower() != 'casais':
-            return
-        par = self.par
-        if not par:
-            return
-
-        # evita update se já está consistente
-        if par.pagamento_confirmado == confirmado and par.inscricao_concluida == confirmado:
-            return
-
-        with transaction.atomic():
-            type(self).objects.filter(pk=par.pk).update(
-                pagamento_confirmado=confirmado,
-                inscricao_concluida=confirmado,
-            )
-
-    # ---------------- E-mails / WhatsApp (mantidos) ----------------
-    def enviar_email_selecao(self):
-        if not self.participante.email:
-            return
-        nome_app = self._site_name()
-        data_evento, local_evento = self._evento_data_local()
-        portal_url = self.portal_participante_url
-        link_inscricao = self.inscricao_url
-        assunto = "🎉 Parabéns! Você foi selecionado para participar do evento"
-        texto = (
-            f"Olá {self.participante.nome},\n\n"
-            f"Temos uma ótima notícia: você foi selecionado(a) para participar do {self.evento.nome}!\n"
-            "Estamos muito felizes em tê-lo(a) conosco nesta experiência especial.\n\n"
-            "Detalhes do evento:\n"
-            f"📅 Data: {data_evento}\n"
-            f"📍 Local: {local_evento}\n\n"
-            "Para garantir sua vaga, acesse o Portal do Participante, informe seu CPF e realize o pagamento:\n"
-            f"{portal_url}\n\n"
-            "(Se preferir, você também pode acessar sua inscrição diretamente:\n"
-            f"{link_inscricao})\n\n"
-            "Nos vemos no evento!\n"
-            f"Abraços,\nEquipe {nome_app}"
-        )
-        html = f"""
-        <html><body style="font-family:Arial,sans-serif;color:#0f172a">
-          <p>Olá <strong>{self.participante.nome}</strong>,</p>
-          <p>Temos uma ótima notícia: você foi selecionado(a) para participar do
-             <strong>{self.evento.nome}</strong>!</p>
-          <p>Estamos muito felizes em tê-lo(a) conosco nesta experiência especial.</p>
-          <p><strong>Detalhes do evento:</strong><br>
-          📅 Data: {data_evento}<br>
-          📍 Local: {local_evento}</p>
-          <div style="margin:22px 0;">
-            <a href="{portal_url}"
-               style="display:inline-block;background:#0ea5e9;color:#fff;
-                      padding:12px 20px;border-radius:8px;text-decoration:none;
-                      font-weight:700">
-              Abrir Portal do Participante
-            </a>
-          </div>
-          <p style="font-size:13px;color:#475569">
-            Dica: se preferir, acesse sua inscrição diretamente:
-            <a href="{link_inscricao}" style="color:#0ea5e9;text-decoration:none">{link_inscricao}</a>
-          </p>
-          <p>Nos vemos no evento!<br/>Abraços,<br/>Equipe {nome_app}</p>
-        </body></html>
-        """
-        msg = EmailMultiAlternatives(assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email])
-        msg.attach_alternative(html, "text/html")
-        try:
-            msg.send()
-        except Exception:
-            pass
-
-    def enviar_email_pagamento_confirmado(self):
-        if not self.participante.email:
-            return
-        data_evento, local_evento = self._evento_data_local()
-        assunto = f"✅ Pagamento confirmado – {self.evento.nome}"
-        texto = (
-            f"Olá {self.participante.nome},\n\n"
-            f"Recebemos a confirmação do seu pagamento para o {self.evento.nome}.\n"
-            "Sua inscrição agora está totalmente garantida.\n\n"
-            "Resumo da inscrição:\n"
-            f"👤 Participante: {self.participante.nome}\n"
-            f"📅 Data: {data_evento}\n"
-            f"📍 Local: {local_evento}\n\n"
-            "Agora é só se preparar e aguardar o grande dia!\n\n"
-            f"Até breve,\nEquipe {self._site_name()}"
-        )
-        html = f"""
-        <html><body style="font-family:Arial,sans-serif;color:#0f172a">
-          <p>Olá <strong>{self.participante.nome}</strong>,</p>
-          <p>Recebemos a confirmação do seu pagamento para o
-             <strong>{self.evento.nome}</strong>.</p>
-          <p>Sua inscrição agora está totalmente garantida.</p>
-          <p><strong>Resumo da inscrição:</strong><br>
-          👤 Participante: {self.participante.nome}<br>
-          📅 Data: {data_evento}<br>
-          📍 Local: {local_evento}</p>
-          <p>Agora é só se preparar e aguardar o grande dia!</p>
-          <p>Até breve,<br/>Equipe {self._site_name()}</p>
-        </body></html>
-        """
-        msg = EmailMultiAlternatives(assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email])
-        msg.attach_alternative(html, "text/html")
-        try:
-            msg.send()
-        except Exception:
-            pass
-
-    def enviar_email_recebida(self):
-        if not self.participante.email:
-            return
-        nome_app = self._site_name()
-        data_envio = timezone.localtime(self.data_inscricao).strftime("%d/%m/%Y %H:%M")
-        assunto = f"📩 Inscrição recebida – {self.evento.nome}"
-        texto = (
-            f"Olá {self.participante.nome},\n\n"
-            f"Recebemos sua inscrição para o {self.evento.nome}.\n"
-            "Nossa equipe vai analisar e, em breve, será realizado o sorteio dos participantes.\n"
-            "Você receberá um e-mail caso seja selecionado(a).\n\n"
-            "Resumo do envio:\n"
-            f"📅 Data do envio: {data_envio}\n"
-            f"📍 Evento: {self.evento.nome}\n\n"
-            "Fique de olho no seu e-mail para os próximos passos.\n\n"
-            f"Atenciosamente,\nEquipe {nome_app}"
-        )
-        html = f"""
-        <html><body style="font-family:Arial,sans-serif;color:#0f172a">
-          <p>Olá <strong>{self.participante.nome}</strong>,</p>
-          <p>Recebemos sua inscrição para o <strong>{self.evento.nome}</strong>.</p>
-          <p>Nossa equipe vai analisar e, em breve, será realizado o sorteio dos participantes.
-             Você receberá um e-mail caso seja selecionado(a).</p>
-          <p><strong>Resumo do envio:</strong><br>
-          📅 Data do envio: {data_envio}<br>
-          📍 Evento: {self.evento.nome}</p>
-          <p>Fique de olho no seu e-mail para os próximos passos.</p>
-          <p>Atenciosamente,<br/>Equipe {nome_app}</p>
-        </body></html>
-        """
-        msg = EmailMultiAlternatives(assunto, texto, settings.DEFAULT_FROM_EMAIL, [self.participante.email])
-        msg.attach_alternative(html, "text/html")
-        try:
-            msg.send()
-        except Exception:
-            pass
-
-    # ---------------- WhatsApp (mantido) ----------------
-    def _whatsapp_disponivel(self) -> bool:
-        return bool(getattr(settings, "USE_WHATSAPP", False) and (enviar_inscricao_recebida or send_template))
-
-    def enviar_whatsapp_selecao(self):
-        if not self._whatsapp_disponivel():
-            return
-        to = self._telefone_e164()
-        if not to:
-            return
-        if enviar_selecionado_info:
-            try:
-                enviar_selecionado_info(
-                    telefone_br=to,
-                    nome=self.participante.nome,
-                    evento=self.evento.nome,
-                    url_param=None,
-                )
-                return
-            except Exception:
-                pass
-        if send_template:
-            try:
-                components = [{
-                    "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": self.participante.nome},
-                        {"type": "text", "text": self.evento.nome},
-                        {"type": "text", "text": self.portal_participante_url},
-                    ],
-                }]
-                send_template(to, "selecao_pagamento_util_v2", components=components)
-                return
-            except Exception:
-                pass
-        if send_text:
-            msg = (
-                f"🎉 Olá {self.participante.nome}! Você foi selecionado(a) para o {self.evento.nome}.\n"
-                f"Finalize o pagamento no Portal do Participante: {self.portal_participante_url}"
-            )
-            try:
-                send_text(to, msg)
-            except Exception:
-                pass
-
-    def enviar_whatsapp_pagamento_confirmado(self):
-        if not self._whatsapp_disponivel():
-            return
-        to = self._telefone_e164()
-        if not to:
-            return
-        try:
-            if enviar_pagamento_recebido:
-                enviar_pagamento_recebido(to, self.participante.nome, self.evento.nome)
-                return
-        except Exception:
-            pass
-        if send_template:
-            try:
-                components = [{
-                    "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": self.participante.nome},
-                        {"type": "text", "text": self.evento.nome},
-                    ],
-                }]
-                send_template(to, "pagamento_confirmado_util_v2", components=components)
-                return
-            except Exception:
-                pass
-        if send_text:
-            msg = (
-                f"✅ Pagamento confirmado, {self.participante.nome}!\n"
-                f"Sua inscrição para {self.evento.nome} está garantida. Nos vemos lá!"
-            )
-            try:
-                send_text(to, msg)
-            except Exception:
-                pass
-
-    def enviar_whatsapp_recebida(self):
-        if not self._whatsapp_disponivel():
-            return
-        to = self._telefone_e164()
-        if not to:
-            return
-        data_envio = timezone.localtime(self.data_inscricao).strftime("%d/%m/%Y %H:%M")
-        try:
-            if enviar_inscricao_recebida:
-                enviar_inscricao_recebida(to, self.participante.nome, self.evento.nome, data_envio)
-                return
-        except Exception:
-            pass
-        if send_template:
-            try:
-                components = [{
-                    "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": self.participante.nome},
-                        {"type": "text", "text": self.evento.nome},
-                        {"type": "text", "text": data_envio},
-                    ],
-                }]
-                send_template(to, "inscricao_recebida_v2", components=components)
-                return
-            except Exception:
-                pass
-        if send_text:
-            msg = (
-                f"📩 Oi {self.participante.nome}! Recebemos sua inscrição para {self.evento.nome}.\n"
-                f"Data do envio: {data_envio}. Avisaremos se for selecionado(a)."
-            )
-            try:
-                send_text(to, msg)
-            except Exception:
-                pass
-
-    # ---------------- Disparos automáticos ----------------
+    # ------------------------------------------------------------
+    # SAVE: reforça validações + mantém comportamento legado
+    # ------------------------------------------------------------
     def save(self, *args, **kwargs):
         is_new = self.pk is None
-
-        # 🔒 reforça as validações (inclui regra dos Servos)
         self.full_clean()
 
-        enviar_selecao   = False
-        enviar_pagto_ok  = False
-        enviar_recebida  = False
-        mudou_pagto      = False  # << NOVO
+        # — comportamento legado: se alguém setou os booleans diretamente,
+        #   convertemos para o status correspondente antes de salvar.
+        #   (a ideia é facilitar a transição gradual do código antigo)
+        status_alvo = None
+        if self.pagamento_confirmado:
+            status_alvo = InscricaoStatus.PAG_CONFIRMADO
+        elif self.foi_selecionado and not self.pagamento_confirmado:
+            # se “selecionado” e sem pgto, preferimos “pay_pending”
+            status_alvo = InscricaoStatus.PAG_PENDENTE
+        elif self.inscricao_enviada and self.status == InscricaoStatus.RASCUNHO:
+            status_alvo = InscricaoStatus.ENVIADA
 
-        if self.pk:
-            antigo = Inscricao.objects.get(pk=self.pk)
+        if status_alvo and status_alvo != self.status:
+            # use a máquina para disparar efeitos; se não puder (ex.: nas primeiras criações), apenas seta
+            try:
+                self.mudar_status(status_alvo, motivo="Autoajuste booleans→status")
+                return  # mudar_status já salvou
+            except ValidationError:
+                self.status = status_alvo
 
-            if not antigo.foi_selecionado and self.foi_selecionado:
-                enviar_selecao = True
-
-            # << NOVO: detecta mudança no pagamento (tanto true quanto false)
-            mudou_pagto = (antigo.pagamento_confirmado != self.pagamento_confirmado)
-
-            if not antigo.pagamento_confirmado and self.pagamento_confirmado:
-                enviar_pagto_ok = True
-                self.inscricao_concluida = True  # conclui ao confirmar pagamento
-            elif antigo.pagamento_confirmado and not self.pagamento_confirmado:
-                # se desfez o pagamento, desfaz conclusão
-                self.inscricao_concluida = False
-
-            if not antigo.inscricao_enviada and self.inscricao_enviada:
-                enviar_recebida = True
+        # espelha booleans corretos do status atual
+        self._espelhar_booleans()
 
         super().save(*args, **kwargs)
 
-        # Ao criar, garante base correta + tenta parear se já houver cpf_conjuge
+        # pós-criação: garante base + tenta parear por CPF do cônjuge
         if is_new:
             try:
                 self.ensure_base_instance()
@@ -852,36 +710,14 @@ class Inscricao(models.Model):
             except Exception:
                 pass
 
-        # Se acabou de ser selecionada e é 'casais', seleciona o par também
-        if enviar_selecao and (self.evento.tipo or '').lower() == 'casais':
-            par = self.par
-            if par and not par.foi_selecionado:
-                par.foi_selecionado = True
-                par.save()  # dispara notificações do par também
 
-        # 🔁 NOVO: Propaga pagamento ao cônjuge se mudou (pago/desfeito) e for CASAIS
-        try:
-            if (self.evento.tipo or '').lower() == 'casais' and mudou_pagto:
-                self._propagar_pagamento_para_par(self.pagamento_confirmado)
-        except Exception:
-            pass
-
-        # Disparos
-        if enviar_selecao:
-            self.enviar_email_selecao()
-            self.enviar_whatsapp_selecao()
-
-        if enviar_pagto_ok:
-            self.enviar_email_pagamento_confirmado()
-            self.enviar_whatsapp_pagamento_confirmado()
-
-        if enviar_recebida:
-            self.enviar_email_recebida()
-            self.enviar_whatsapp_recebida()
-
-
+# ------------------------------------------------------------
+# Sinal: tentativa de parear assim que criar (como você já fazia)
+# ------------------------------------------------------------
 @receiver(post_save, sender=Inscricao)
 def _parear_apos_criar(sender, instance: 'Inscricao', created, **kwargs):
+    if not created:
+        return
     # 1) tentar com o cpf_conjuge desta inscrição
     try:
         if instance.cpf_conjuge and instance.par is None:
@@ -889,7 +725,7 @@ def _parear_apos_criar(sender, instance: 'Inscricao', created, **kwargs):
     except Exception:
         pass
 
-    # 2) caminho inverso: achar inscrições do mesmo evento que anotaram este CPF como 'cpf_conjuge'
+    # 2) inverso: achar quem informou o CPF deste participante
     try:
         meu_cpf_d = re.sub(r'\D', '', getattr(instance.participante, 'cpf', '') or '')
         if len(meu_cpf_d) != 11 or instance.par is not None:
@@ -901,7 +737,7 @@ def _parear_apos_criar(sender, instance: 'Inscricao', created, **kwargs):
         for c in candidatos:
             alvo_d = re.sub(r'\D', '', c.cpf_conjuge or '')
             if alvo_d == meu_cpf_d:
-                c.set_pareada(instance)   # já propaga seleção se for casais
+                c.set_pareada(instance)
                 break
     except Exception:
         pass

@@ -63,9 +63,6 @@
     <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
 
     <div class="d-flex align-items-center gap-2 ms-auto">
-      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
-      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
-      <a class="btn btn-sm btn-light" href="http://localhost:8000/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
       <a class="btn btn-sm btn-secondary" href="{% url 'inscricoes:admin_paroquia_painel' %}">Paróquia</a>
     </div>
   </div>
@@ -81,11 +78,6 @@
         <ul class="nav-list">
           <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_painel' %}">🏠 <span>Dashboard</span></a></li>
           <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">🗓️ <span>Novo evento</span></a></li>
-          <li class="nav-item"><a href="{% url 'inscricoes:mp_config' %}">💳 <span>Pagamentos (MP)</span></a></li>
-          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_create_admin' %}">👤 <span>Usuários da paróquia</span></a></li>
-          <li class="nav-item"><a href="{% url 'inscricoes:repasse_lista_eventos' %}">💼 <span>Repasses</span></a></li>
-          <li class="nav-item"><a href="{% url 'inscricoes:publicacoes_list' %}?paroquia={{ paroquia.id }}">📰 <span>Publicações</span></a></li>
-          <li class="nav-item"><a href="{% url 'inscricoes:minhas_inscricoes_por_cpf' %}" target="_blank" rel="noopener">🌐 <span>Portal do participante</span></a></li>
         </ul>
       </div>
     </aside>

@@ -88,6 +88,16 @@
     /* Checkbox/switch maiorzinho */
     .form-check-input{ transform: scale(1.15); cursor:pointer; }
 
+    /* Nome em uma única linha (sem quebra) */
+    .nome-single-line{
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: inline-block;
+      max-width: 100%;
+      vertical-align: bottom;
+    }
+
     /* Link do nome com a mesma cor do texto */
     a.link-ink{ color:var(--ink); text-decoration:none; }
     a.link-ink:hover{ text-decoration:underline; }
@@ -175,6 +185,13 @@
             <button class="btn btn-outline-secondary btn-sm" onclick="copyTelaoLink(event)">
               <i class="fa-solid fa-clipboard"></i> Copiar link do Telão
             </button>
+
+            <!-- Alocar em massa -->
+            <a class="btn btn-outline-primary btn-sm"
+               href="{% url 'inscricoes:alocar_em_massa' evento.id %}">
+              <i class="fa-solid fa-people-group"></i>
+              {% if evento.tipo == "servos" %}Alocar em massa (Grupos/Ministérios){% else %}Alocar em massa (Grupos){% endif %}
+            </a>
           </div>
         </div>
       </div>
@@ -200,21 +217,22 @@
                 <tr>
                   <th>Nome</th>
                   <th class="text-center" style="width:90px;">Idade</th>
+                  <th class="text-center" style="width:160px;">Status</th>
                   <th class="text-center" style="width:110px;">Pagamento</th>
                   <th class="text-center" style="width:170px;">Selecionado</th>
-                  <th class="text-center" style="width:360px;">Ações</th>
+                  <th class="text-center" style="width:300px;">Ações</th>
                 </tr>
               </thead>
               <tbody id="tbodyRows">
                 {% for inscricao in participantes %}
-                <tr>
+                <tr id="row_{{ inscricao.id }}">
                   <td class="col-nome">
-                    <!-- Nome clicável abrindo a inscrição completa -->
+                    <!-- Nome clicável em UMA LINHA -->
                     <a href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.id %}"
-                      class="link-ink fw-semibold"
-                      title="Abrir inscrição de {{ inscricao.participante.nome }}">
+                       class="link-ink fw-semibold nome-single-line"
+                       title="Abrir inscrição de {{ inscricao.participante.nome }}">
                       {{ inscricao.participante.nome }}
-                      </a>
+                    </a>
                     {% if inscricao.participante.cidade or inscricao.participante.estado %}
                       <div class="small text-muted-2">
                         {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
@@ -226,7 +244,21 @@
                     {% if inscricao.idade is not None %}{{ inscricao.idade }}{% else %}-{% endif %}
                   </td>
 
+                  <!-- STATUS (select) -->
                   <td class="text-center">
+                    <select class="form-select form-select-sm d-inline-block"
+                            style="min-width:150px;"
+                            id="status_{{ inscricao.id }}"
+                            onfocus="this.dataset.prev=this.value"
+                            onchange="alterarStatus({{ inscricao.id }}, this.value, this)">
+                      {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if value == inscricao.status %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+
+                  <!-- Pagamento (badge) -->
+                  <td class="text-center" id="paycell_{{ inscricao.id }}">
                     {% if inscricao.pagamento_confirmado %}
                       <span class="badge rounded-pill text-bg-success"><i class="fa-solid fa-check me-1"></i> Pago</span>
                     {% else %}
@@ -234,7 +266,7 @@
                     {% endif %}
                   </td>
 
-                  <!-- Switch AJAX para seleção -->
+                  <!-- Switch Selecionado -->
                   <td class="text-center">
                     <div class="form-check form-switch d-inline-flex align-items-center gap-2 m-0">
                       <input class="form-check-input"
@@ -261,7 +293,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="5" class="text-center text-muted py-4">Nenhum participante inscrito.</td>
+                  <td colspan="6" class="text-center text-muted py-4">Nenhum participante inscrito.</td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -320,8 +352,7 @@ function flashBtn(btn){
   setTimeout(()=> btn.innerHTML = old, 1400);
 }
 
-/* ====== AJAX de seleção (switch) ====== */
-// CSRF a partir do cookie (Django)
+/* ====== CSRF + flash ====== */
 function getCookie(name) {
   const v = `; ${document.cookie}`;
   const p = v.split(`; ${name}=`);
@@ -329,7 +360,6 @@ function getCookie(name) {
 }
 const CSRF_TOKEN = getCookie('csrftoken');
 
-// Alerta simples (toast-like)
 function flash(msg, variant='success') {
   const area = document.getElementById('flashArea');
   if (!area) return;
@@ -352,7 +382,7 @@ function flash(msg, variant='success') {
   setTimeout(() => { try { el.remove(); } catch(e){} }, 2600);
 }
 
-// Chamada AJAX
+/* ====== AJAX: Seleção ====== */
 function toggleSelecao(inscricaoId, checked) {
   const url = `{% url 'inscricoes:toggle_selecao_inscricao' 0 %}`.replace('/0/', `/${inscricaoId}/`);
   const body = new URLSearchParams();
@@ -377,11 +407,67 @@ function toggleSelecao(inscricaoId, checked) {
           data.selected ? 'success' : 'warning');
   })
   .catch(err => {
-    // Reverte o switch visualmente se deu erro
     const cb = document.getElementById(`sel_${inscricaoId}`);
     if (cb) cb.checked = !checked;
     flash('Não foi possível salvar a seleção.', 'danger');
     console.error(err);
+  });
+}
+
+/* ====== AJAX: Alterar status ====== */
+function alterarStatus(inscricaoId, novoStatus, selectEl){
+  const url = `{% url 'inscricoes:alterar_status_inscricao' 0 %}`.replace('/0/', `/${inscricaoId}/`);
+  const body = new URLSearchParams();
+  body.append('status', novoStatus);
+
+  const prevDisabled = selectEl.disabled;
+  // guarda o valor anterior (se ainda não tiver)
+  const prevValue = selectEl.dataset.prev ?? selectEl.value;
+  selectEl.disabled = true;
+
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': CSRF_TOKEN,
+      'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    },
+    body: body.toString()
+  })
+  .then(async (r) => {
+    let data = {};
+    try { data = await r.json(); } catch(e){}
+    if (!r.ok || !data.ok) {
+      // Se veio mensagem do backend, usa no flash
+      const msg = data?.error || ('Falha ao salvar (HTTP ' + r.status + ')');
+      // reverte UI
+      selectEl.value = prevValue;
+      throw new Error(msg);
+    }
+    return data;
+  })
+  .then(data => {
+    // Atualiza badge de pagamento
+    const payCell = document.getElementById(`paycell_${inscricaoId}`);
+    if (payCell) {
+      payCell.innerHTML = data.pagamento_confirmado
+        ? '<span class="badge rounded-pill text-bg-success"><i class="fa-solid fa-check me-1"></i> Pago</span>'
+        : '<span class="badge rounded-pill text-bg-danger"><i class="fa-solid fa-xmark me-1"></i> Pendente</span>';
+    }
+    // Atualiza switch Selecionado
+    const selCb = document.getElementById(`sel_${inscricaoId}`);
+    if (selCb) selCb.checked = !!data.foi_selecionado;
+
+    // sucesso → atualiza o "prev"
+    selectEl.dataset.prev = novoStatus;
+    flash(`Status atualizado para: <strong>${data.label}</strong>`, 'success');
+  })
+  .catch(err => {
+    flash(err.message || 'Não foi possível alterar o status.', 'danger');
+    console.error(err);
+  })
+  .finally(() => {
+    selectEl.disabled = prevDisabled;
   });
 }
 </script>

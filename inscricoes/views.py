@@ -15,7 +15,7 @@ from django.views.decorators.cache import never_cache
 from typing import Optional
 from django.core.exceptions import FieldError
 from .forms import FormBasicoPagamentoPublico
-# ——— Django
+from .models import Inscricao, InscricaoStatus
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -32,6 +32,8 @@ from django.utils import timezone as dj_tz
 from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.core.exceptions import ValidationError
+from .models import Inscricao, EventoAcampamento, InscricaoStatus
 
 # ——— Terceiros
 import mercadopago
@@ -662,101 +664,6 @@ def evento_deletar(request, pk):
 
     # GET: mostra a página de confirmação
     return render(request, "inscricoes/evento_confirm_delete.html", {"obj": evento, "tipo": "Evento"})
-
-@login_required
-def evento_participantes(request, evento_id):
-    evento = get_object_or_404(EventoAcampamento, id=evento_id)
-
-    # Verifica se o usuário tem permissão para acessar
-    if request.user.is_admin_paroquia():
-        if request.user.paroquia != evento.paroquia:
-            return HttpResponseForbidden("Acesso negado.")
-    elif not request.user.is_admin_geral():
-        return HttpResponseForbidden("Acesso negado.")
-
-    # Inclui os relacionamentos dos subtipos + ordena alfabeticamente por nome do participante
-    participantes = (
-        Inscricao.objects
-        .filter(evento=evento)
-        .select_related(
-            'participante',
-            'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
-            'inscricaocasais', 'inscricaoevento', 'inscricaoretiro'
-        )
-        .order_by("participante__nome")  # ✅ garante ordem alfabética
-    )
-
-    total_participantes = participantes.count()
-
-    # ===== Cálculo da idade =====
-    ref_date = getattr(evento, 'data_inicio', None) or timezone.localdate()
-
-    attr_by_tipo = {
-        'senior':  'inscricaosenior',
-        'juvenil': 'inscricaojuvenil',
-        'mirim':   'inscricaomirim',
-        'servos':  'inscricaoservos',
-        'casais':  'inscricaocasais',
-        'evento':  'inscricaoevento',
-        'retiro':  'inscricaoretiro',
-    }
-
-    def _calc_age(nasc, ref):
-        if not nasc:
-            return None
-        if hasattr(nasc, 'date'):
-            nasc = nasc.date()
-        if hasattr(ref, 'date'):
-            ref = ref.date()
-        return ref.year - nasc.year - ((ref.month, ref.day) < (nasc.month, nasc.day))
-
-    def _get_birth(insc):
-        tipo = (getattr(insc.evento, 'tipo', '') or '').lower()
-        nomes = []
-        pref = attr_by_tipo.get(tipo)
-        if pref:
-            nomes.append(pref)
-        nomes += [
-            'inscricaosenior', 'inscricaojuvenil', 'inscricaomirim', 'inscricaoservos',
-            'inscricaocasais', 'inscricaoevento', 'inscricaoretiro'
-        ]
-        seen = set()
-        for name in [n for n in nomes if n and n not in seen]:
-            seen.add(name)
-            rel = getattr(insc, name, None)
-            if rel:
-                dn = getattr(rel, 'data_nascimento', None)
-                if dn:
-                    return dn
-        return getattr(insc.participante, 'data_nascimento', None)
-
-    # Anota idade no objeto
-    for insc in participantes:
-        dn = _get_birth(insc)
-        insc.idade = _calc_age(dn, ref_date)
-
-    # Atualização de seleção
-    if request.method == "POST":
-        inscricao_id = request.POST.get('inscricao_id')
-        foi_selecionado = 'foi_selecionado' in request.POST
-
-        try:
-            inscricao = participantes.get(id=inscricao_id)
-        except Inscricao.DoesNotExist:
-            return HttpResponse("Inscrição não encontrada", status=404)
-
-        inscricao.foi_selecionado = foi_selecionado
-        inscricao.save()
-        return redirect('inscricoes:evento_participantes', evento_id=evento.id)
-
-    context = {
-        'evento': evento,
-        'participantes': participantes,
-        'valor_inscricao': evento.valor_inscricao,
-        'total_participantes': total_participantes,
-    }
-    return render(request, 'inscricoes/evento_participantes.html', context)
-
 
 
 def inscricao_evento_publico(request, slug):
@@ -4323,3 +4230,646 @@ def alocar_grupo(request, inscricao_id: int):
         "HTTP_REFERER",
         reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id])
     ))
+
+@login_required
+def alocar_em_massa(request: HttpRequest, evento_id: int) -> HttpResponse:
+    """
+    Tela e ação para alocar várias inscrições de uma vez em:
+      - Grupo (qualquer evento)
+      - Ministério (apenas se evento.tipo == 'servos')
+    Mantém o usuário nesta mesma página (PRG: POST -> redirect para a mesma URL).
+    """
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+
+    # Permissão: admin_geral vê tudo; admin_paroquia apenas a própria paróquia
+    u = request.user
+    is_admin_paroquia = _user_is_admin_paroquia(u)
+    is_admin_geral = _user_is_admin_geral(u)
+
+    if not (is_admin_paroquia or is_admin_geral):
+        return HttpResponseForbidden("Sem permissão.")
+
+    if is_admin_paroquia and getattr(u, "paroquia_id", None) != evento.paroquia_id:
+        return HttpResponseForbidden("Sem permissão para este evento.")
+
+    # Fonte de dados: inscrições deste evento
+    inscricoes_qs = (
+        Inscricao.objects
+        .filter(evento=evento)
+        .select_related("participante")
+        .order_by("participante__nome")
+    )
+
+    # Listas para selects
+    grupos = Grupo.objects.filter(evento=evento).order_by("nome") if Grupo else []
+    ministerios = Ministerio.objects.filter(evento=evento).order_by("nome")
+
+    # Filtro simples por busca de nome/CPF/email (GET ?q=)
+    q = request.GET.get("q", "").strip()
+    if q:
+        inscricoes_qs = inscricoes_qs.filter(
+            Q(participante__nome__icontains=q)
+            | Q(participante__cpf__icontains=q)
+            | Q(participante__email__icontains=q)
+        )
+
+    # Apenas para feedback/contagem na UI
+    total_listados = inscricoes_qs.count()
+
+    if request.method == "POST":
+        # Coleta dos campos do formulário
+        inscricao_ids = request.POST.getlist("inscricao_ids")  # múltiplos
+        ministerio_id = request.POST.get("ministerio_id") or None
+        grupo_id = request.POST.get("grupo_id") or None
+        is_coord = request.POST.get("is_coordenador") == "on"
+        funcao_default = (request.POST.get("funcao_default") or "").strip()
+
+        if not inscricao_ids:
+            messages.warning(request, "Selecione pelo menos um participante.")
+            return redirect(reverse("inscricoes:alocar_em_massa", args=[evento.id]))
+
+        # Sanitiza o conjunto realmente do evento
+        alvo_qs = inscricoes_qs.filter(pk__in=inscricao_ids)
+
+        # Valida pertencimentos
+        m_obj = None
+        g_obj = None
+
+        # Ministério apenas se evento for "servos"
+        if ministerio_id:
+            if (evento.tipo or "").lower() != "servos":
+                messages.error(request, "Este evento não é do tipo Servos — não é possível alocar ministérios aqui.")
+                return redirect(reverse("inscricoes:alocar_em_massa", args=[evento.id]))
+            m_obj = get_object_or_404(Ministerio, pk=ministerio_id, evento=evento)
+
+        if grupo_id and Grupo:
+            g_obj = get_object_or_404(Grupo, pk=grupo_id, evento=evento)
+
+        sucesso_m, sucesso_g = 0, 0
+        erros = 0
+
+        with transaction.atomic():
+            for ins in alvo_qs:
+                try:
+                    # Ministério
+                    if m_obj:
+                        # Garante OneToOne: cria ou atualiza
+                        aloc_min, _ = AlocacaoMinisterio.objects.get_or_create(
+                            inscricao=ins,
+                            defaults={"ministerio": m_obj, "funcao": funcao_default or None}
+                        )
+                        # Atualiza se já tinha
+                        aloc_min.ministerio = m_obj
+                        if hasattr(aloc_min, "is_coordenador"):
+                            aloc_min.is_coordenador = is_coord
+                        if funcao_default:
+                            aloc_min.funcao = funcao_default
+                        aloc_min.full_clean()
+                        aloc_min.save()
+                        sucesso_m += 1
+
+                    # Grupo
+                    if g_obj and AlocacaoGrupo:
+                        ag, _ = AlocacaoGrupo.objects.get_or_create(
+                            inscricao=ins,
+                            defaults={"grupo": g_obj}
+                        )
+                        ag.grupo = g_obj
+                        ag.full_clean()
+                        ag.save()
+                        sucesso_g += 1
+
+                except Exception as e:
+                    erros += 1
+
+        if sucesso_m:
+            messages.success(request, f"{sucesso_m} participante(s) alocado(s) ao ministério {m_obj.nome}.")
+            if is_coord:
+                messages.info(request, "Marcado como coordenador(a) para todos os selecionados.")
+            if funcao_default:
+                messages.info(request, f"Função aplicada: “{funcao_default}”.")
+        if sucesso_g:
+            messages.success(request, f"{sucesso_g} participante(s) alocado(s) ao grupo {g_obj.nome}.")
+        if erros:
+            messages.error(request, f"{erros} registro(s) não puderam ser salvos. Revise dados/validações.")
+
+        # PRG para a própria página (mantém no mesmo lugar)
+        return redirect(reverse("inscricoes:alocar_em_massa", args=[evento.id]))
+
+    # GET: renderiza página
+    return render(
+        request,
+        "inscricoes/alocar_em_massa.html",
+        {
+            "evento": evento,
+            "inscricoes": inscricoes_qs,
+            "total_listados": total_listados,
+            "grupos": grupos,
+            "ministerios": ministerios,
+            "pode_ministerio": (evento.tipo or "").lower() == "servos",
+        },
+    )
+
+def _user_is_admin_paroquia(user) -> bool:
+    if hasattr(user, "is_admin_paroquia") and callable(user.is_admin_paroquia):
+        return bool(user.is_admin_paroquia())
+    return getattr(user, "tipo_usuario", "") == "admin_paroquia"
+
+def _user_is_admin_geral(user) -> bool:
+    if hasattr(user, "is_admin_geral") and callable(user.is_admin_geral):
+        return bool(user.is_admin_geral())
+    return bool(getattr(user, "is_superuser", False)) or getattr(user, "tipo_usuario", "") == "admin_geral"
+
+def _can_manage_event(user, evento: EventoAcampamento) -> bool:
+    if _user_is_admin_geral(user):
+        return True
+    if _user_is_admin_paroquia(user) and getattr(user, "paroquia_id", None) == evento.paroquia_id:
+        return True
+    return False
+
+
+@login_required
+def ministerios_evento(request, evento_id):
+    """
+    Lista e cadastra ministérios para um evento (apenas eventos do tipo 'Servos').
+    GET: lista + formulário
+    POST: cria novo ministério para o evento
+    """
+    evento = get_object_or_404(
+        EventoAcampamento.objects.select_related("paroquia"), pk=evento_id
+    )
+
+    if not _can_manage_event(request.user, evento):
+        return HttpResponseForbidden("Você não tem permissão para gerenciar este evento.")
+
+    # Lista (respeitando a sua regra de negócio)
+    if (evento.tipo or "").lower() != "servos":
+        messages.warning(request, "Ministérios só se aplicam a eventos do tipo Servos.")
+        ministerios = Ministerio.objects.none()
+    else:
+        ministerios = (
+            Ministerio.objects
+            .filter(evento=evento)
+            .annotate(
+                total_servos=Count("inscricoes", filter=Q(inscricoes__ministerio__isnull=False)),
+                total_coord=Count("inscricoes", filter=Q(inscricoes__is_coordenador=True)),
+            )
+            .order_by("nome")
+        )
+
+    # Criação (no mesmo template)
+    if request.method == "POST":
+        nome = (request.POST.get("nome") or "").strip()
+        descricao = (request.POST.get("descricao") or "").strip() or None
+
+        if not nome:
+            messages.error(request, "Informe o nome do ministério.")
+        else:
+            m = Ministerio(evento=evento, nome=nome, descricao=descricao)
+            try:
+                m.full_clean()
+                m.save()
+                messages.success(request, f"Ministério “{m.nome}” criado com sucesso.")
+                # permanece na mesma página
+                return redirect(reverse("inscricoes:ministerios_evento", args=[evento.pk]))
+            except ValidationError as e:
+                # Vai capturar UniqueConstraint e a regra do clean()
+                for _, errs in e.message_dict.items():
+                    for err in errs:
+                        messages.error(request, err)
+
+    return render(
+        request,
+        "inscricoes/ministerios_evento.html",
+        {
+            "evento": evento,
+            "ministerios": ministerios,
+            "pode_cadastrar": (evento.tipo or "").lower() == "servos",
+        },
+    )
+
+
+@login_required
+def excluir_ministerio(request, pk: int):
+    """Exclui um ministério (se não tiver alocações)."""
+    ministerio = get_object_or_404(
+        Ministerio.objects.select_related("evento__paroquia"),
+        pk=pk
+    )
+    evento = ministerio.evento
+
+    if not _can_manage_event(request.user, evento):
+        return HttpResponseForbidden("Você não tem permissão para esta ação.")
+
+    if request.method != "POST":
+        return redirect(reverse("inscricoes:ministerios_evento", args=[evento.pk]))
+
+    if ministerio.inscricoes.exists():
+        messages.error(request, "Não é possível excluir: há servos alocados neste ministério.")
+        return redirect(reverse("inscricoes:ministerios_evento", args=[evento.pk]))
+
+    nome = ministerio.nome
+    ministerio.delete()
+    messages.success(request, f"Ministério “{nome}” excluído com sucesso.")
+    return redirect(reverse("inscricoes:ministerios_evento", args=[evento.pk]))
+
+
+@login_required
+def ministerios_home(request, paroquia_id: int):
+    """
+    Home dos ministérios por paróquia:
+    - Lista todos os eventos da paróquia (destaque para 'Servos').
+    - Botão para abrir ministérios SEMPRE visível.
+    """
+    user = request.user
+    is_admin_paroquia = _is_admin_paroquia(user)
+    is_admin_geral = _is_admin_geral(user)
+
+    if is_admin_paroquia and getattr(user, "paroquia_id", None) != paroquia_id and not is_admin_geral:
+        messages.error(request, "Você não pode acessar os ministérios de outra paróquia.")
+        return redirect("inscricoes:admin_paroquia_painel")
+
+    paroquia = get_object_or_404(Paroquia, id=paroquia_id)
+
+    qs = EventoAcampamento.objects.filter(paroquia=paroquia)
+    eventos = None
+    for ordering in [("-data_inicio", "-created_at"), ("-data_inicio",), ("-created_at",), ("-pk",)]:
+        try:
+            eventos = qs.order_by(*ordering)
+            break
+        except FieldError:
+            continue
+    if eventos is None:
+        eventos = qs
+
+    eventos_servos = list(eventos.filter(tipo__iexact="servos"))
+    outros_eventos = list(eventos.exclude(tipo__iexact="servos"))
+
+    return render(
+        request,
+        "inscricoes/ministerios_home.html",
+        {
+            "paroquia": paroquia,
+            "eventos_servos": eventos_servos,
+            "outros_eventos": outros_eventos,
+            "is_admin_paroquia": is_admin_paroquia,
+            "is_admin_geral": is_admin_geral,
+        },
+    )
+
+@login_required
+def ministerio_create(request, evento_id):
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+    if not _check_perm_evento(request.user, evento):
+        return HttpResponseForbidden("Sem permissão para este evento.")
+
+    if (evento.tipo or "").lower() != "servos":
+        messages.error(request, "Ministérios só são permitidos para eventos do tipo Servos.")
+        return redirect("inscricoes:ministerios_evento", evento.id)
+
+    if request.method == "POST":
+        form = MinisterioForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.evento = evento
+            obj.full_clean()
+            obj.save()
+            messages.success(request, "Ministério cadastrado com sucesso.")
+            return redirect("inscricoes:ministerios_evento", evento.id)
+    else:
+        form = MinisterioForm()
+
+    return render(request, "inscricoes/ministerio_form.html", {
+        "evento": evento,
+        "form": form,
+    })
+
+@login_required
+def admin_paroquia_acoes(request, paroquia_id: Optional[int] = None):
+    """
+    Página de Ações & Configurações da paróquia:
+    - Admin da paróquia: usa a paróquia vinculada ao usuário.
+    - Admin geral: precisa informar paroquia_id (ex.: /admin-paroquia/acoes/3/).
+    """
+    user = request.user
+
+    # Detecta papéis (mesma lógica do seu painel)
+    if hasattr(user, "is_admin_paroquia") and callable(user.is_admin_paroquia):
+        is_admin_paroquia = bool(user.is_admin_paroquia())
+    else:
+        is_admin_paroquia = getattr(user, "tipo_usuario", "") == "admin_paroquia"
+
+    if hasattr(user, "is_admin_geral") and callable(user.is_admin_geral):
+        is_admin_geral = bool(user.is_admin_geral())
+    else:
+        is_admin_geral = bool(getattr(user, "is_superuser", False)) or (
+            getattr(user, "tipo_usuario", "") == "admin_geral"
+        )
+
+    # Seleção da paróquia conforme papel
+    if is_admin_paroquia:
+        paroquia = getattr(user, "paroquia", None)
+        if not paroquia:
+            messages.error(request, "⚠️ Sua conta não está vinculada a uma paróquia.")
+            return redirect("inscricoes:logout")
+
+        # se tentarem acessar outra paróquia via URL, redireciona para a correta
+        if paroquia_id and int(paroquia_id) != getattr(user, "paroquia_id", None):
+            return redirect(reverse("inscricoes:admin_paroquia_acoes"))
+    elif is_admin_geral:
+        if not paroquia_id:
+            messages.error(request, "⚠️ Paróquia não especificada.")
+            return redirect("inscricoes:admin_geral_list_paroquias")
+        paroquia = get_object_or_404(Paroquia, id=paroquia_id)
+    else:
+        messages.error(request, "⚠️ Você não tem permissão para acessar esta página.")
+        return redirect("inscricoes:logout")
+
+    return render(
+        request,
+        "inscricoes/admin_paroquia_acoes.html",
+        {
+            "paroquia": paroquia,
+            "is_admin_paroquia": is_admin_paroquia,
+            "is_admin_geral": is_admin_geral,
+            # pode passar outros dados se quiser exibir contagens/resumos
+        },
+    )
+
+def _can_manage_event(user, evento) -> bool:
+    # mesma regra que você já usa em outras views
+    if getattr(user, "is_superuser", False) or getattr(user, "tipo_usuario", "") == "admin_geral":
+        return True
+    return getattr(user, "tipo_usuario", "") == "admin_paroquia" and getattr(user, "paroquia_id", None) == getattr(evento, "paroquia_id", None)
+
+# ==============================================================
+# Aliases amigáveis de status (front pode mandar "pago", etc.)
+# ==============================================================
+STATUS_ALIASES = {
+    "pago": InscricaoStatus.PAG_CONFIRMADO,
+    "pagamento_confirmado": InscricaoStatus.PAG_CONFIRMADO,
+    "pendente": InscricaoStatus.PAG_PENDENTE,
+    "selecionado": InscricaoStatus.CONVOCADA,
+    "selecionada": InscricaoStatus.CONVOCADA,
+    "aprovado": InscricaoStatus.APROVADA,
+    "aprovada": InscricaoStatus.APROVADA,
+    "analise": InscricaoStatus.EM_ANALISE,
+    "em_analise": InscricaoStatus.EM_ANALISE,
+    "rejeitado": InscricaoStatus.REJEITADA,
+    "rejeitada": InscricaoStatus.REJEITADA,
+    "espera": InscricaoStatus.LISTA_ESPERA,
+    "lista_espera": InscricaoStatus.LISTA_ESPERA,
+}
+
+# ==============================================================
+# POST /inscricao/<id>/alterar-status/
+# ==============================================================
+@login_required
+@require_POST
+def alterar_status_inscricao(request, inscricao_id: int):
+    """
+    Recebe 'status' (form-urlencoded ou JSON),
+    aceita aliases e aplica Inscricao.mudar_status(...).
+    Retorna JSON com flags para atualizar a UI.
+    """
+    try:
+        insc = (
+            Inscricao.objects.select_related("paroquia", "evento", "participante")
+            .get(pk=inscricao_id)
+        )
+    except Inscricao.DoesNotExist:
+        return HttpResponseBadRequest("Inscrição não encontrada")
+
+    # ===== Permissão =====
+    u = request.user
+    is_admin_geral = False
+    is_admin_paroquia = False
+    try:
+        is_admin_geral = bool(u.is_admin_geral())
+    except Exception:
+        is_admin_geral = bool(getattr(u, "is_superuser", False)) or (
+            getattr(u, "tipo_usuario", "") == "admin_geral"
+        )
+    try:
+        is_admin_paroquia = bool(u.is_admin_paroquia())
+    except Exception:
+        is_admin_paroquia = (getattr(u, "tipo_usuario", "") == "admin_paroquia")
+
+    if not (is_admin_geral or (is_admin_paroquia and u.paroquia_id == insc.paroquia_id)):
+        return JsonResponse({"ok": False, "error": "Acesso negado."}, status=403)
+
+    # ===== Body robusto =====
+    payload = {}
+    ctype = (request.content_type or "").lower()
+    if ctype.startswith("application/json"):
+        try:
+            payload = json.loads((request.body or b"").decode("utf-8") or "{}")
+        except Exception:
+            payload = {}
+    else:
+        # aceita form-urlencoded normal ou manual
+        if request.POST:
+            payload = request.POST
+        else:
+            # fallback pra casos que mandam raw form-urlencoded
+            try:
+                payload = {k: v[0] for k, v in parse_qs((request.body or b"").decode("utf-8")).items()}
+            except Exception:
+                payload = {}
+
+    new_status = (payload.get("status") or "").strip()
+    if not new_status:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Campo 'status' ausente.",
+                "validos": sorted({c for c, _ in InscricaoStatus.choices}),
+            },
+            status=400,
+        )
+
+    # normaliza e resolve aliases
+    new_status_norm = new_status.lower()
+    if new_status_norm in STATUS_ALIASES:
+        new_status = STATUS_ALIASES[new_status_norm]
+
+    # valida código final
+    codigos_validos = {c for c, _ in InscricaoStatus.choices}
+    if new_status not in codigos_validos:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Status inválido.",
+                "recebido": new_status,
+                "validos": sorted(codigos_validos),
+            },
+            status=400,
+        )
+
+    # aplica transição
+    try:
+        insc.mudar_status(new_status, motivo="Painel participantes", por_usuario=u)
+    except Exception as e:
+        # inclui a mensagem do ValidationError, se houver
+        msg = getattr(e, "message", None) or getattr(e, "messages", [None])[0] or "Falha ao salvar."
+        return JsonResponse({"ok": False, "error": msg}, status=400)
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "id": insc.pk,
+            "status": insc.status,
+            "label": insc.get_status_display(),
+            "foi_selecionado": insc.foi_selecionado,
+            "pagamento_confirmado": insc.pagamento_confirmado,
+        }
+    )
+
+
+# ==============================================================
+# GET /admin-paroquia/evento/<evento_id>/participantes/
+# ==============================================================
+@login_required
+def evento_participantes(request, evento_id):
+    """
+    Lista participantes do evento com:
+      - ordem alfabética por nome
+      - idade calculada (respeitando subtipos)
+      - contadores (participantes, confirmados, selecionados, pendentes)
+      - choices de status para o <select> do template
+    """
+    evento = get_object_or_404(EventoAcampamento, id=evento_id)
+
+    # ===== Permissão (robusta com fallbacks) =====
+    u = request.user
+    try:
+        is_admin_paroquia = bool(u.is_admin_paroquia())
+    except Exception:
+        is_admin_paroquia = (getattr(u, "tipo_usuario", "") == "admin_paroquia")
+
+    try:
+        is_admin_geral = bool(u.is_admin_geral())
+    except Exception:
+        is_admin_geral = bool(getattr(u, "is_superuser", False)) or (
+            getattr(u, "tipo_usuario", "") == "admin_geral"
+        )
+
+    if is_admin_paroquia:
+        if getattr(u, "paroquia_id", None) != getattr(evento, "paroquia_id", None):
+            return HttpResponseForbidden("Acesso negado.")
+    elif not is_admin_geral:
+        return HttpResponseForbidden("Acesso negado.")
+
+    # ===== Query base =====
+    participantes = (
+        Inscricao.objects.filter(evento=evento)
+        .select_related(
+            "participante",
+            "evento",
+            "paroquia",
+            # subtipos (se existirem no projeto)
+            "inscricaosenior",
+            "inscricaojuvenil",
+            "inscricaomirim",
+            "inscricaoservos",
+            "inscricaocasais",
+            "inscricaoevento",
+            "inscricaoretiro",
+        )
+        .prefetch_related(
+            "alocacao_grupo__grupo",
+            "alocacao_ministerio__ministerio",
+        )
+        .order_by("participante__nome")
+    )
+
+    total_participantes = participantes.count()
+
+    # ===== Idade (usa data_inicio como referência; senão hoje) =====
+    ref_date = getattr(evento, "data_inicio", None) or timezone.localdate()
+
+    attr_by_tipo = {
+        "senior": "inscricaosenior",
+        "juvenil": "inscricaojuvenil",
+        "mirim": "inscricaomirim",
+        "servos": "inscricaoservos",
+        "casais": "inscricaocasais",
+        "evento": "inscricaoevento",
+        "retiro": "inscricaoretiro",
+    }
+
+    def _calc_age(nasc, ref):
+        if not nasc:
+            return None
+        if hasattr(nasc, "date"):
+            nasc = nasc.date()
+        if hasattr(ref, "date"):
+            ref = ref.date()
+        return ref.year - nasc.year - ((ref.month, ref.day) < (nasc.month, nasc.day))
+
+    def _get_birth(insc: Inscricao):
+        tipo = (getattr(insc.evento, "tipo", "") or "").lower()
+        ordem = []
+        pref = attr_by_tipo.get(tipo)
+        if pref:
+            ordem.append(pref)
+        ordem += [
+            "inscricaosenior",
+            "inscricaojuvenil",
+            "inscricaomirim",
+            "inscricaoservos",
+            "inscricaocasais",
+            "inscricaoevento",
+            "inscricaoretiro",
+        ]
+        vistos = set()
+        for name in [n for n in ordem if n and n not in vistos]:
+            vistos.add(name)
+            rel = getattr(insc, name, None)
+            if rel:
+                dn = getattr(rel, "data_nascimento", None)
+                if dn:
+                    return dn
+        return getattr(insc.participante, "data_nascimento", None)
+
+    for insc in participantes:
+        insc.idade = _calc_age(_get_birth(insc), ref_date)
+
+    # ===== Contadores com os códigos oficiais =====
+    qs = Inscricao.objects.filter(evento=evento)
+
+    total_confirmados = qs.filter(status=InscricaoStatus.PAG_CONFIRMADO).count()
+
+    total_selecionados = qs.filter(
+        status__in=[
+            InscricaoStatus.CONVOCADA,
+            InscricaoStatus.PAG_PENDENTE,
+            InscricaoStatus.PAG_CONFIRMADO,
+        ]
+    ).count()
+
+    total_pendentes = qs.filter(
+        status__in=[
+            InscricaoStatus.ENVIADA,
+            InscricaoStatus.EM_ANALISE,
+            InscricaoStatus.APROVADA,
+            InscricaoStatus.LISTA_ESPERA,
+            InscricaoStatus.CONVOCADA,
+            InscricaoStatus.PAG_PENDENTE,
+        ]
+    ).count()
+
+    # ===== Choices corretas para o <select> =====
+    status_choices = InscricaoStatus.choices
+
+    context = {
+        "evento": evento,
+        "participantes": participantes,
+        "valor_inscricao": getattr(evento, "valor_inscricao", None),
+        "total_participantes": total_participantes,
+        "total_confirmados": total_confirmados,
+        "total_selecionados": total_selecionados,
+        "total_pendentes": total_pendentes,
+        "status_choices": status_choices,
+    }
+    return render(request, "inscricoes/evento_participantes.html", context)
