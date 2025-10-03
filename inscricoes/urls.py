@@ -176,6 +176,8 @@ urlpatterns = [
     path("comunicado/<int:pk>/", views.comunicado_detalhe, name="comunicado_detalhe"),
     path("contato/", views.pagina_de_contato, name="pagina_de_contato"),
 
+    path("admin-geral/paroquia/<int:paroquia_id>/toggle-status/",views.admin_geral_toggle_status_paroquia,name="admin_geral_toggle_status_paroquia",),
+
     path("inscricao/<int:inscricao_id>/alterar-status/",views.alterar_status_inscricao,name="alterar_status_inscricao",),
     path("admin-paroquia/acoes/", views.admin_paroquia_acoes, name="admin_paroquia_acoes"),
     path("admin-paroquia/acoes/<int:paroquia_id>/", views.admin_paroquia_acoes, name="admin_paroquia_acoes_por_paroquia"),

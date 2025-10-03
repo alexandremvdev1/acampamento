@@ -295,12 +295,33 @@ def _is_ajax(req):
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser or u.is_admin_geral())
-def admin_geral_toggle_status_paroquia(request, paroquia_id):
+@require_POST
+def admin_geral_toggle_status_paroquia(request, paroquia_id: int):
     paroquia = get_object_or_404(Paroquia, id=paroquia_id)
-    if request.method == "POST":
-        paroquia.status = "inativa" if paroquia.status == "ativa" else "ativa"
-        paroquia.save()
+
+    # se vier explicitamente active=true/false, usa; senão alterna
+    if "active" in request.POST:
+        ativa = (request.POST.get("active") or "").strip().lower() in {"1","true","on","yes","sim"}
+    else:
+        ativa = (paroquia.status != "ativa")
+
+    paroquia.status = "ativa" if ativa else "inativa"
+    paroquia.save(update_fields=["status"])
+
+    msg = "Paróquia ativada" if ativa else "Paróquia desativada"
+
+    if _is_ajax(request):
+        return JsonResponse({
+            "ok": True,
+            "id": paroquia.id,
+            "ativa": ativa,
+            "status": paroquia.status,
+            "msg": msg,
+        })
+
+    messages.success(request, msg)
     return redirect(request.POST.get("next") or "inscricoes:admin_geral_list_paroquias")
+
 
 
 @login_required

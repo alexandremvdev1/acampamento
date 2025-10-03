@@ -1,3 +1,4 @@
+{% load static %}
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -9,47 +10,38 @@
   <style>
     :root{
       --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
-      --g1:#0b1020; --g2:#111a3a;
-      --base-font:14px;
+      --g1:#0b1020; --g2:#111a3a; --base-font:14px;
     }
     html{ font-size: var(--base-font); }
     body{ background:#f6f8fb; color:var(--ink); }
 
-    /* navbar do catálogo */
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
     .navbar-brand{ font-size:1rem; }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
 
-    /* KPIs do catálogo (se quiser, pode esconder) */
-    .kpi{
-      background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem;
-    }
+    .kpi{ background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem; }
     .kpi .small{ color:var(--muted); font-size:.8rem; }
     .kpi .fs-4{ font-size:1.15rem !important; }
     .kpi .fw-bold{ font-weight:700 !important; }
 
-    /* toolbar compacta do catálogo */
     .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
     .toolbar .form-select, .toolbar .form-control{ border-radius:.6rem; border-color:#e5e7eb; font-size:.85rem; padding:.35rem .5rem; }
     .toolbar .input-group-text{ font-size:.85rem; padding:.35rem .5rem; }
     .toolbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .toolbar .form-select:focus, .toolbar .form-control:focus{ box-shadow:0 0 0 .25rem var(--ring); border-color:#93c5fd; }
 
-    /* Tabela estilo catálogo */
     .table{ font-size:.875rem; background:#fff; }
     .table thead th{
       font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:#64748b;
       border-bottom:1px solid #e5e7eb;
     }
     .table tbody td{ vertical-align: middle; }
-    .table-hover tbody tr:hover{ background-color:#f8fafc; }
 
     .empty{ border:1px dashed #cbd5e1; border-radius:12px; background:#fff; padding:2rem; text-align:center; }
 
     .btn.btn-sm, .btn-sm{ font-size:.8rem; padding:.3rem .5rem; }
     .text-muted-2{ color:var(--muted); }
 
-    /* badges de status */
     .badge-ativa{
       display:inline-block; padding:.15rem .5rem; border-radius:999px;
       background:#dcfce7; color:#166534; border:1px solid #86efac; font-weight:700; font-size:.72rem;
@@ -58,15 +50,18 @@
       display:inline-block; padding:.15rem .5rem; border-radius:999px;
       background:#fee2e2; color:#991b1b; border:1px solid #fecaca; font-weight:700; font-size:.72rem;
     }
+
+    .form-check-input[role="switch"]{ transform:scale(1.1); cursor:pointer; }
+
+    /* impede quebra na célula de ações */
+    .actions-cell{ white-space: nowrap; }
   </style>
 </head>
 <body>
 
-<!-- NAVBAR (igual ao catálogo) -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
     <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
-
     <div class="d-flex align-items-center gap-2 ms-auto">
       <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
       <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
@@ -76,8 +71,8 @@
 </nav>
 
 <main class="container py-3 py-lg-4">
+  <div id="flashArea" class="position-sticky" style="top:10px; z-index:1050;"></div>
 
-  <!-- Título + ações rápidas -->
   <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
     <h1 class="h6 m-0">Paróquias cadastradas</h1>
     <div class="d-flex gap-2">
@@ -86,7 +81,6 @@
     </div>
   </div>
 
-  <!-- KPIs (opcional) -->
   <div class="row g-3 mb-3">
     <div class="col-6 col-md-3">
       <div class="kpi">
@@ -97,16 +91,11 @@
     <div class="col-6 col-md-3">
       <div class="kpi">
         <div class="small">Ativas</div>
-        <div class="fs-4 fw-bold">
-          {% with ativas=paroquias|dictsort:"status" %}
-            {{ paroquias|length|default:0 }}{% comment %}placeholder simples; ajuste se quiser contar de fato{% endcomment %}
-          {% endwith %}
-        </div>
+        <div class="fs-4 fw-bold">{{ paroquias|length|default:0 }}</div>
       </div>
     </div>
   </div>
 
-  <!-- Toolbar de filtros (padrão catálogo) -->
   <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
     <div class="row g-3 align-items-end toolbar">
       <div class="col-12 col-md-6">
@@ -137,7 +126,6 @@
     </div>
   </div>
 
-  <!-- Tabela -->
   {% if paroquias %}
   <div class="table-responsive">
     <table id="tbl" class="table table-hover align-middle rounded-3 overflow-hidden">
@@ -149,7 +137,7 @@
           <th style="width:12%">Status</th>
           <th style="width:18%">Responsável</th>
           <th style="width:14%">Telefone</th>
-          <th style="width:10%">Ações</th>
+          <th style="width:14%">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -160,7 +148,14 @@
             data-uf="{{ p.estado }}"
             data-resp="{{ p.responsavel|default:''|lower }}"
             data-status="{{ p.status|default:'inativa' }}">
-          <td><strong>{{ p.nome }}</strong></td>
+          <!-- NOME CLICÁVEL (abre o painel) -->
+          <td>
+            <a href="{% url 'inscricoes:admin_paroquia_painel' p.id %}"
+               class="text-decoration-none fw-semibold">
+              {{ p.nome }}
+            </a>
+          </td>
+
           <td class="text-muted-2">{{ p.cidade }}</td>
           <td class="text-muted-2">{{ p.estado }}</td>
           <td>
@@ -172,18 +167,19 @@
           </td>
           <td>{{ p.responsavel|default:"—" }}</td>
           <td>{{ p.telefone|default:"—" }}</td>
-          <td>
-            <div class="d-flex flex-wrap gap-2">
-              <a class="btn btn-sm btn-success" href="{% url 'inscricoes:admin_paroquia_painel' p.id %}">Ver</a>
-              <form method="post" action="{% url 'inscricoes:admin_geral_toggle_status_paroquia' p.id %}" class="m-0">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                {% if p.status == "ativa" %}
-                  <button type="submit" class="btn btn-sm btn-outline-secondary" title="Inativar">Desativar</button>
-                {% else %}
-                  <button type="submit" class="btn btn-sm btn-outline-success" title="Ativar">Ativar</button>
-                {% endif %}
-              </form>
+
+          <!-- AÇÕES: switch na MESMA LINHA (sem “Ver”) -->
+          <td class="actions-cell">
+            <div class="d-flex align-items-center gap-2 flex-nowrap">
+              <div class="form-check form-switch m-0 d-inline-flex align-items-center gap-2">
+                <input class="form-check-input"
+                       type="checkbox"
+                       role="switch"
+                       id="sw_{{ p.id }}"
+                       {% if p.status == "ativa" %}checked{% endif %}
+                       onchange="toggleParoquiaStatus({{ p.id }}, this.checked, this)">
+                <label class="form-check-label small" for="sw_{{ p.id }}">Ativa</label>
+              </div>
             </div>
           </td>
         </tr>
@@ -219,7 +215,6 @@
   const $countLine = document.getElementById('countLine');
   const $btnExport = document.getElementById('btnExport');
 
-  // Popular UFs a partir da tabela
   const ufs = [...new Set(rows.map(r => r.dataset.uf).filter(Boolean))].sort();
   ufs.forEach(uf => { const o=document.createElement('option'); o.value=uf; o.textContent=uf; $uf.appendChild(o); });
 
@@ -258,7 +253,6 @@
     $q && $q.focus();
   });
 
-  // Exportar CSV (nome, cidade, uf, status, responsável, telefone)
   $btnExport && $btnExport.addEventListener('click', ()=>{
     const visibles = rows.filter(r=> !r.classList.contains('d-none'));
     const data = visibles.map(r=>{
@@ -281,9 +275,89 @@
     setTimeout(()=> URL.revokeObjectURL(url), 1500);
   });
 
-  // init
   applyFilters();
 })();
+
+/* ====== CSRF + flash ====== */
+function getCookie(name) {
+  const v = `; ${document.cookie}`; const p = v.split(`; ${name}=`);
+  if (p.length === 2) return p.pop().split(';').shift();
+}
+const CSRF_TOKEN = getCookie('csrftoken');
+
+function flash(msg, variant='success') {
+  const area = document.getElementById('flashArea');
+  if (!area) return;
+  const id = `f-${Date.now()}`;
+  const cls = variant === 'success' ? 'alert-success'
+            : variant === 'warning' ? 'alert-warning'
+            : variant === 'danger'  ? 'alert-danger'
+            : 'alert-info';
+  const el = document.createElement('div');
+  el.id = id;
+  el.className = `alert ${cls} shadow-sm border rounded-3 py-2 px-3 mx-auto`;
+  el.style.maxWidth = '640px';
+  el.innerHTML = `
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <div class="fw-semibold">${msg}</div>
+      <button type="button" class="btn-close" aria-label="Fechar"></button>
+    </div>`;
+  el.querySelector('.btn-close').onclick = () => el.remove();
+  area.appendChild(el);
+  setTimeout(() => { try { el.remove(); } catch(e){} }, 2400);
+}
+
+/* ====== AJAX: toggle status da paróquia ====== */
+function _atualizaLinhaParoquia(paroquiaId, ativa){
+  const input = document.getElementById(`sw_${paroquiaId}`);
+  const tr = input ? input.closest('tr') : null;
+  if (!tr) return;
+
+  const badgeCell = tr.querySelector('td:nth-child(4)');
+  if (badgeCell) {
+    badgeCell.innerHTML = ativa
+      ? '<span class="badge-ativa">Ativa</span>'
+      : '<span class="badge-inativa">Inativa</span>';
+  }
+  tr.dataset.status = ativa ? 'ativa' : 'inativa';
+}
+
+function toggleParoquiaStatus(paroquiaId, ativa, el){
+  const prevChecked = el.checked;
+  const url = `{% url 'inscricoes:admin_geral_toggle_status_paroquia' 0 %}`.replace('/0/', `/${paroquiaId}/`);
+
+  const body = new URLSearchParams();
+  body.append('active', ativa ? 'true' : 'false');
+
+  el.disabled = true;
+
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': CSRF_TOKEN,
+      'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    },
+    body: body.toString()
+  })
+  .then(async (r) => {
+    let data = {};
+    try { data = await r.json(); } catch(e){}
+    if (!r.ok || !data.ok) throw new Error(data?.error || 'Falha ao salvar');
+    return data;
+  })
+  .then(data => {
+    _atualizaLinhaParoquia(paroquiaId, !!data.ativa);
+    flash(data.msg || (data.ativa ? 'Paróquia ativada' : 'Paróquia desativada'),
+          data.ativa ? 'success' : 'warning');
+  })
+  .catch(err => {
+    el.checked = !prevChecked; // reverte
+    flash('Não foi possível alterar o status da paróquia.', 'danger');
+    console.error(err);
+  })
+  .finally(() => { el.disabled = false; });
+}
 </script>
 
 </body>
