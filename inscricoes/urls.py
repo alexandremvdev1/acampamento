@@ -16,7 +16,6 @@ from .views import (
 import uuid
 
 class IntOrUUIDConverter:
-    # aceita inteiro (ex: 123) OU UUID v4 (36 chars com hifens)
     regex = r"[0-9]+|[0-9a-fA-F-]{36}"
     def to_python(self, value):
         try:
@@ -34,9 +33,14 @@ app_name = "inscricoes"
 urlpatterns = [
     # Auth / Home
     path("login/", LoginComImagemView.as_view(), name="login"),
-    path("logout/", auth_views.LogoutView.as_view(next_page="login"), name="logout"),
-    path("", views.landing, name="landing"),
-    path("site/", views.landing, name="landing"),  # mantém compat
+    path("entrar/", LoginComImagemView.as_view(), name="entrar"),  # atalho opcional
+    path("logout/", auth_views.LogoutView.as_view(next_page="inscricoes:login"), name="logout"),
+
+    # AGORA o / vai pro redirect (painel p/ admins ou login)
+    path("", views.home_redirect, name="home_redirect"),
+
+    # Landing “marketing” fica só aqui (não mais em "/")
+    path("site/", views.landing, name="landing"),
     path("site/contato/enviar", views.contato_enviar, name="contato_enviar"),
     path("site/contato-enviar/", views.contato_enviar, name="contato_enviar"),
 
@@ -88,7 +92,6 @@ urlpatterns = [
     path("evento/<uuid:evento_id>/relatorio-crachas/", views.relatorio_crachas, name="relatorio_crachas"),
     path("evento/<uuid:evento_id>/relatorio-fichas-sorteio/", views.relatorio_fichas_sorteio, name="relatorio_fichas_sorteio"),
     path("evento/<uuid:evento_id>/relatorio-inscritos/", views.relatorio_inscritos, name="relatorio_inscritos"),
-    # Mantém as duas variações para compatibilidade
     path("evento/<uuid:evento_id>/relatorio-financeiro/", views.relatorio_financeiro, name="relatorio_financeiro"),
     path("evento/<uuid:evento_id>/relatorio_financeiro/", views.relatorio_financeiro, name="relatorio_financeiro_compat"),
 
@@ -112,7 +115,7 @@ urlpatterns = [
     path("inscricao/<int:inscricao_id>/alocar-ministerio/", views.alocar_ministerio, name="alocar_ministerio"),
     path("inscricao/<int:inscricao_id>/alocar-grupo/", views.alocar_grupo, name="alocar_grupo"),
 
-    # Ministérios (Home por paróquia + por evento) — rotas unificadas com conversor
+    # Ministérios
     path("paroquia/<int:paroquia_id>/ministerios/", views.ministerios_home, name="ministerios_home"),
     path("ministerios/evento/<iduu:evento_id>/", views.ministerios_evento, name="ministerios_evento"),
     path("ministerios/evento/<iduu:evento_id>/novo/", views.ministerio_create, name="ministerio_create"),
@@ -141,7 +144,7 @@ urlpatterns = [
 
     # Vídeo do evento / Telão
     path("evento/<slug:slug>/video/", views.pagina_video_evento, name="pagina_video_evento"),
-    path("eventos/<slug:slug>/video/", views.video_evento_form, name="video_evento_form"),  # mantém compat
+    path("eventos/<slug:slug>/video/", views.video_evento_form, name="video_evento_form"),
     path("telão/<slug:slug>/", views.painel_sorteio, name="painel_sorteio"),
     path("api/evento/<slug:slug>/selecionados/", views.api_selecionados, name="api_selecionados"),
 
@@ -176,9 +179,9 @@ urlpatterns = [
     path("comunicado/<int:pk>/", views.comunicado_detalhe, name="comunicado_detalhe"),
     path("contato/", views.pagina_de_contato, name="pagina_de_contato"),
 
-    path("admin-geral/paroquia/<int:paroquia_id>/toggle-status/",views.admin_geral_toggle_status_paroquia,name="admin_geral_toggle_status_paroquia",),
+    path("admin-geral/paroquia/<int:paroquia_id>/toggle-status/", views.admin_geral_toggle_status_paroquia, name="admin_geral_toggle_status_paroquia"),
 
-    path("inscricao/<int:inscricao_id>/alterar-status/",views.alterar_status_inscricao,name="alterar_status_inscricao",),
+    path("inscricao/<int:inscricao_id>/alterar-status/", views.alterar_status_inscricao, name="alterar_status_inscricao"),
     path("admin-paroquia/acoes/", views.admin_paroquia_acoes, name="admin_paroquia_acoes"),
     path("admin-paroquia/acoes/<int:paroquia_id>/", views.admin_paroquia_acoes, name="admin_paroquia_acoes_por_paroquia"),
 ]
