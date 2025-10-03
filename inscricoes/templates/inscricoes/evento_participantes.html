@@ -279,15 +279,32 @@
                   </td>
 
                   <td class="text-center">
-                    <div class="btn-group" role="group" aria-label="Ações">
-                      <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}" class="btn btn-primary btn-sm btn-icon" title="Editar inscrição">
-                        <i class="fa-solid fa-pen"></i>
+                    <!-- Mantém Editar/Excluir colados entre si -->
+                    <div class="d-flex align-items-center justify-content-center">
+                      <div class="btn-group" role="group" aria-label="Ações principais">
+                        <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}"
+                           class="btn btn-primary btn-sm btn-icon" title="Editar inscrição">
+                          <i class="fa-solid fa-pen"></i>
+                        </a>
+                        <a href="{% url 'inscricoes:deletar_inscricao' inscricao.id %}"
+                           class="btn btn-danger btn-sm btn-icon" title="Excluir inscrição"
+                           onclick="return confirm('Tem certeza que deseja excluir?');">
+                          <i class="fa-solid fa-trash"></i>
+                        </a>
+                      </div>
+
+                      <!-- WhatsApp ao lado do Excluir, com espaçamento -->
+                      {% with fone=inscricao.participante.celular|default:inscricao.participante.telefone %}
+                      <a href="#"
+                         class="btn btn-success btn-sm btn-icon ms-3"
+                         title="WhatsApp"
+                         data-phone="{{ fone|default:'' }}"
+                         data-name="{{ inscricao.participante.nome }}"
+                         data-event="{{ evento.nome }}"
+                         onclick="openWhatsApp(this); return false;">
+                        <i class="fa-brands fa-whatsapp"></i>
                       </a>
-                      <a href="{% url 'inscricoes:deletar_inscricao' inscricao.id %}"
-                         class="btn btn-danger btn-sm btn-icon" title="Excluir inscrição"
-                         onclick="return confirm('Tem certeza que deseja excluir?');">
-                        <i class="fa-solid fa-trash"></i>
-                      </a>
+                      {% endwith %}
                     </div>
                   </td>
                 </tr>
@@ -421,7 +438,6 @@ function alterarStatus(inscricaoId, novoStatus, selectEl){
   body.append('status', novoStatus);
 
   const prevDisabled = selectEl.disabled;
-  // guarda o valor anterior (se ainda não tiver)
   const prevValue = selectEl.dataset.prev ?? selectEl.value;
   selectEl.disabled = true;
 
@@ -438,27 +454,22 @@ function alterarStatus(inscricaoId, novoStatus, selectEl){
     let data = {};
     try { data = await r.json(); } catch(e){}
     if (!r.ok || !data.ok) {
-      // Se veio mensagem do backend, usa no flash
       const msg = data?.error || ('Falha ao salvar (HTTP ' + r.status + ')');
-      // reverte UI
       selectEl.value = prevValue;
       throw new Error(msg);
     }
     return data;
   })
   .then(data => {
-    // Atualiza badge de pagamento
     const payCell = document.getElementById(`paycell_${inscricaoId}`);
     if (payCell) {
       payCell.innerHTML = data.pagamento_confirmado
         ? '<span class="badge rounded-pill text-bg-success"><i class="fa-solid fa-check me-1"></i> Pago</span>'
         : '<span class="badge rounded-pill text-bg-danger"><i class="fa-solid fa-xmark me-1"></i> Pendente</span>';
     }
-    // Atualiza switch Selecionado
     const selCb = document.getElementById(`sel_${inscricaoId}`);
     if (selCb) selCb.checked = !!data.foi_selecionado;
 
-    // sucesso → atualiza o "prev"
     selectEl.dataset.prev = novoStatus;
     flash(`Status atualizado para: <strong>${data.label}</strong>`, 'success');
   })
@@ -469,6 +480,36 @@ function alterarStatus(inscricaoId, novoStatus, selectEl){
   .finally(() => {
     selectEl.disabled = prevDisabled;
   });
+}
+
+/* ====== WHATSAPP: normalização e abertura ====== */
+function normalizePhone(phone){
+  return (phone || "").replace(/[^\d]/g, "");
+}
+function toBrazilE164(phone){
+  let n = normalizePhone(phone);
+  if (!n) return "";
+  if (n.startsWith("55") && n.length >= 12 && n.length <= 13) return n;
+  n = n.replace(/^0+/, "");
+  if (n.length === 10 || n.length === 11) return "55" + n;
+  if (n.length >= 8 && n.length <= 13) return n.startsWith("55") ? n : ("55" + n);
+  return "55" + n;
+}
+function openWhatsApp(el){
+  const raw    = el.dataset.phone || "";
+  const nome   = el.dataset.name  || "";
+  const evento = el.dataset.event || "";
+
+  const num = toBrazilE164(raw);
+  if (!num){
+    alert("Telefone do participante está vazio ou inválido.");
+    return;
+  }
+  const primeiroNome = nome.split(" ")[0] || "";
+  const msg = `Olá ${primeiroNome}, tudo bem? Aqui é da paróquia sobre o evento "${evento}".`;
+
+  const url = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank", "noopener");
 }
 </script>
 </body>
