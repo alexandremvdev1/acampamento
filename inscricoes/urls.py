@@ -138,6 +138,7 @@ urlpatterns = [
     path("pagamento/pendente/<int:inscricao_id>/", views.mp_pending, name="mp_pending"),
     path("pagamento/falha/<int:inscricao_id>/", views.mp_failure, name="mp_failure"),
     path("admin-paroquia/mp-config/", mp_config, name="mp_config"),
+    path("inscricao/<int:inscricao_id>/incluir-pagamento/",views.incluir_pagamento,name="incluir_pagamento"),
 
     # Portal do participante
     path("minhas-inscricoes/", views.minhas_inscricoes_por_cpf, name="minhas_inscricoes_por_cpf"),
