@@ -1724,16 +1724,15 @@ class AlocacaoMinisterio(models.Model):
 
 class AlocacaoGrupo(models.Model):
     """
-    Liga uma inscrição (normalmente de um evento de 'servos' ou 'servos de casais')
-    a um Grupo (global), referenciando também o evento (copiado da inscrição).
+    Liga uma inscrição a um Grupo (global).
+    Pode ser usada em QUALQUER tipo de evento.
+    O campo `evento` é sempre sincronizado com `inscricao.evento`.
     """
     inscricao = models.OneToOneField(
         "Inscricao",
         on_delete=models.CASCADE,
-        related_name="alocacao_grupo"
+        related_name="alocacao_grupo",
     )
-    # Mantemos o FK de evento para facilitar relatórios/consultas,
-    # mas ele é sempre sincronizado com inscricao.evento no save().
     evento = models.ForeignKey(
         "EventoAcampamento",
         on_delete=models.CASCADE,
@@ -1743,7 +1742,7 @@ class AlocacaoGrupo(models.Model):
         "Grupo",
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name="alocacoes"
+        related_name="alocacoes",
     )
     funcao = models.CharField(max_length=100, blank=True)
     is_coordenador = models.BooleanField(default=False)
@@ -1758,34 +1757,24 @@ class AlocacaoGrupo(models.Model):
     def clean(self):
         super().clean()
 
-        # 1) Garante que evento == inscricao.evento (se ambos existem)
+        # 1) Coerência: evento da alocação TEM que ser o mesmo da inscrição
         if self.inscricao_id and self.evento_id:
             if self.evento_id != self.inscricao.evento_id:
-                # não use a chave 'evento' no erro (para não quebrar forms que não exibem o campo)
-                raise ValidationError(
-                    "O evento da alocação deve ser o mesmo da inscrição."
-                )
+                # erro geral (não amarra em campo específico do form)
+                raise ValidationError("O evento da alocação deve ser o mesmo da inscrição.")
 
-        # 2) Permissão: apenas eventos de 'servos' (inclui variantes como 'servos de casais')
-        #    Aqui consideramos qualquer tipo que contenha 'servos' (case-insensitive).
-        ev = getattr(self, "evento", None) or getattr(self, "inscricao", None) and self.inscricao.evento
-        tipo = (getattr(ev, "tipo", "") or "").lower()
-        if tipo and ("servos" not in tipo):
-            # coloque o erro como geral (não vinculado a um campo).
-            raise ValidationError(
-                "Atribuição de grupo só é permitida para eventos de Servos."
-            )
+        # 2) (Intencionalmente REMOVIDO)
+        #    Não há mais restrição por tipo de evento (antes exigia 'servos').
 
-        # 3) (Opcional) Se o seu modelo 'Grupo' fosse por evento (não é o seu caso),
-        #    aqui seria o lugar para validar se grupo.evento == self.evento.
+        # 3) Se um dia Grupo fosse por evento, validar aqui (não é o caso atual).
 
     def save(self, *args, **kwargs):
-        # Antes de salvar, sincroniza evento <- inscricao.evento.
+        # Sincroniza sempre: evento <- inscricao.evento
         if self.inscricao_id:
             ev_id = getattr(self.inscricao, "evento_id", None)
             if ev_id and self.evento_id != ev_id:
                 self.evento_id = ev_id
-        # Valida sempre que salvar via código
+
         self.full_clean()
         return super().save(*args, **kwargs)
 

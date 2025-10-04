@@ -12734,3 +12734,8 @@ django.core.exceptions.ImproperlyConfigured: settings.DATABASES is improperly co
 2025-10-04 16:23:40,260 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
 2025-10-04 16:30:27,468 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
 2025-10-04 16:35:04,463 | INFO | django | Catálogos globais (ministérios e grupos) garantidos.
+2025-10-04 19:05:31,409 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-04 19:09:09,507 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-04 19:12:08,569 | INFO | django | Catálogos globais (ministérios e grupos) garantidos.
+2025-10-04 19:15:13,855 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-04 19:17:33,739 | INFO | django | Catálogos globais (ministérios e grupos) garantidos.

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import uuid
 import random
 import re
 from datetime import date, timedelta
@@ -8,12 +7,10 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.utils import timezone
-from django.utils.text import slugify
 
 from inscricoes.models import (
     Paroquia, PastoralMovimento, Participante, EventoAcampamento,
-    Inscricao, InscricaoStatus, Pagamento,
+    Inscricao, InscricaoStatus,
     PoliticaPrivacidade, PoliticaReembolso, VideoEventoAcampamento, CrachaTemplate,
     Grupo, Ministerio, AlocacaoGrupo, AlocacaoMinisterio,
 )
@@ -34,46 +31,25 @@ def cpf_mask(digs: str) -> str:
     return f"{d[0:3]}.{d[3:6]}.{d[6:9]}-{d[9:11]}"
 
 def cpf_fake(i: int) -> str:
-    # 11 dígitos simples para demo (únicos)
     d = f"15{i:09d}"[:11]
     return cpf_mask(d)
 
-def ensure_pagamento(ins: Inscricao, confirmado: bool, valor: Decimal):
-    defaults = {
-        "metodo": Pagamento.MetodoPagamento.PIX,
-        "valor": valor,
-        "status": Pagamento.StatusPagamento.CONFIRMADO if confirmado else Pagamento.StatusPagamento.PENDENTE,
-        "data_pagamento": timezone.now() if confirmado else None,
-        "transacao_id": f"TX-{uuid.uuid4().hex[:10]}",
-        "fee_mp": Decimal("0.00"),
-        "net_received": valor if confirmado else Decimal("0.00"),
-    }
-    pg, created = Pagamento.objects.get_or_create(inscricao=ins, defaults=defaults)
-    if not created:
-        changed = False
-        for k, v in defaults.items():
-            if getattr(pg, k) != v:
-                setattr(pg, k, v); changed = True
-        if changed:
-            pg.save()
-
-def fast_status(ins: Inscricao, target: str):
+def set_status_basico(ins: Inscricao, target: str = InscricaoStatus.ENVIADA):
+    """
+    Seta apenas o mínimo: status e 'inscricao_enviada'.
+    NÃO cria pagamentos, NÃO altera foi_selecionado, pagamento_confirmado ou inscricao_concluida.
+    """
     enviada = target != InscricaoStatus.RASCUNHO
-    sel = target in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE, InscricaoStatus.PAG_CONFIRMADO}
-    conf = target == InscricaoStatus.PAG_CONFIRMADO
-    conc = conf
     Inscricao.objects.filter(pk=ins.pk).update(
         status=target,
         inscricao_enviada=enviada,
-        foi_selecionado=sel,
-        pagamento_confirmado=conf,
-        inscricao_concluida=conc,
+        # garantias: não mexer nestes campos aqui
+        # foi_selecionado mantém como estiver (zeramos explicitamente mais abaixo)
+        # pagamento_confirmado permanece como estiver (default False)
+        # inscricao_concluida permanece como estiver (default False)
     )
     ins.status = target
     ins.inscricao_enviada = enviada
-    ins.foi_selecionado = sel
-    ins.pagamento_confirmado = conf
-    ins.inscricao_concluida = conc
 
 # ---------- nomes realistas brasileiros (únicos e variados) ----------
 FIRST_MALE = [
@@ -99,6 +75,7 @@ SURNAMES_POOL = [
 ]
 
 def gerar_nome_realista(genero: str, usados: set[str]) -> str:
+    import random
     first = random.choice(FIRST_MALE if genero.upper() == "M" else FIRST_FEMALE)
     s1, s2 = random.sample(SURNAMES_POOL, 2)
     if random.random() < 0.40:
@@ -137,11 +114,12 @@ NOME_SERVOS = "Servos EC São José 25"
 
 # ======================================================
 class Command(BaseCommand):
-    help = "Seed: evento de CASAIS + SERVOS; nomes realistas; casais pareados; grupos/ministérios globais; alocações; pagamentos."
+    help = "Seed: evento de CASAIS + SERVOS; nomes realistas; casais pareados; grupos/ministérios globais; alocações. (Sem pagamentos)"
 
     @transaction.atomic
     def handle(self, *args, **opts):
-        self.stdout.write(self.style.MIGRATE_HEADING("==> Seed (casais único)"))
+        import random
+        self.stdout.write(self.style.MIGRATE_HEADING("==> Seed (casais único) — SEM PAGAMENTOS"))
 
         # Paróquia
         paroquia, _ = Paroquia.objects.get_or_create(
@@ -186,7 +164,7 @@ class Command(BaseCommand):
                 "fim_inscricoes": fim_ins,
                 "valor_inscricao": Decimal("150.00"),
                 "permitir_inscricao_servos": True,
-                "slug": slug_curto,  # evita exceder 50 chars
+                "slug": slug_curto,
             },
         )
         if not getattr(evento_casais, "permitir_inscricao_servos", False):
@@ -206,8 +184,8 @@ class Command(BaseCommand):
             evento=evento_casais, defaults={"titulo": f"Chamada — {NOME_CASAIS}"}
         )
 
-        # ===== evento SERVOS (se o sinal não criou, garante aqui) =====
-        evento_servos = evento_casais.servos_evento
+        # ===== evento SERVOS =====
+        evento_servos = getattr(evento_casais, "servos_evento", None)
         if not evento_servos:
             evento_servos, _ = EventoAcampamento.objects.get_or_create(
                 nome=NOME_SERVOS,
@@ -231,7 +209,7 @@ class Command(BaseCommand):
             evento=evento_servos, defaults={"titulo": f"Chamada — {NOME_SERVOS}"}
         )
 
-        # ===== nomes completos, variados e únicos (40 pessoas) =====
+        # ===== nomes completos (40 pessoas) =====
         random.seed()
         nomes_homens = gerar_lote_nomes(20, 'M')
         nomes_mulheres = gerar_lote_nomes(20, 'F')
@@ -278,28 +256,23 @@ class Command(BaseCommand):
                 defaults={"paroquia": paroquia, "status": InscricaoStatus.ENVIADA}
             )
 
-            # parear (modelo garante bidirecional)
+            # parear (modelo deve garantir bidirecional)
             try:
                 ins1.set_pareada(ins2)
             except Exception:
                 pass
 
-            # 8 casais confirmados, 4 pendentes, 8 só enviados
-            if i < 8:
-                alvo = InscricaoStatus.PAG_CONFIRMADO
-            elif i < 12:
-                alvo = InscricaoStatus.PAG_PENDENTE
-            else:
-                alvo = InscricaoStatus.ENVIADA
+            # status básico: ENVIADA para todos (sem pagamentos)
+            set_status_basico(ins1, InscricaoStatus.ENVIADA)
+            set_status_basico(ins2, InscricaoStatus.ENVIADA)
 
-            for ins in (ins1, ins2):
-                fast_status(ins, alvo)
-                if alvo in (InscricaoStatus.PAG_CONFIRMADO, InscricaoStatus.PAG_PENDENTE):
-                    ensure_pagamento(
-                        ins,
-                        confirmado=(alvo == InscricaoStatus.PAG_CONFIRMADO),
-                        valor=evento_casais.valor_inscricao or Decimal("0.00"),
-                    )
+            # garantir que ninguém fique selecionado no seed
+            if getattr(ins1, "foi_selecionado", False):
+                Inscricao.objects.filter(pk=ins1.pk).update(foi_selecionado=False)
+                ins1.foi_selecionado = False
+            if getattr(ins2, "foi_selecionado", False):
+                Inscricao.objects.filter(pk=ins2.pk).update(foi_selecionado=False)
+                ins2.foi_selecionado = False
 
             casais.append((ins1, ins2))
 
@@ -331,7 +304,7 @@ class Command(BaseCommand):
                 m.save(update_fields=["descricao"])
             ministerios.append(m)
 
-        # ===== SERVOS: usa 8 casais (16 pessoas) como servos do evento de servos =====
+        # ===== SERVOS: usa 8 casais (16 pessoas) no evento de servos =====
         servos_fontes = []
         for k in range(8):
             servos_fontes.extend([casais[k][0], casais[k][1]])
@@ -342,7 +315,13 @@ class Command(BaseCommand):
                 participante=p, evento=evento_servos,
                 defaults={"paroquia": paroquia, "status": InscricaoStatus.CONVOCADA}
             )
-            # Alocação de grupo (round-robin) — precisa do evento nos defaults
+
+            # não selecionar automaticamente
+            if getattr(ins_sv, "foi_selecionado", False):
+                Inscricao.objects.filter(pk=ins_sv.pk).update(foi_selecionado=False)
+                ins_sv.foi_selecionado = False
+
+            # Alocação de grupo (round-robin)
             AlocacaoGrupo.objects.get_or_create(
                 inscricao=ins_sv,
                 defaults={
@@ -366,6 +345,6 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.SUCCESS(
-            "OK: Casais (nomes realistas, pareados, pagamentos), Servos, Grupos/Ministérios globais e Alocações criados."
+            "OK: Casais (nomes realistas, pareados), Servos, Grupos/Ministérios globais e Alocações criados. SEM PAGAMENTOS."
         ))
         self.stdout.write(self.style.SUCCESS("Login admin / admin123 (se necessário)."))
