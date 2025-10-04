@@ -4795,6 +4795,19 @@ def alterar_status_inscricao(request, inscricao_id: int):
 # ==============================================================
 # GET /admin-paroquia/evento/<evento_id>/participantes/
 # ==============================================================
+# inscricoes/views.py  (trecho relevante)
+
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
+
+from inscricoes.models import (
+    EventoAcampamento,
+    Inscricao,
+    InscricaoStatus,
+)
+
 @login_required
 def evento_participantes(request, evento_id):
     """
@@ -4803,6 +4816,7 @@ def evento_participantes(request, evento_id):
       - idade calculada (respeitando subtipos)
       - contadores (participantes, confirmados, selecionados, pendentes)
       - choices de status para o <select> do template
+      - em eventos de CASAIS e SERVOS-DE-CASAL: deduplica e mostra "Participante — Vinculado"
     """
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
 
@@ -4826,30 +4840,18 @@ def evento_participantes(request, evento_id):
     elif not is_admin_geral:
         return HttpResponseForbidden("Acesso negado.")
 
-    # ===== Query base =====
-    participantes = (
+    # ===== Query base (inscrições deste evento) =====
+    inscricoes = (
         Inscricao.objects.filter(evento=evento)
         .select_related(
-            "participante",
-            "evento",
-            "paroquia",
-            # subtipos (se existirem no projeto)
-            "inscricaosenior",
-            "inscricaojuvenil",
-            "inscricaomirim",
-            "inscricaoservos",
-            "inscricaocasais",
-            "inscricaoevento",
-            "inscricaoretiro",
+            "participante", "evento", "paroquia",
+            "inscricaosenior", "inscricaojuvenil", "inscricaomirim",
+            "inscricaoservos", "inscricaocasais", "inscricaoevento", "inscricaoretiro",
         )
-        .prefetch_related(
-            "alocacao_grupo__grupo",
-            "alocacao_ministerio__ministerio",
-        )
+        .prefetch_related("alocacao_grupo__grupo", "alocacao_ministerio__ministerio")
         .order_by("participante__nome")
     )
-
-    total_participantes = participantes.count()
+    total_participantes = inscricoes.count()
 
     # ===== Idade (usa data_inicio como referência; senão hoje) =====
     ref_date = getattr(evento, "data_inicio", None) or timezone.localdate()
@@ -4880,13 +4882,8 @@ def evento_participantes(request, evento_id):
         if pref:
             ordem.append(pref)
         ordem += [
-            "inscricaosenior",
-            "inscricaojuvenil",
-            "inscricaomirim",
-            "inscricaoservos",
-            "inscricaocasais",
-            "inscricaoevento",
-            "inscricaoretiro",
+            "inscricaosenior", "inscricaojuvenil", "inscricaomirim",
+            "inscricaoservos", "inscricaocasais", "inscricaoevento", "inscricaoretiro",
         ]
         vistos = set()
         for name in [n for n in ordem if n and n not in vistos]:
@@ -4898,10 +4895,94 @@ def evento_participantes(request, evento_id):
                     return dn
         return getattr(insc.participante, "data_nascimento", None)
 
-    for insc in participantes:
+    for insc in inscricoes:
         insc.idade = _calc_age(_get_birth(insc), ref_date)
 
-    # ===== Contadores com os códigos oficiais =====
+    # ===== Helper para obter "par" de uma inscrição (casais) =====
+    def _par_de(insc: Inscricao):
+        """Tenta achar a inscrição pareada do MESMO evento (para eventos de casais)."""
+        # 1) property par (se existir no modelo)
+        try:
+            p = insc.par
+            if p:
+                return p
+        except Exception:
+            pass
+        # 2) campo direto
+        if getattr(insc, "inscricao_pareada_id", None):
+            return getattr(insc, "inscricao_pareada", None)
+        # 3) reverse comum (se existir)
+        return getattr(insc, "pareada_por", None)
+
+    # ===== Contexto "casais" e "servos de casal" =====
+    tipo_evento = (getattr(evento, "tipo", "") or "").lower()
+    rel = getattr(evento, "evento_relacionado", None)
+    tipo_rel = (getattr(rel, "tipo", "") or "").lower() if rel else ""
+    is_evento_casais = (tipo_evento == "casais")
+    is_servos_de_casal = (tipo_evento == "servos" and rel and tipo_rel == "casais")
+
+    linhas = []
+
+    if is_evento_casais:
+        # Deduplicação usando o "par" no próprio evento de casais
+        for insc in inscricoes:
+            par = _par_de(insc)
+            # mantém só a "primeira metade" do par (menor id)
+            if par and getattr(par, "id", None) and insc.id and not (insc.id < par.id):
+                continue
+            # expõe o parceiro para o template (sem tocar em properties do modelo)
+            setattr(insc, "par_inscrito", par if par else None)
+            linhas.append(insc)
+
+    elif is_servos_de_casal:
+        # Monta um mapa participante_id -> parceiro_participante_id a partir do evento de casais relacionado
+        casal_qs = (
+            Inscricao.objects.filter(evento=rel)
+            .select_related("participante")
+            .only("id", "participante_id")  # leve
+        )
+
+        # Para evitar N+1 ao pegar o "par" nas casais, traga um dicionário id->inscricao
+        casal_by_id = {i.id: i for i in casal_qs}
+        # Precisamos conseguir _par_de() nessas inscrições; se seu "par" também está no rel,
+        # esse helper funciona igual.
+        par_map = {}  # participante_id -> parceiro_participante_id
+        for insc_casal in casal_by_id.values():
+            par = _par_de(insc_casal)
+            if par:
+                try:
+                    a = insc_casal.participante_id
+                    b = par.participante_id
+                    if a and b:
+                        par_map[a] = b
+                        par_map[b] = a
+                except Exception:
+                    continue
+
+        # Agora, no evento de servos, localiza a inscrição do parceiro via participante
+        # e deduplica por id de participante (mostra só o "menor id de participante")
+        # Para lookup rápido: participante_id -> inscrição de servos
+        servos_by_part = {i.participante_id: i for i in inscricoes}
+
+        for insc in inscricoes:
+            pid = insc.participante_id
+            pid_par = par_map.get(pid)
+            par_insc = servos_by_part.get(pid_par) if pid_par else None
+
+            # dedup: se houver par, mostra só quem tem participante_id menor
+            if par_insc and pid and pid_par and not (pid < pid_par):
+                continue
+
+            setattr(insc, "par_inscrito", par_insc if par_insc else None)
+            linhas.append(insc)
+
+    else:
+        # Outros tipos de evento: lista normal
+        for insc in inscricoes:
+            setattr(insc, "par_inscrito", None)
+            linhas.append(insc)
+
+    # ===== Contadores oficiais =====
     qs = Inscricao.objects.filter(evento=evento)
 
     total_confirmados = qs.filter(status=InscricaoStatus.PAG_CONFIRMADO).count()
@@ -4925,12 +5006,13 @@ def evento_participantes(request, evento_id):
         ]
     ).count()
 
-    # ===== Choices corretas para o <select> =====
     status_choices = InscricaoStatus.choices
 
     context = {
         "evento": evento,
-        "participantes": participantes,
+        "participantes": linhas,               # <- já deduplicado quando for o caso
+        "is_evento_casais": is_evento_casais,  # útil se quiser usar no template
+        "is_servos_de_casal": is_servos_de_casal,
         "valor_inscricao": getattr(evento, "valor_inscricao", None),
         "total_participantes": total_participantes,
         "total_confirmados": total_confirmados,

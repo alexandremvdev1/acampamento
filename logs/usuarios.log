@@ -12730,3 +12730,7 @@ django.core.exceptions.ImproperlyConfigured: settings.DATABASES is improperly co
 2025-10-04 12:39:52,830 | INFO | django | Ministérios padrão criados para o evento 'Servos – EC São José 2025'.
 2025-10-04 12:44:14,110 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
 2025-10-04 12:48:29,595 | INFO | django | Ministérios padrão criados para o evento 'Servos – EC São José 2025'.
+2025-10-04 16:22:18,415 | INFO | django | E-mail de credenciais enviado para contato@paroquiasaojose.org.br.
+2025-10-04 16:23:40,260 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-04 16:30:27,468 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-04 16:35:04,463 | INFO | django | Catálogos globais (ministérios e grupos) garantidos.
