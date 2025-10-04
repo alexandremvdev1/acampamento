@@ -12693,3 +12693,22 @@ django.core.exceptions.ImproperlyConfigured: settings.DATABASES is improperly co
 2025-08-09 16:24:22,421 | INFO | django.server | "GET / HTTP/1.1" 302 0
 2025-08-09 16:24:22,861 | INFO | django | 2025-08-09 16:24:22.861331 | alexandre acessou /admin-geral/dashboard/
 2025-08-09 16:24:25,236 | INFO | django.server | "GET /admin-geral/dashboard/ HTTP/1.1" 200 14104
+2025-10-03 17:01:51,237 | WARNING | django | Paróquia 'Paróquia Demo' criada sem e-mail. Usuário 'paróquiade' gerado, mas e-mail não foi enviado.
+2025-10-03 17:01:57,381 | WARNING | django | Paróquia 'Paróquia Demo' criada sem e-mail. Usuário 'paróquiade' gerado, mas e-mail não foi enviado.
+2025-10-03 17:02:03,014 | WARNING | django | Paróquia 'Paróquia Demo' criada sem e-mail. Usuário 'paróquiade' gerado, mas e-mail não foi enviado.
+2025-10-03 17:05:32,728 | WARNING | django | Paróquia 'Paróquia Demo' criada sem e-mail. Usuário 'paróquiade' gerado, mas e-mail não foi enviado.
+2025-10-03 17:05:38,999 | WARNING | django | Paróquia 'Paróquia Demo' criada sem e-mail. Usuário 'paróquiade' gerado, mas e-mail não foi enviado.
+2025-10-03 17:09:24,049 | WARNING | django | Paróquia 'Paróquia Demo' criada sem e-mail. Usuário 'paróquiade' gerado, mas e-mail não foi enviado.
+2025-10-03 17:09:30,232 | WARNING | django | Paróquia 'Paróquia Demo' criada sem e-mail. Usuário 'paróquiade' gerado, mas e-mail não foi enviado.
+2025-10-03 17:19:16,844 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-03 17:21:16,856 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-03 17:31:43,647 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-03 17:36:16,138 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-03 21:55:47,470 | INFO | django | E-mail de credenciais enviado para paroquia@saojose.local.
+2025-10-03 22:41:22,196 | INFO | django | Ministérios padrão criados para o evento 'Servos – Acampamento Sênior Demo'.
+2025-10-03 22:41:23,134 | INFO | django | Ministérios padrão criados para o evento 'Servos – Acampamento Juvenil Demo'.
+2025-10-03 22:41:23,833 | INFO | django | Ministérios padrão criados para o evento 'Servos – Acampamento Mirim Demo'.
+2025-10-03 22:41:24,570 | INFO | django | Ministérios padrão criados para o evento 'Servos – Encontro de Casais Demo'.
+2025-10-03 22:41:25,487 | INFO | django | Ministérios padrão criados para o evento 'Servos – Evento Paroquial Demo'.
+2025-10-03 22:41:26,310 | INFO | django | Ministérios padrão criados para o evento 'Servos – Retiro Paroquial Demo'.
+2025-10-03 22:41:27,032 | INFO | django | Ministérios padrão criados para o evento 'Servos – Evento de Pagamentos Demo'.
