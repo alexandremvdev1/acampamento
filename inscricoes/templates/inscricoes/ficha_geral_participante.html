@@ -390,7 +390,7 @@
             <div class="mb-2">
               <div class="small text-muted-2">Inscrição pareada</div>
               <div>
-                <a class="link-ink fw-semibold" href="{% url 'inscricoes:ficha_inscricao' inscricao.par.id %}">
+                <a class="link-ink fw-semibold" href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.par.id %}">
                   {{ inscricao.par.participante.nome }}
                 </a>
                 <span class="badge rounded-pill badge-soft ms-2">{{ inscricao.par.evento.nome }}</span>
