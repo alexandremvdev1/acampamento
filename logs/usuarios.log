@@ -12720,3 +12720,4 @@ django.core.exceptions.ImproperlyConfigured: settings.DATABASES is improperly co
 2025-10-04 08:05:47,502 | INFO | django | Ministérios padrão criados para o evento 'Servos – Evento Paroquial Demo'.
 2025-10-04 08:05:47,973 | INFO | django | Ministérios padrão criados para o evento 'Servos – Retiro Paroquial Demo'.
 2025-10-04 08:05:48,446 | INFO | django | Ministérios padrão criados para o evento 'Servos – Evento de Pagamentos Demo'.
+2025-10-04 11:48:44,076 | INFO | django | Ministérios padrão criados para o evento 'Servos – EC São José 2025'.
