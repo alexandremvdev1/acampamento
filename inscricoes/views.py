@@ -1241,6 +1241,7 @@ def buscar_participante_ajax(request):
     return JsonResponse(payload)
 
 
+
 def formulario_personalizado(request, inscricao_id):
     # Obtém a inscrição, evento e política de privacidade
     inscricao = get_object_or_404(Inscricao, id=inscricao_id)
@@ -5305,3 +5306,191 @@ def alocacoes_ministerio_short(request, pk: int):
 
     messages.warning(request, "Escolha o evento para esse ministério.")
     return redirect("inscricoes:ministerios_home_sem_paroquia")
+
+from django.db import transaction
+
+def _par_de(insc: Inscricao):
+    """Tenta achar a inscrição pareada (par) para eventos de casais."""
+    # 1) property par (se existir no seu modelo)
+    try:
+        p = insc.par
+        if p:
+            return p
+    except Exception:
+        pass
+    # 2) campo direto
+    if getattr(insc, "inscricao_pareada_id", None):
+        return getattr(insc, "inscricao_pareada", None)
+    # 3) reverse comum (se existir)
+    return getattr(insc, "pareada_por", None)
+
+def _find_pair_in_same_event(insc: Inscricao):
+    """
+    Retorna a inscrição do PAR dentro do MESMO evento, cobrindo:
+      - Evento de CASAIS: usa o pareamento direto (par, inscricao_pareada, etc).
+      - Evento de SERVOS vinculado a um evento de casais: resolve o par via evento_relacionado.
+    """
+    ev = insc.evento
+    tipo_ev = (getattr(ev, "tipo", "") or "").lower()
+
+    # Caso 1: evento de CASAIS — pareamento direto
+    if tipo_ev == "casais":
+        par = _par_de(insc)
+        if par and par.evento_id == insc.evento_id:
+            return par
+        return None
+
+    # Caso 2: servos "de casal": achar par via evento_relacionado (que é de casais)
+    rel = getattr(ev, "evento_relacionado", None)
+    tipo_rel = (getattr(rel, "tipo", "") or "").lower() if rel else ""
+    if tipo_ev == "servos" and rel and tipo_rel == "casais":
+        # inscrição deste participante no evento de casais
+        insc_casal = Inscricao.objects.filter(evento=rel, participante_id=insc.participante_id).first()
+        if not insc_casal:
+            return None
+        # o par no evento de casais…
+        par_casal = _par_de(insc_casal)
+        if not par_casal:
+            return None
+        # …e a inscrição do par no evento ATUAL (servos)
+        return Inscricao.objects.filter(evento=ev, participante_id=par_casal.participante_id).first()
+
+    return None
+
+def _can_manage_inscricao(user, insc) -> bool:
+    try:
+        if getattr(user, "is_superuser", False):
+            return True
+        if hasattr(user, "is_admin_geral") and user.is_admin_geral():
+            return True
+    except Exception:
+        pass
+    if hasattr(user, "is_admin_paroquia") and user.is_admin_paroquia():
+        return getattr(user, "paroquia_id", None) == getattr(insc, "paroquia_id", None)
+    if getattr(user, "tipo_usuario", "") == "admin_paroquia":
+        return getattr(user, "paroquia_id", None) == getattr(insc, "paroquia_id", None)
+    return False
+
+@login_required
+@require_POST
+def toggle_selecao_inscricao(request, inscricao_id: int):
+    insc = get_object_or_404(Inscricao, id=inscricao_id)
+    if not _can_manage_inscricao(request.user, insc):
+        return HttpResponseForbidden("Acesso negado.")
+
+    sel_str = (request.POST.get("selected") or "").strip().lower()
+    selected = sel_str in {"1", "true", "on", "yes", "sim"}
+
+    # acha o par (se houver, conforme a regra do evento)
+    par = _find_pair_in_same_event(insc)
+
+    with transaction.atomic():
+        if insc.foi_selecionado != selected:
+            insc.foi_selecionado = selected
+            insc.save(update_fields=["foi_selecionado"])
+        if par and par.foi_selecionado != selected:
+            par.foi_selecionado = selected
+            par.save(update_fields=["foi_selecionado"])
+
+    msg = "Participante selecionado." if selected else "Participante desmarcado."
+    return JsonResponse({
+        "ok": True,
+        "selected": selected,
+        "paired_updated": bool(par),
+        "msg": msg,
+    })
+
+from django.utils import timezone
+
+@login_required
+@require_POST
+def alterar_status_inscricao(request, inscricao_id: int):
+    insc = get_object_or_404(Inscricao, id=inscricao_id)
+    if not _can_manage_inscricao(request.user, insc):
+        return HttpResponseForbidden("Acesso negado.")
+
+    novo = (request.POST.get("status") or "").strip()
+    validos = dict(InscricaoStatus.choices)
+    if novo not in validos:
+        return JsonResponse({"ok": False, "error": "status inválido"}, status=400)
+
+    # Estados que contam como "selecionado" (mantém igual ao seu front)
+    estados_selecionado = {
+        InscricaoStatus.CONVOCADA,
+        InscricaoStatus.PAG_PENDENTE,
+        InscricaoStatus.PAG_CONFIRMADO,
+    }
+    novo_sel = novo in estados_selecionado
+
+    # Pagamento: confirma somente quando status == PAG_CONFIRMADO
+    vai_confirmar_pagto = (novo == InscricaoStatus.PAG_CONFIRMADO)
+
+    par = _find_pair_in_same_event(insc)
+
+    with transaction.atomic():
+        updates = []
+
+        # status
+        if insc.status != novo:
+            insc.status = novo
+            updates.append("status")
+
+        # seleção (segue a regra acima)
+        if insc.foi_selecionado != novo_sel:
+            insc.foi_selecionado = novo_sel
+            updates.append("foi_selecionado")
+
+        # pagamento_confirmado: true só quando PAG_CONFIRMADO; senão false
+        if getattr(insc, "pagamento_confirmado", False) != vai_confirmar_pagto:
+            insc.pagamento_confirmado = vai_confirmar_pagto
+            updates.append("pagamento_confirmado")
+
+        if updates:
+            insc.save(update_fields=updates)
+
+        # Sincroniza o objeto Pagamento (se existir, atualiza; senão cria quando confirmar)
+        # - Confirmado  -> status CONFIRMADO + data_pagamento = agora
+        # - Pag pendente/convocada/etc -> status PENDENTE (se houver registro)
+        # - Outros estados de cancelamento (se você tiver) -> CANCELADO
+        from .models import Pagamento  # garante import
+
+        if vai_confirmar_pagto:
+            pgto, _ = Pagamento.objects.get_or_create(
+                inscricao=insc,
+                defaults={
+                    "valor": insc.evento.valor_inscricao or 0,
+                    "metodo": getattr(Pagamento.MetodoPagamento, "PIX", "pix"),
+                }
+            )
+            pgto.status = Pagamento.StatusPagamento.CONFIRMADO
+            pgto.data_pagamento = timezone.now()
+            pgto.save(update_fields=["status", "data_pagamento"])
+        else:
+            # Se não é confirmado, marcamos pendente quando fizer sentido
+            pgto = Pagamento.objects.filter(inscricao=insc).first()
+            if pgto:
+                if novo == InscricaoStatus.PAG_PENDENTE or novo in estados_selecionado:
+                    pgto.status = Pagamento.StatusPagamento.PENDENTE
+                    pgto.data_pagamento = None
+                    pgto.save(update_fields=["status", "data_pagamento"])
+                else:
+                    # Caso queira tratar como cancelado em estados fora do funil:
+                    # pgto.status = Pagamento.StatusPagamento.CANCELADO
+                    # pgto.data_pagamento = None
+                    # pgto.save(update_fields=["status", "data_pagamento"])
+                    pass
+
+        # Se houver PAR, só sincronizamos a "seleção" (não pagamento! pagamento é individual)
+        if par and par.foi_selecionado != novo_sel:
+            par.foi_selecionado = novo_sel
+            par.save(update_fields=["foi_selecionado"])
+
+    return JsonResponse({
+        "ok": True,
+        "status": insc.status,
+        "label": insc.get_status_display(),
+        "pagamento_confirmado": bool(insc.pagamento_confirmado),  # <- o front usa isso pro badge
+        "foi_selecionado": bool(insc.foi_selecionado),
+        "paired_updated": bool(par),
+    })
+

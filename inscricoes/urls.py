@@ -193,6 +193,17 @@ urlpatterns = [
     path("inscricao/<int:inscricao_id>/alterar-status/", views.alterar_status_inscricao, name="alterar_status_inscricao"),
     path("admin-paroquia/acoes/", views.admin_paroquia_acoes, name="admin_paroquia_acoes"),
     path("admin-paroquia/acoes/<int:paroquia_id>/", views.admin_paroquia_acoes, name="admin_paroquia_acoes_por_paroquia"),
+
+    path(
+        "ajax/inscricoes/<int:inscricao_id>/toggle-selecao/",
+        views.toggle_selecao_inscricao,
+        name="toggle_selecao_inscricao",
+    ),
+    path(
+        "ajax/inscricoes/<int:inscricao_id>/alterar-status/",
+        views.alterar_status_inscricao,
+        name="alterar_status_inscricao",
+    ),
 ]
 
 if settings.DEBUG:

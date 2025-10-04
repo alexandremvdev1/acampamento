@@ -333,7 +333,7 @@ class Inscricao(models.Model):
     inscricao_concluida   = models.BooleanField(default=False)
     inscricao_enviada     = models.BooleanField(default=False)
 
-    # ----- extras já existentes no seu modelo -----
+    # ----- extras já existentes -----
     ja_e_campista = models.BooleanField(default=False, verbose_name="Já é campista?")
     tema_acampamento = models.CharField(max_length=200, blank=True, null=True,
                                         verbose_name="Se sim, qual tema do acampamento que participou?")
@@ -413,12 +413,12 @@ class Inscricao(models.Model):
     def is_cancelada(self):       return self.status in {InscricaoStatus.CANCEL_USER, InscricaoStatus.CANCEL_ADMIN} if hasattr(InscricaoStatus,'CANCEL_USER') else self.status in {InscricaoStatus.CANCEL_USUARIO, InscricaoStatus.CANCEL_ADMIN}
 
     # ------------------------------------------------------------
-    # Mapeamento da base por tipo (como já fazia)
+    # Mapeamento da base por tipo
     # ------------------------------------------------------------
     def _get_baseinscricao_model(self):
         tipo = (self.evento.tipo or "").strip().lower()
-        # importe os modelos corretos ou adie o import para evitar ciclos
-        from . import inscricaosenior as _s   # ajuste para o caminho real
+        # importe de forma lazy para evitar ciclos
+        from . import inscricaosenior as _s
         from . import inscricaojuvenil as _j
         from . import inscricaomirim as _m
         from . import inscricaoservos as _sv
@@ -461,18 +461,45 @@ class Inscricao(models.Model):
             raise ValidationError("Não pode parear consigo mesmo.")
         if outra.evento_id != self.evento_id:
             raise ValidationError("A inscrição pareada deve ser do mesmo evento.")
+
         with transaction.atomic():
             self.inscricao_pareada = outra
             self.save(update_fields=['inscricao_pareada'])
             if outra.par != self:
                 outra.inscricao_pareada = self
                 outra.save(update_fields=['inscricao_pareada'])
-            # Se evento é casais e um deles já estava selecionado, mantém coerência
-            if (self.evento.tipo or '').lower() == 'casais':
-                if self.is_selecionada and not outra.is_selecionada:
-                    outra.mudar_status(InscricaoStatus.CONVOCADA, motivo="Pareado com selecionado")
-                elif outra.is_selecionada and not self.is_selecionada:
-                    self.mudar_status(InscricaoStatus.CONVOCADA, motivo="Pareado com selecionado")
+
+            # Sincronias específicas de casais
+            if self._is_evento_casais():
+                # Se um já está pago → os dois pagos
+                if self.status == InscricaoStatus.PAG_CONFIRMADO and outra.status != InscricaoStatus.PAG_CONFIRMADO:
+                    type(self).objects.filter(pk=outra.pk).update(
+                        status=InscricaoStatus.PAG_CONFIRMADO,
+                        pagamento_confirmado=True,
+                        inscricao_concluida=True,
+                        foi_selecionado=True,
+                    )
+                elif outra.status == InscricaoStatus.PAG_CONFIRMADO and self.status != InscricaoStatus.PAG_CONFIRMADO:
+                    type(self).objects.filter(pk=self.pk).update(
+                        status=InscricaoStatus.PAG_CONFIRMADO,
+                        pagamento_confirmado=True,
+                        inscricao_concluida=True,
+                        foi_selecionado=True,
+                    )
+                else:
+                    # Se um está ao menos selecionado, garante o outro selecionado
+                    if self.status in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE} and \
+                       outra.status not in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE, InscricaoStatus.PAG_CONFIRMADO}:
+                        type(self).objects.filter(pk=outra.pk).update(
+                            status=InscricaoStatus.CONVOCADA,
+                            foi_selecionado=True
+                        )
+                    if outra.status in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE} and \
+                       self.status not in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE, InscricaoStatus.PAG_CONFIRMADO}:
+                        type(self).objects.filter(pk=self.pk).update(
+                            status=InscricaoStatus.CONVOCADA,
+                            foi_selecionado=True
+                        )
 
     def desparear(self):
         if self.par:
@@ -510,21 +537,64 @@ class Inscricao(models.Model):
         return True
 
     # ------------------------------------------------------------
-    # Pagamento casais: propagar ao par
+    # Helpers de casal (seleção/pagamento)
     # ------------------------------------------------------------
-    def _propagar_pagamento_para_par(self, confirmado: bool):
-        if (self.evento.tipo or '').lower() != 'casais':
+    def _is_evento_casais(self) -> bool:
+        return (getattr(self.evento, "tipo", "") or "").lower() == "casais"
+
+    def _propagar_selecao_para_par(self, novo_status: str):
+        """
+        Em eventos de casais, garante que o par fique ao menos selecionado.
+        - Se self foi para PAG_CONFIRMADO: par também vai para PAG_CONFIRMADO.
+        - Se self foi para PAG_PENDENTE/CONVOCADA: par vai pelo menos para CONVOCADA.
+        Usa update() para evitar recursão de sinais.
+        """
+        if not self._is_evento_casais():
             return
         par = self.par
         if not par:
             return
-        if par.pagamento_confirmado == confirmado and par.inscricao_concluida == confirmado:
+
+        if novo_status == InscricaoStatus.PAG_CONFIRMADO:
+            target = InscricaoStatus.PAG_CONFIRMADO
+        elif novo_status in {InscricaoStatus.PAG_PENDENTE, InscricaoStatus.CONVOCADA}:
+            # Se o par já está em um destes, não baixa
+            if par.status in {InscricaoStatus.PAG_CONFIRMADO, InscricaoStatus.PAG_PENDENTE, InscricaoStatus.CONVOCADA}:
+                return
+            target = InscricaoStatus.CONVOCADA
+        else:
+            return
+
+        selected_set = {
+            InscricaoStatus.CONVOCADA,
+            InscricaoStatus.PAG_PENDENTE,
+            InscricaoStatus.PAG_CONFIRMADO,
+        }
+
+        if target != par.status:
+            type(self).objects.filter(pk=par.pk).update(
+                status=target,
+                foi_selecionado=(target in selected_set),
+                pagamento_confirmado=(target == InscricaoStatus.PAG_CONFIRMADO),
+                inscricao_concluida=(target == InscricaoStatus.PAG_CONFIRMADO),
+            )
+
+    def _propagar_pagamento_para_par(self, confirmado: bool):
+        if not self._is_evento_casais():
+            return
+        par = self.par
+        if not par:
+            return
+        if bool(par.pagamento_confirmado) == confirmado and bool(par.inscricao_concluida) == confirmado and (
+            (par.status == InscricaoStatus.PAG_CONFIRMADO) == confirmado
+        ):
             return
         with transaction.atomic():
             type(self).objects.filter(pk=par.pk).update(
+                status=InscricaoStatus.PAG_CONFIRMADO if confirmado else InscricaoStatus.CONVOCADA,
                 pagamento_confirmado=confirmado,
                 inscricao_concluida=confirmado,
-                status=InscricaoStatus.PAG_CONFIRMADO if confirmado else InscricaoStatus.CONVOCADA,
+                foi_selecionado=True,
             )
 
     # ------------------------------------------------------------
@@ -586,7 +656,7 @@ class Inscricao(models.Model):
         except Exception:
             return None
 
-    # —— cole aqui suas versões atuais, se preferir ——
+    # —— stubs (implemente conforme o seu projeto) ——
     def enviar_email_selecao(self): pass
     def enviar_email_pagamento_confirmado(self): pass
     def enviar_email_recebida(self): pass
@@ -620,7 +690,7 @@ class Inscricao(models.Model):
     }
 
     def mudar_status(self, novo_status: str, *, motivo: Optional[str] = None, por_usuario=None) -> bool:
-        """Aplica transição validada e dispara eventos usuais."""
+        """Aplica transição validada e dispara eventos usuais + propagação para par."""
         if novo_status == self.status:
             return False
         permitidos = self._NEXT.get(self.status, set())
@@ -647,7 +717,7 @@ class Inscricao(models.Model):
             except Exception:
                 pass
 
-            # disparos
+            # disparos usuais
             if antigo != InscricaoStatus.CONVOCADA and novo_status in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE}:
                 self.enviar_email_selecao()
                 self.enviar_whatsapp_selecao()
@@ -665,6 +735,12 @@ class Inscricao(models.Model):
                 self.enviar_email_recebida()
                 self.enviar_whatsapp_recebida()
 
+            # Propagar seleção/pagamento para o par (casais)
+            try:
+                self._propagar_selecao_para_par(novo_status)
+            except Exception:
+                pass
+
         return True
 
     # ------------------------------------------------------------
@@ -674,20 +750,17 @@ class Inscricao(models.Model):
         is_new = self.pk is None
         self.full_clean()
 
-        # — comportamento legado: se alguém setou os booleans diretamente,
-        #   convertemos para o status correspondente antes de salvar.
-        #   (a ideia é facilitar a transição gradual do código antigo)
+        # comportamento legado: se setaram booleans diretamente,
+        # convertemos para o status correspondente.
         status_alvo = None
         if self.pagamento_confirmado:
             status_alvo = InscricaoStatus.PAG_CONFIRMADO
         elif self.foi_selecionado and not self.pagamento_confirmado:
-            # se “selecionado” e sem pgto, preferimos “pay_pending”
             status_alvo = InscricaoStatus.PAG_PENDENTE
         elif self.inscricao_enviada and self.status == InscricaoStatus.RASCUNHO:
             status_alvo = InscricaoStatus.ENVIADA
 
         if status_alvo and status_alvo != self.status:
-            # use a máquina para disparar efeitos; se não puder (ex.: nas primeiras criações), apenas seta
             try:
                 self.mudar_status(status_alvo, motivo="Autoajuste booleans→status")
                 return  # mudar_status já salvou
@@ -710,39 +783,6 @@ class Inscricao(models.Model):
                     self.tentar_vincular_conjuge()
             except Exception:
                 pass
-
-
-# ------------------------------------------------------------
-# Sinal: tentativa de parear assim que criar (como você já fazia)
-# ------------------------------------------------------------
-@receiver(post_save, sender=Inscricao)
-def _parear_apos_criar(sender, instance: 'Inscricao', created, **kwargs):
-    if not created:
-        return
-    # 1) tentar com o cpf_conjuge desta inscrição
-    try:
-        if instance.cpf_conjuge and instance.par is None:
-            instance.tentar_vincular_conjuge()
-    except Exception:
-        pass
-
-    # 2) inverso: achar quem informou o CPF deste participante
-    try:
-        meu_cpf_d = re.sub(r'\D', '', getattr(instance.participante, 'cpf', '') or '')
-        if len(meu_cpf_d) != 11 or instance.par is not None:
-            return
-        candidatos = Inscricao.objects.filter(
-            evento=instance.evento,
-            inscricao_pareada__isnull=True
-        ).exclude(pk=instance.pk)
-        for c in candidatos:
-            alvo_d = re.sub(r'\D', '', c.cpf_conjuge or '')
-            if alvo_d == meu_cpf_d:
-                c.set_pareada(instance)
-                break
-    except Exception:
-        pass
-
 
 class Filho(models.Model):
     inscricao = models.ForeignKey(
@@ -1578,7 +1618,7 @@ class Ministerio(models.Model):
 
 class AlocacaoMinisterio(models.Model):
     """
-    Liga uma inscrição (que deve ser de um evento 'servos') a um Ministério (global) em um EVENTO específico.
+    Liga uma inscrição (evento Servos/Servos de Casais) a um Ministério no EVENTO da inscrição.
     Garante no máximo 1 coordenador por (evento, ministério).
     """
     inscricao = models.OneToOneField(
@@ -1587,6 +1627,7 @@ class AlocacaoMinisterio(models.Model):
         related_name="alocacao_ministerio",
         help_text="A inscrição deste servo (no evento de Servos).",
     )
+    # Mantemos para filtros/relatórios; é sempre igual a inscricao.evento
     evento = models.ForeignKey(
         "EventoAcampamento",
         on_delete=models.CASCADE,
@@ -1610,52 +1651,89 @@ class AlocacaoMinisterio(models.Model):
     data_alocacao = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # Um coordenador por ministério em cada evento
         constraints = [
+            # Um coordenador por ministério em cada evento
             models.UniqueConstraint(
                 fields=["evento", "ministerio"],
                 condition=Q(is_coordenador=True),
                 name="uniq_um_coordenador_por_ministerio_em_evento",
-            )
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["evento"]),
+            models.Index(fields=["ministerio"]),
+            models.Index(fields=["is_coordenador"]),
         ]
 
+    # --- Validação de domínio ---
     def clean(self):
         super().clean()
-        # Inscrição e evento devem bater
-        if self.inscricao and self.evento and self.inscricao.evento_id != self.evento_id:
-            raise ValidationError({"evento": "O evento da alocação deve ser o mesmo da inscrição."})
 
-        # Só em eventos de Servos
-        if self.evento and (self.evento.tipo or "").lower() != "servos":
-            raise ValidationError({"evento": "Atribuição de ministério só é permitida para eventos de Servos."})
+        # Defina 'ev' com prioridade para inscricao.evento (fonte da verdade)
+        ev = None
+        if self.inscricao_id:
+            ev = getattr(self.inscricao, "evento", None)
+        if not ev and self.evento_id:
+            ev = self.evento
 
-        # Impedir 2 coordenadores
-        if self.is_coordenador and self.ministerio_id:
+        # 1) evento deve bater com inscricao.evento (quando ambos presentes)
+        if self.inscricao_id and self.evento_id:
+            if self.inscricao.evento_id != self.evento_id:
+                # Erro geral (não prenda a 'evento' para evitar ValueError no form)
+                raise ValidationError("O evento da alocação deve ser o mesmo da inscrição.")
+
+        # 2) Só permitir em eventos de Servos (inclui 'servos de casais')
+        tipo = (getattr(ev, "tipo", "") or "").lower()
+        if tipo and ("servos" not in tipo):
+            raise ValidationError("Atribuição de ministério só é permitida para eventos de Servos.")
+
+        # 3) Impedir 2 coordenadores (checa além do UniqueConstraint para erro amigável)
+        if self.is_coordenador and self.ministerio_id and ev:
             qs = type(self).objects.filter(
-                evento_id=self.evento_id,
+                evento_id=ev.id,
                 ministerio_id=self.ministerio_id,
-                is_coordenador=True
+                is_coordenador=True,
             )
             if self.pk:
                 qs = qs.exclude(pk=self.pk)
             if qs.exists():
-                raise ValidationError({"is_coordenador": "Este ministério já possui um(a) coordenador(a) neste evento."})
+                raise ValidationError("Este ministério já possui um(a) coordenador(a) neste evento.")
+
+        # (Opcional) Se Ministério for escopo do evento, valide coerência:
+        # if self.ministerio and hasattr(self.ministerio, "evento_id") and self.ministerio.evento_id != ev.id:
+        #     raise ValidationError("Este ministério não pertence a este evento.")
+
+    # --- Sincronismo e validação antes de persistir ---
+    def save(self, *args, **kwargs):
+        # Sempre sincroniza evento <- inscricao.evento
+        if self.inscricao_id:
+            ev_id = getattr(self.inscricao, "evento_id", None)
+            if ev_id and self.evento_id != ev_id:
+                self.evento_id = ev_id
+        # Valida tudo já com o evento sincronizado
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
+        p = getattr(self.inscricao, "participante", None)
+        nome = getattr(p, "nome", "Participante")
+        m = getattr(self.ministerio, "nome", None) or "Sem ministério"
+        ev_nome = getattr(self.evento, "nome", "Evento")
         tag = " (Coord.)" if self.is_coordenador else ""
-        nome_min = self.ministerio.nome if self.ministerio else "Sem ministério"
-        return f"{self.inscricao.participante.nome}{tag} → {nome_min} @ {self.evento.nome}"
-
+        return f"{nome}{tag} → {m} @ {ev_nome}"
 
 class AlocacaoGrupo(models.Model):
     """
-    Liga uma inscrição (que deve ser de um evento 'servos') a um Grupo (global) em um EVENTO específico.
+    Liga uma inscrição (normalmente de um evento de 'servos' ou 'servos de casais')
+    a um Grupo (global), referenciando também o evento (copiado da inscrição).
     """
     inscricao = models.OneToOneField(
         "Inscricao",
         on_delete=models.CASCADE,
         related_name="alocacao_grupo"
     )
+    # Mantemos o FK de evento para facilitar relatórios/consultas,
+    # mas ele é sempre sincronizado com inscricao.evento no save().
     evento = models.ForeignKey(
         "EventoAcampamento",
         on_delete=models.CASCADE,
@@ -1667,6 +1745,8 @@ class AlocacaoGrupo(models.Model):
         null=True, blank=True,
         related_name="alocacoes"
     )
+    funcao = models.CharField(max_length=100, blank=True)
+    is_coordenador = models.BooleanField(default=False)
     data_alocacao = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1677,14 +1757,41 @@ class AlocacaoGrupo(models.Model):
 
     def clean(self):
         super().clean()
-        # Inscrição e evento devem bater
-        if self.inscricao and self.evento and self.inscricao.evento_id != self.evento_id:
-            raise ValidationError({"evento": "O evento da alocação deve ser o mesmo da inscrição."})
 
-        # Só em eventos de Servos
-        if self.evento and (self.evento.tipo or "").lower() != "servos":
-            raise ValidationError({"evento": "Atribuição de grupo só é permitida para eventos de Servos."})
+        # 1) Garante que evento == inscricao.evento (se ambos existem)
+        if self.inscricao_id and self.evento_id:
+            if self.evento_id != self.inscricao.evento_id:
+                # não use a chave 'evento' no erro (para não quebrar forms que não exibem o campo)
+                raise ValidationError(
+                    "O evento da alocação deve ser o mesmo da inscrição."
+                )
+
+        # 2) Permissão: apenas eventos de 'servos' (inclui variantes como 'servos de casais')
+        #    Aqui consideramos qualquer tipo que contenha 'servos' (case-insensitive).
+        ev = getattr(self, "evento", None) or getattr(self, "inscricao", None) and self.inscricao.evento
+        tipo = (getattr(ev, "tipo", "") or "").lower()
+        if tipo and ("servos" not in tipo):
+            # coloque o erro como geral (não vinculado a um campo).
+            raise ValidationError(
+                "Atribuição de grupo só é permitida para eventos de Servos."
+            )
+
+        # 3) (Opcional) Se o seu modelo 'Grupo' fosse por evento (não é o seu caso),
+        #    aqui seria o lugar para validar se grupo.evento == self.evento.
+
+    def save(self, *args, **kwargs):
+        # Antes de salvar, sincroniza evento <- inscricao.evento.
+        if self.inscricao_id:
+            ev_id = getattr(self.inscricao, "evento_id", None)
+            if ev_id and self.evento_id != ev_id:
+                self.evento_id = ev_id
+        # Valida sempre que salvar via código
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
-        g = self.grupo.nome if self.grupo else "Sem grupo"
-        return f"{self.inscricao.participante.nome} → {g} @ {self.evento.nome}"
+        p = getattr(self.inscricao, "participante", None)
+        nome = getattr(p, "nome", "Participante")
+        g = getattr(self.grupo, "nome", None) or "Sem grupo"
+        ev_nome = getattr(self.evento, "nome", "Evento")
+        return f"{nome} → {g} @ {ev_nome}"

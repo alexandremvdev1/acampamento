@@ -6,6 +6,7 @@ import re
 import secrets
 import string
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.signals import user_logged_in, user_logged_out
@@ -14,7 +15,7 @@ from django.db import transaction
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 
-from .models import Paroquia, EventoAcampamento, Ministerio, Grupo
+from .models import Paroquia, EventoAcampamento, Ministerio, Grupo, Pagamento
 
 logger = logging.getLogger("django")
 User = get_user_model()  # AUTH_USER_MODEL
@@ -60,6 +61,13 @@ def _site_base() -> str:
     if base and not base.startswith(("http://", "https://")):
         base = "https://" + base
     return base.rstrip("/")
+
+
+def _InscricaoModel():
+    """
+    Resolve o modelo Inscricao em runtime para evitar NameError e ciclos de import.
+    """
+    return apps.get_model("inscricoes", "Inscricao")
 
 
 # =========================
@@ -168,7 +176,7 @@ def _eh_servos(tipo: str | None) -> bool:
 def _garantir_catalogo_global():
     """
     Garante a existência (global) dos Ministérios e Grupos fixos.
-    Não referencia evento.ministerios nem evento.grupos (pois não existem mais).
+    Não referencia evento.ministerios nem evento.grupos.
     """
     # Ministérios globais
     for nome in MINISTERIOS_FIXOS:
@@ -229,3 +237,50 @@ def criar_catalogos_globais_para_servos(sender, instance: EventoAcampamento, cre
     tipo_antigo = getattr(instance, "_tipo_antigo", None)
     if not created and not _eh_servos(tipo_antigo) and _eh_servos(instance.tipo):
         transaction.on_commit(_do)
+
+
+# =========================
+# Pagamento confirmado → espelhar na inscrição e no par
+# =========================
+def _get_par(insc):
+    """Acha a inscrição pareada (casais). Tenta property e relações comuns."""
+    for attr in ("par", "inscricao_pareada", "pareada_por"):
+        try:
+            par = getattr(insc, attr, None)
+            if par and par.evento_id == insc.evento_id:
+                return par
+        except Exception:
+            pass
+    return None
+
+
+@receiver(post_save, sender=Pagamento)
+def espelhar_pagamento_no_par(sender, instance: Pagamento, created, **kwargs):
+    """
+    Se um Pagamento ficar CONFIRMADO, marca pagamento_confirmado=True na inscrição
+    e também na inscrição pareada (se houver).
+    """
+    insc = getattr(instance, "inscricao", None)
+    if not insc:
+        return
+
+    # Só quando confirmado
+    if instance.status != Pagamento.StatusPagamento.CONFIRMADO:
+        return
+
+    Inscricao = _InscricaoModel()  # resolve o modelo aqui
+
+    # 1) Garante o flag na própria inscrição
+    if not insc.pagamento_confirmado:
+        Inscricao.objects.filter(pk=insc.pk, pagamento_confirmado=False).update(
+            pagamento_confirmado=True,
+            inscricao_concluida=True,   # remova se não usar
+        )
+
+    # 2) Marca o PAR também (se existir)
+    par = _get_par(insc)
+    if par and not par.pagamento_confirmado:
+        Inscricao.objects.filter(pk=par.pk, pagamento_confirmado=False).update(
+            pagamento_confirmado=True,
+            inscricao_concluida=True,   # remova se não usar
+        )
