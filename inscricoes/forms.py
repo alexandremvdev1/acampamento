@@ -12,7 +12,7 @@ from .models import MercadoPagoConfig
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import User
-from .models import InscricaoCasais, InscricaoEvento, InscricaoRetiro
+from .models import InscricaoCasais, InscricaoEvento, InscricaoRetiro, AlocacaoMinisterio
 
 class MercadoPagoConfigForm(forms.ModelForm):
     class Meta:
@@ -1114,3 +1114,48 @@ class FormBasicoPagamentoPublico(forms.Form):
             raise ValidationError("Informe o CPF do 2º participante.")
 
         return data
+    
+class MinisterioForm(forms.ModelForm):
+    class Meta:
+        model = Ministerio
+        fields = ["nome", "descricao"]
+
+    def __init__(self, *args, **kwargs):
+        # vamos receber o evento por argumento para validar/atribuir
+        self.evento = kwargs.pop("evento", None)
+        super().__init__(*args, **kwargs)
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if self.evento:
+            obj.evento = self.evento
+        if commit:
+            obj.save()
+        return obj
+        
+class AlocarInscricaoForm(forms.Form):
+    inscricao = forms.ModelChoiceField(
+        queryset=Inscricao.objects.none(),
+        label="Inscrição (servo)"
+    )
+
+    def __init__(self, *args, **kwargs):
+        ministerio = kwargs.pop("ministerio")
+        super().__init__(*args, **kwargs)
+        # Só inscrições do MESMO evento do ministério, sem alocação ainda
+        self.fields["inscricao"].queryset = (
+            Inscricao.objects
+            .filter(
+                evento=ministerio.evento,
+                alocacao_ministerio__isnull=True
+            )
+            .select_related("participante", "evento")
+            .order_by("participante__nome")
+        )
+
+    def clean_inscricao(self):
+        insc = self.cleaned_data["inscricao"]
+        # Garante que é evento de servos (se for sua regra)
+        if (insc.evento.tipo or "").lower() != "servos":
+            raise forms.ValidationError("Apenas inscrições do evento de Servos podem ser alocadas.")
+        return insc

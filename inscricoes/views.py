@@ -99,6 +99,7 @@ from .forms import (
     InscricaoCasaisForm,
     InscricaoEventoForm,
     InscricaoRetiroForm,
+    AlocarInscricaoForm,
 )
 
 
@@ -4411,11 +4412,6 @@ def _can_manage_event(user, evento: EventoAcampamento) -> bool:
 
 @login_required
 def ministerios_evento(request, evento_id):
-    """
-    Lista e cadastra ministérios para um evento (apenas eventos do tipo 'Servos').
-    GET: lista + formulário
-    POST: cria novo ministério para o evento
-    """
     evento = get_object_or_404(
         EventoAcampamento.objects.select_related("paroquia"), pk=evento_id
     )
@@ -4423,7 +4419,6 @@ def ministerios_evento(request, evento_id):
     if not _can_manage_event(request.user, evento):
         return HttpResponseForbidden("Você não tem permissão para gerenciar este evento.")
 
-    # Lista (respeitando a sua regra de negócio)
     if (evento.tipo or "").lower() != "servos":
         messages.warning(request, "Ministérios só se aplicam a eventos do tipo Servos.")
         ministerios = Ministerio.objects.none()
@@ -4432,13 +4427,12 @@ def ministerios_evento(request, evento_id):
             Ministerio.objects
             .filter(evento=evento)
             .annotate(
-                total_servos=Count("inscricoes", filter=Q(inscricoes__ministerio__isnull=False)),
-                total_coord=Count("inscricoes", filter=Q(inscricoes__is_coordenador=True)),
+                total_servos=Count("alocacoes", filter=Q(alocacoes__ministerio__isnull=False)),
+                total_coord=Count("alocacoes", filter=Q(alocacoes__is_coordenador=True)),
             )
             .order_by("nome")
         )
 
-    # Criação (no mesmo template)
     if request.method == "POST":
         nome = (request.POST.get("nome") or "").strip()
         descricao = (request.POST.get("descricao") or "").strip() or None
@@ -4451,11 +4445,9 @@ def ministerios_evento(request, evento_id):
                 m.full_clean()
                 m.save()
                 messages.success(request, f"Ministério “{m.nome}” criado com sucesso.")
-                # permanece na mesma página
                 return redirect(reverse("inscricoes:ministerios_evento", args=[evento.pk]))
             except ValidationError as e:
-                # Vai capturar UniqueConstraint e a regra do clean()
-                for _, errs in e.message_dict.items():
+                for errs in e.message_dict.values():
                     for err in errs:
                         messages.error(request, err)
 
@@ -4485,7 +4477,8 @@ def excluir_ministerio(request, pk: int):
     if request.method != "POST":
         return redirect(reverse("inscricoes:ministerios_evento", args=[evento.pk]))
 
-    if ministerio.inscricoes.exists():
+    # ⚠️ Trocar inscricoes → alocacoes
+    if ministerio.alocacoes.exists():
         messages.error(request, "Não é possível excluir: há servos alocados neste ministério.")
         return redirect(reverse("inscricoes:ministerios_evento", args=[evento.pk]))
 
@@ -4894,3 +4887,193 @@ def evento_participantes(request, evento_id):
         "status_choices": status_choices,
     }
     return render(request, "inscricoes/evento_participantes.html", context)
+
+from .forms import MinisterioForm
+
+@require_http_methods(["GET", "POST"])
+def ministerio_novo(request, evento_id):
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+
+    # opcional: bloquear criação se não for evento de servos
+    if (evento.tipo or "").lower() != "servos":
+        messages.error(request, "Ministérios só podem ser criados em eventos do tipo Servos.")
+        return redirect("inscricoes:ministerios_evento", evento_id=evento.id)
+
+    if request.method == "POST":
+        form = MinisterioForm(request.POST, evento=evento)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Ministério criado com sucesso.")
+            return redirect("inscricoes:ministerios_evento", evento_id=evento.id)
+    else:
+        form = MinisterioForm(evento=evento)
+
+    return render(request, "inscricoes/ministerio_novo.html", {
+        "evento": evento,
+        "form": form,
+    })
+
+from django.forms import modelform_factory
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def ministerio_editar(request, pk: int):
+    ministerio = get_object_or_404(
+        Ministerio.objects.select_related("evento__paroquia"),
+        pk=pk
+    )
+    evento = ministerio.evento
+
+    if not _can_manage_event(request.user, evento):
+        return HttpResponseForbidden("Você não tem permissão para esta ação.")
+
+    Form = modelform_factory(Ministerio, fields=["nome", "descricao"])
+
+    if request.method == "POST":
+        form = Form(request.POST, instance=ministerio)
+        if form.is_valid():
+            try:
+                obj = form.save(commit=False)
+                obj.full_clean()
+                obj.save()
+                messages.success(request, "Ministério atualizado com sucesso.")
+                return redirect(reverse("inscricoes:ministerios_evento", args=[evento.id]))
+            except ValidationError as e:
+                for errs in e.message_dict.values():
+                    for err in errs:
+                        messages.error(request, err)
+    else:
+        form = Form(instance=ministerio)
+
+    return render(
+        request,
+        "inscricoes/ministerio_form.html",
+        {"form": form, "evento": evento, "ministerio": ministerio},
+    )
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, render
+from django.http import HttpResponseForbidden
+
+@login_required
+def alocacoes_ministerio(request, pk: int):
+    """
+    Página com a lista de alocados + formulário para incluir nova alocação.
+    """
+    ministerio = get_object_or_404(
+        Ministerio.objects.select_related("evento", "evento__paroquia"),
+        pk=pk
+    )
+    evento = ministerio.evento
+
+    # Permissão básica (ajuste se tiver helper)
+    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != evento.paroquia_id:
+        return HttpResponseForbidden("Sem permissão para este ministério.")
+
+    # Lista atual (usa related_name **alocacoes**)
+    alocados = (
+        AlocacaoMinisterio.objects
+        .filter(ministerio=ministerio)
+        .select_related("inscricao__participante", "inscricao__evento")
+        .order_by("inscricao__participante__nome")
+    )
+
+    form = AlocarInscricaoForm(request.POST or None, ministerio=ministerio)
+    if request.method == "POST" and form.is_valid():
+        insc = form.cleaned_data["inscricao"]
+        try:
+            AlocacaoMinisterio.objects.create(
+                inscricao=insc,
+                ministerio=ministerio
+            )
+            messages.success(request, f"{insc.participante.nome} alocado(a) em {ministerio.nome}.")
+            return redirect(reverse("inscricoes:alocacoes_ministerio", args=[ministerio.id]))
+        except ValidationError as e:
+            for msg in sum(e.message_dict.values(), []):
+                messages.error(request, msg)
+
+    return render(request, "inscricoes/alocacoes_ministerio.html", {
+        "evento": evento,
+        "ministerio": ministerio,
+        "alocados": alocados,
+        "form": form,
+    })
+
+
+@login_required
+@require_POST
+def alocar_inscricao_ministerio(request, pk: int):
+    """
+    Handler do POST (se quiser separar do GET).
+    O template que você mandou POSTa para esta rota.
+    """
+    ministerio = get_object_or_404(Ministerio, pk=pk)
+    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != ministerio.evento.paroquia_id:
+        return HttpResponseForbidden("Sem permissão.")
+
+    form = AlocarInscricaoForm(request.POST, ministerio=ministerio)
+    if form.is_valid():
+        insc = form.cleaned_data["inscricao"]
+        try:
+            AlocacaoMinisterio.objects.create(
+                inscricao=insc,
+                ministerio=ministerio
+            )
+            messages.success(request, f"{insc.participante.nome} alocado(a) em {ministerio.nome}.")
+        except ValidationError as e:
+            for msg in sum(e.message_dict.values(), []):
+                messages.error(request, msg)
+    else:
+        # Reapresenta os erros de validação do form
+        for field, errs in form.errors.items():
+            for err in errs:
+                messages.error(request, err)
+
+    return redirect(reverse("inscricoes:alocacoes_ministerio", args=[ministerio.id]))
+
+
+@login_required
+@require_POST
+def desalocar_inscricao_ministerio(request, alocacao_id: int):
+    """
+    Remove a alocação (recebe o ID da alocação).
+    """
+    aloc = get_object_or_404(
+        AlocacaoMinisterio.objects.select_related("inscricao__participante", "ministerio__evento__paroquia"),
+        pk=alocacao_id
+    )
+    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != aloc.ministerio.evento.paroquia_id:
+        return HttpResponseForbidden("Sem permissão.")
+    nome = aloc.inscricao.participante.nome
+    ministerio_id = aloc.ministerio_id
+    aloc.delete()
+    messages.success(request, f"{nome} removido(a) do ministério.")
+    return redirect(reverse("inscricoes:alocacoes_ministerio", args=[ministerio_id]))
+
+
+@login_required
+@require_POST
+def toggle_coordenador_ministerio(request, alocacao_id: int):
+    """
+    Marca/Desmarca a alocação como coordenador(a).
+    Mantém a constraint de 'apenas 1' (sua Meta já garante).
+    """
+    aloc = get_object_or_404(
+        AlocacaoMinisterio.objects.select_related("ministerio", "inscricao__participante"),
+        pk=alocacao_id
+    )
+    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != aloc.ministerio.evento.paroquia_id:
+        return HttpResponseForbidden("Sem permissão.")
+
+    ativo = (request.POST.get("ativo") or "").strip() in {"1", "true", "on", "yes", "sim"}
+    aloc.is_coordenador = ativo
+    try:
+        aloc.full_clean()
+        aloc.save(update_fields=["is_coordenador"])
+        msg = "marcado(a) como coordenador(a)." if ativo else "removido(a) da coordenação."
+        messages.success(request, f"{aloc.inscricao.participante.nome} {msg}")
+    except ValidationError as e:
+        for msg in sum(e.message_dict.values(), []):
+            messages.error(request, msg)
+
+    return redirect(reverse("inscricoes:alocacoes_ministerio", args=[aloc.ministerio_id]))

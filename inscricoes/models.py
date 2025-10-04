@@ -18,6 +18,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from django.db.utils import IntegrityError
+from django.utils.functional import cached_property
 
 
 from cloudinary.models import CloudinaryField
@@ -1520,36 +1521,60 @@ class Grupo(models.Model):
 
 
 class Ministerio(models.Model):
-    evento = models.ForeignKey("EventoAcampamento", on_delete=models.CASCADE, related_name="ministerios")
+    evento = models.ForeignKey(
+        "EventoAcampamento",
+        on_delete=models.CASCADE,
+        related_name="ministerios"
+    )
     nome = models.CharField(max_length=100)
     descricao = models.TextField(blank=True, null=True)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["evento", "nome"], name="uniq_ministerio_nome_por_evento"),
+            models.UniqueConstraint(
+                fields=["evento", "nome"],
+                name="uniq_ministerio_nome_por_evento",
+            ),
         ]
 
     def clean(self):
         super().clean()
         if (self.evento.tipo or "").lower() != "servos":
-            raise ValidationError({"evento": "Ministérios só podem ser cadastrados em eventos do tipo Servos."})
+            raise ValidationError(
+                {"evento": "Ministérios só podem ser cadastrados em eventos do tipo Servos."}
+            )
 
     def __str__(self):
         return f"{self.nome} ({self.evento.nome})"
 
-    # — Helpers convenientes —
-    @property
+    # ===== Helpers convenientes =====
+    @cached_property
     def coordenador_alocacao(self):
-        """Retorna a AlocacaoMinisterio marcada como coordenador (ou None)."""
-        return self.inscricoes.filter(is_coordenador=True).select_related(
-            "inscricao__participante"
-        ).first()
+        """
+        Retorna a AlocacaoMinisterio marcada como coordenador (ou None).
+        Usa select_related para evitar N+1.
+        """
+        return (
+            self.alocacoes.filter(is_coordenador=True)
+            .select_related("inscricao__participante")
+            .first()
+        )
 
     @property
     def coordenador_participante(self):
         """Retorna o Participante do coordenador (ou None)."""
         a = self.coordenador_alocacao
         return a.inscricao.participante if a else None
+
+    @property
+    def alocados_count(self) -> int:
+        """Contagem rápida sem depender de annotate na view."""
+        # se a view já anotou Count('alocacoes'), use-a; senão, calcula aqui
+        if hasattr(self, "alocacoes__count"):
+            return getattr(self, "alocacoes__count") or 0
+        if hasattr(self, "alocacoes_count"):
+            return getattr(self, "alocacoes_count") or 0
+        return self.alocacoes.count()
 
 
 class AlocacaoMinisterio(models.Model):
@@ -1563,14 +1588,14 @@ class AlocacaoMinisterio(models.Model):
         "Ministerio",
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name="inscricoes"
+        related_name="alocacoes"   # <- padronizado (ANTES era 'inscricoes')
     )
     funcao = models.CharField(
         max_length=100,
         blank=True, null=True,
         help_text="Ex.: Coordenação, Liturgia, Música..."
     )
-    # ✅ NOVO: flag de coordenador
+    # flag de coordenador
     is_coordenador = models.BooleanField(
         default=False,
         verbose_name="É coordenador(a) do ministério?"
@@ -1598,7 +1623,7 @@ class AlocacaoMinisterio(models.Model):
         if (self.inscricao.evento.tipo or "").lower() != "servos":
             raise ValidationError({"inscricao": "Atribuição de ministério só é permitida para eventos de Servos."})
 
-        # Validação amigável: impedir 2 coordenadores
+        # Impedir 2 coordenadores
         if self.is_coordenador and self.ministerio_id:
             qs = AlocacaoMinisterio.objects.filter(
                 ministerio_id=self.ministerio_id,

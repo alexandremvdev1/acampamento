@@ -60,7 +60,7 @@
     <form method="post" action="{% url 'inscricoes:alocar_inscricao_ministerio' ministerio.id %}" class="row g-2">
       {% csrf_token %}
       <div class="col-12 col-md-8">
-        {{ form.inscricao.label_tag }} 
+        {{ form.inscricao.label_tag }}
         {{ form.inscricao }}
       </div>
       <div class="col-12 col-md-4 d-flex align-items-end">
@@ -79,7 +79,7 @@
             <tr>
               <th>Participante</th>
               <th>Inscrição</th>
-              <th class="text-end" style="width:220px;">Ações</th>
+              <th class="text-end" style="width:260px;">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -93,17 +93,33 @@
                       {{ a.inscricao.participante.cidade }}{% if a.inscricao.participante.estado %} — {{ a.inscricao.participante.estado }}{% endif %}
                     </div>
                   {% endif %}
+                  {% if a.is_coordenador %}
+                    <span class="badge text-bg-info ms-1">Coordenador(a)</span>
+                  {% endif %}
                 </td>
                 <td>
-                  <span class="badge text-bg-secondary">{{ a.inscricao.id }}</span>
+                  <span class="badge text-bg-secondary">#{{ a.inscricao.id }}</span>
                   <span class="small text-muted-2 ms-1">{{ a.inscricao.evento.nome }}</span>
                 </td>
                 <td class="text-end">
                   <div class="btn-group" role="group">
-                    <a href="{% url 'inscricoes:inscricao_ficha_geral' a.inscricao.id %}" class="btn btn-success btn-sm">
+                    <!-- Ver inscrição -->
+                    <a href="{% url 'inscricoes:ver_inscricao' a.inscricao.id %}" class="btn btn-success btn-sm">
                       <i class="fa-solid fa-eye"></i> Ver inscrição
                     </a>
-                    <form method="post" action="{% url 'inscricoes:desalocar_inscricao_ministerio' ministerio.id a.inscricao.id %}">
+
+                    <!-- Alternar coordenador -->
+                    <form method="post" action="{% url 'inscricoes:toggle_coordenador_ministerio' a.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="ativo" value="{% if a.is_coordenador %}0{% else %}1{% endif %}">
+                      <button class="btn btn-warning btn-sm">
+                        <i class="fa-solid fa-user-gear"></i>
+                        {% if a.is_coordenador %}Remover coord.{% else %}Tornar coord.{% endif %}
+                      </button>
+                    </form>
+
+                    <!-- Remover alocação -->
+                    <form method="post" action="{% url 'inscricoes:desalocar_inscricao_ministerio' a.id %}">
                       {% csrf_token %}
                       <button class="btn btn-danger btn-sm" onclick="return confirm('Remover do ministério?');">
                         <i class="fa-solid fa-user-minus"></i> Remover

@@ -120,7 +120,31 @@ urlpatterns = [
     path("ministerios/evento/<iduu:evento_id>/", views.ministerios_evento, name="ministerios_evento"),
     path("ministerios/evento/<iduu:evento_id>/novo/", views.ministerio_create, name="ministerio_create"),
     path("ministerio/<int:pk>/excluir/", views.excluir_ministerio, name="excluir_ministerio"),
+    path("ministerios/evento/<uuid:evento_id>/novo/",views.ministerio_novo,name="ministerio_novo",),
+    path(
+        "ministerios/evento/<uuid:evento_id>/",
+        views.ministerios_evento,
+        name="ministerios_evento",
+    ),
+    path(
+        "ministerios/<int:pk>/alocacoes/",
+        views.alocacoes_ministerio,
+        name="alocacoes_ministerio",
+    ),
+    path(
+        "ministerios/<int:pk>/editar/",
+        views.ministerio_editar,
+        name="ministerio_editar",
+    ),
+    path(
+        "ministerios/<int:pk>/excluir/",
+        views.excluir_ministerio,
+        name="ministerio_deletar",   # seu template já usa esse name
+    ),
 
+    path("ministerios/<int:pk>/alocar/", views.alocar_inscricao_ministerio, name="alocar_inscricao_ministerio"),
+    path("ministerios/alocacao/<int:alocacao_id>/remover/", views.desalocar_inscricao_ministerio, name="desalocar_inscricao_ministerio"),
+    path("ministerios/alocacao/<int:alocacao_id>/coordenador/", views.toggle_coordenador_ministerio, name="toggle_coordenador_ministerio"),
     # Formulários complementares
     path("formulario/casais/<uuid:evento_id>/", views.formulario_casais, name="formulario_casais"),
     path("formulario/<int:inscricao_id>/", views.formulario_personalizado, name="formulario_personalizado"),
@@ -138,7 +162,7 @@ urlpatterns = [
     path("pagamento/pendente/<int:inscricao_id>/", views.mp_pending, name="mp_pending"),
     path("pagamento/falha/<int:inscricao_id>/", views.mp_failure, name="mp_failure"),
     path("admin-paroquia/mp-config/", mp_config, name="mp_config"),
-    path("inscricao/<int:inscricao_id>/incluir-pagamento/",views.incluir_pagamento,name="incluir_pagamento"),
+    path("inscricao/<int:inscricao_id>/incluir-pagamento/",views.incluir_pagamento,name="incluir_pagamento",),
 
     # Portal do participante
     path("minhas-inscricoes/", views.minhas_inscricoes_por_cpf, name="minhas_inscricoes_por_cpf"),

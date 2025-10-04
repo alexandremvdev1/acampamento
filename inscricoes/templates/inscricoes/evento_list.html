@@ -61,18 +61,16 @@
     /* Switch igual ao da tela de participantes */
     .form-check-input{ transform: scale(1.15); cursor:pointer; }
 
-    /* ===== AÇÕES: mais espaço entre botões ===== */
+    /* ===== AÇÕES: botões lado a lado ===== */
     .actions{
       display:flex;
       justify-content:flex-end;
       align-items:center;
-      gap:.6rem;                 /* espaçamento padrão (mobile) */
-    }
-    @media (min-width: 768px){
-      .actions{ gap:.9rem; }     /* aumenta em telas médias+ */
+      gap:.5rem;
+      flex-wrap:wrap; /* se estourar, quebra linha; mas ficam juntos */
     }
     .actions .btn{
-      min-width: 36px;           /* não “colapsa” muito */
+      min-width: 36px;
       height: 36px;
       display:inline-flex;
       align-items:center;
@@ -117,27 +115,7 @@
       </li>
     </ul>
 
-    <!-- Atalhos -->
-    <div class="nav-title">Atalhos</div>
-    <ul class="nav-list">
-      {% if eventos %}
-        {% for e in eventos|slice:":8" %}
-          {% with eid=e.pk|default:e.id %}
-            {% if eid %}
-              <li class="nav-item">
-                <a href="{% url 'inscricoes:evento_configuracoes' eid %}">
-                  ⚙️ <span>Configurações</span>
-                </a>
-              </li>
-            {% endif %}
-          {% endwith %}
-        {% endfor %}
-      {% else %}
-        <li class="nav-item">
-          <span class="text-muted small ms-2">Sem eventos</span>
-        </li>
-      {% endif %}
-    </ul>
+    {# REMOVIDO: seção "Atalhos" com links de Configurações #}
 
     <div class="nav-title">Resumo</div>
     <div class="row g-2 m-0">
@@ -295,13 +273,13 @@
                                  data-id="{{ e.id }}"
                                  data-url="{% url 'inscricoes:evento_toggle_servos' e.id %}"
                                  {% if e.permitir_inscricao_servos %}checked{% endif %}>
-                          <label class="form-check-label small" for="servos_{{ e.id }}">Permitir</label>
+                          <label class="form-check-label small" for="servos_{{ e.id }}">Permitir Servos</label>
                         </div>
 
                         {% if e.permitir_inscricao_servos %}
-                          <span id="pill-servos-{{ e.id }}" class="pill success">Permite servos</span>
+                          <span id="pill-servos-{{ e.id }}" class="pill success">Sim</span>
                         {% else %}
-                          <span id="pill-servos-{{ e.id }}" class="pill warn">Não permite servos</span>
+                          <span id="pill-servos-{{ e.id }}" class="pill warn">Não</span>
                         {% endif %}
                       </div>
                     {% else %}
@@ -316,6 +294,10 @@
                       </a>
                       <a class="btn btn-primary btn-sm" href="{% url 'inscricoes:evento_editar' e.id %}" title="Editar">
                         <i class="fa-solid fa-pen"></i>
+                      </a>
+                      {# NOVO: CONFIGURAÇÕES AO LADO DOS OUTROS BOTÕES #}
+                      <a class="btn btn-outline-primary btn-sm" href="{% url 'inscricoes:evento_configuracoes' e.id %}" title="Configurações do evento">
+                        <i class="fa-solid fa-sliders"></i>
                       </a>
                       <a class="btn btn-danger btn-sm" href="{% url 'inscricoes:evento_deletar' e.id %}" onclick="return confirm('Tem certeza que deseja excluir?');" title="Excluir">
                         <i class="fa-solid fa-trash"></i>
@@ -380,18 +362,18 @@ function getCookie(name){
 }
 const CSRF_TOKEN = getCookie('csrftoken');
 
-// ========= Flash (toast) =========
+// ========= Flash (toast sobreposto) =========
 function flash(msg, variant='success') {
   const area = document.getElementById('flashArea');
   if (!area) return;
-  const id = `f-${Date.now()}`;
+
   const cls = variant === 'success' ? 'alert-success'
             : variant === 'warning' ? 'alert-warning'
             : variant === 'danger'  ? 'alert-danger'
             : 'alert-info';
+
   const el = document.createElement('div');
-  el.id = id;
-  el.className = `alert ${cls} shadow-sm border rounded-3 py-2 px-3 mx-auto`;
+  el.className = `alert ${cls} shadow-sm border rounded-3 py-2 px-3 mx-auto mb-2 flash-toast`;
   el.style.maxWidth = '680px';
   el.innerHTML = `
     <div class="d-flex align-items-center justify-content-between gap-3">
@@ -399,8 +381,14 @@ function flash(msg, variant='success') {
       <button type="button" class="btn-close" aria-label="Fechar"></button>
     </div>`;
   el.querySelector('.btn-close').onclick = () => el.remove();
-  area.appendChild(el);
-  setTimeout(() => { try { el.remove(); } catch(e){} }, 2600);
+
+  area.prepend(el);
+
+  const toasts = area.querySelectorAll('.flash-toast');
+  if (toasts.length > 3) {
+    toasts[toasts.length - 1]?.remove();
+  }
+  setTimeout(() => { try { el.remove(); } catch(e){} }, 2800);
 }
 
 // ========= Toggle via switch (AJAX) =========
@@ -411,7 +399,7 @@ async function toggleServos(url, permitir) {
   const r = await fetch(url, {
     method: 'POST',
     headers: {
-      'X-CSRFToken': CSRF_TOKEN,
+      'X-CSRFToken': CSRF_TOKEN || '',
       'X-Requested-With': 'XMLHttpRequest',
       'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
     },
@@ -427,7 +415,7 @@ document.addEventListener('change', async (e) => {
   if (!el) return;
 
   const eventoId = el.dataset.id;
-  const url      = el.dataset.url;   // URL certa por linha
+  const url      = el.dataset.url;
   const checked  = el.checked;
   const pill     = document.getElementById(`pill-servos-${eventoId}`);
 
@@ -435,26 +423,27 @@ document.addEventListener('change', async (e) => {
     const data = await toggleServos(url, checked);
     if (!data.ok) throw new Error('Resposta inválida');
 
-    // Atualiza pill
     if (pill) {
       if (data.permitir) {
         pill.className = 'pill success';
-        pill.textContent = 'Permite servos';
+        pill.textContent = 'Sim';
       } else {
         pill.className = 'pill warn';
-        pill.textContent = 'Não permite servos';
+        pill.textContent = 'Não';
       }
     }
 
-    // Mensagem
-    flash(data.msg || (data.permitir ? 'Inscrições de servos ativadas.' : 'Inscrições de servos desativadas.'), data.permitir ? 'success' : 'warning');
+    flash(
+      data.msg || (data.permitir ? 'Inscrições de servos ativadas.' : 'Inscrições de servos desativadas.'),
+      data.permitir ? 'success' : 'warning'
+    );
   } catch (err) {
-    // Reverte o switch em caso de erro
     el.checked = !checked;
     flash('Não foi possível atualizar a permissão de servos.', 'danger');
     console.error(err);
   }
 });
 </script>
+
 </body>
 </html>
