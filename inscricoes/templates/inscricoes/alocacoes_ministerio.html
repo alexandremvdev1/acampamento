@@ -6,20 +6,34 @@
   <title>Alocações — {{ ministerio.nome }} ({{ evento.nome }})</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
 
   <style>
     :root{ --ink:#0f172a; --muted:#64748b; --g1:#0b1020; --g2:#111a3a; --line:#e5e7eb; --base-font:14px }
     html{ font-size:var(--base-font) } body{ background:#f6f8fb; color:var(--ink) }
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)) }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem } .navbar-brand{ font-size:1rem }
+
     .sticky-topbar{ position:sticky; top:0; z-index:20; background:#ffffffd6; backdrop-filter:blur(6px); border:1px solid var(--line); border-radius:.9rem }
     .card-clean{ border:1px solid var(--line); border-radius:.95rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.08) }
     .text-muted-2{ color:var(--muted) } .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700 }
     .table-wrap{ border:1px solid #e5e7eb; border-radius:.8rem; overflow:hidden; background:#fff }
-    .table-sticky thead th{ position:sticky; top:0; z-index:5; background:#f8fafc !important; border-bottom:1px solid #e5e7eb !important; text-transform:uppercase; letter-spacing:.04em; font-size:.78rem; color:#64748b }
+    .table-sticky thead th{ position:sticky; top:0; z-index:5; background:#f8fafc!important; border-bottom:1px solid #e5e7eb!important; text-transform:uppercase; letter-spacing:.04em; font-size:.78rem; color:#64748b }
     .table{ font-size:.875rem }
     .btn-sm,.btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem }
-    .btn-icon{ width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center }
+
+    /* Deixa o select do campo 'inscricao' com cara de .form-select do Bootstrap */
+    select[name="inscricao"]{
+      display:block; width:100%; padding:.375rem 2.25rem .375rem .75rem;
+      -moz-padding-start:calc(0.75rem - 3px);
+      font-size:1rem; font-weight:400; line-height:1.5; color:#212529; background-color:#fff;
+      background-repeat:no-repeat; background-position:right .75rem center;
+      background-size:16px 12px; border:1px solid var(--line); border-radius:.375rem;
+      transition:border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+    }
+    select[name="inscricao"]:focus{
+      border-color:#86b7fe; outline:0; box-shadow:0 0 0 .25rem rgba(13,110,253,.25);
+    }
   </style>
 </head>
 <body>
@@ -30,38 +44,45 @@
     </a>
     <span class="navbar-text text-white-50 d-none d-md-inline">{{ evento.nome }}</span>
     <div class="d-flex ms-auto gap-2">
-      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:ministerio_editar' ministerio.id %}"><i class="fa-solid fa-pen"></i> Editar</a>
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:ministerio_editar' ministerio.id %}?evento={{ evento.id }}"><i class="fa-solid fa-pen"></i> Editar</a>
       <a class="btn btn-sm btn-secondary" href="{% url 'inscricoes:evento_participantes' evento.id %}"><i class="fa-solid fa-users"></i> Participantes</a>
     </div>
   </div>
 </nav>
 
 <main class="container py-3 py-lg-4">
-  <div class="sticky-topbar p-3 mb-3">
+  <div class="sticky-topbar p-3 mb-3 bg-white">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
       <div>
         <h1 class="h6 m-0">Alocações — {{ ministerio.nome }}</h1>
         <div class="small text-muted-2">{{ evento.nome }}</div>
       </div>
+      <div class="small text-muted-2">
+        {% with total=alocados|length %}
+          Total alocados: <span class="badge text-bg-info">{{ total }}</span>
+        {% endwith %}
+      </div>
     </div>
   </div>
 
   {% if messages %}
-  <div class="mb-3">
-    {% for message in messages %}
-      <div class="alert {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% elif 'warning' in message.tags %}alert-warning{% else %}alert-info{% endif %} mb-2">{{ message }}</div>
-    {% endfor %}
-  </div>
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% elif 'warning' in message.tags %}alert-warning{% else %}alert-info{% endif %} mb-2">{{ message }}</div>
+      {% endfor %}
+    </div>
   {% endif %}
 
   <!-- Adicionar alocação -->
   <section class="card-clean p-3 p-md-4 mb-3">
     <h2 class="sec-title"><i class="fa-solid fa-user-plus me-1"></i> Incluir participante no ministério</h2>
-    <form method="post" action="{% url 'inscricoes:alocar_inscricao_ministerio' ministerio.id %}" class="row g-2">
+    <form method="post" action="{% url 'inscricoes:alocar_inscricao_ministerio' pk=ministerio.id evento_id=evento.id %}" class="row g-2">
       {% csrf_token %}
       <div class="col-12 col-md-8">
-        {{ form.inscricao.label_tag }}
+        <label class="form-label fw-bold text-muted-2">{{ form.inscricao.label }}</label>
         {{ form.inscricao }}
+        {% if form.inscricao.help_text %}<div class="form-text">{{ form.inscricao.help_text }}</div>{% endif %}
+        {% if form.inscricao.errors %}<div class="text-danger small mt-1">{{ form.inscricao.errors.0 }}</div>{% endif %}
       </div>
       <div class="col-12 col-md-4 d-flex align-items-end">
         <button class="btn btn-primary w-100"><i class="fa-solid fa-plus me-1"></i> Alocar</button>
@@ -103,12 +124,9 @@
                 </td>
                 <td class="text-end">
                   <div class="btn-group" role="group">
-                    <!-- Ver inscrição -->
                     <a href="{% url 'inscricoes:ver_inscricao' a.inscricao.id %}" class="btn btn-success btn-sm">
                       <i class="fa-solid fa-eye"></i> Ver inscrição
                     </a>
-
-                    <!-- Alternar coordenador -->
                     <form method="post" action="{% url 'inscricoes:toggle_coordenador_ministerio' a.id %}">
                       {% csrf_token %}
                       <input type="hidden" name="ativo" value="{% if a.is_coordenador %}0{% else %}1{% endif %}">
@@ -117,8 +135,6 @@
                         {% if a.is_coordenador %}Remover coord.{% else %}Tornar coord.{% endif %}
                       </button>
                     </form>
-
-                    <!-- Remover alocação -->
                     <form method="post" action="{% url 'inscricoes:desalocar_inscricao_ministerio' a.id %}">
                       {% csrf_token %}
                       <button class="btn btn-danger btn-sm" onclick="return confirm('Remover do ministério?');">
@@ -145,6 +161,7 @@
     </div>
   </footer>
 </main>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

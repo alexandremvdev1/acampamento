@@ -34,6 +34,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from django.core.exceptions import ValidationError
 from .models import Inscricao, EventoAcampamento, InscricaoStatus
+from django.db.models import Prefetch, Count, Q
 
 # ——— Terceiros
 import mercadopago
@@ -3941,6 +3942,8 @@ def toggle_selecao_inscricao(request, pk: int):
         "msg": "Participante selecionado" if inscricao.foi_selecionado else "Participante desmarcado",
     })
 
+from django.db.models import Q, Count
+
 @login_required
 def inscricao_ficha_geral(request, pk: int):
     qs = (
@@ -3962,26 +3965,33 @@ def inscricao_ficha_geral(request, pk: int):
         and getattr(u, "paroquia_id", None) != inscricao.paroquia_id):
         return HttpResponseForbidden("Você não tem permissão para ver esta inscrição.")
 
-    # Listas para os selects da sidebar (somente para eventos de SERVOS)
+    # Ministérios só para evento do tipo "servos"
     ministerios = []
-    grupos = []
     if (inscricao.evento.tipo or "").lower() == "servos":
         ministerios = list(
-            Ministerio.objects.filter(evento_id=inscricao.evento_id).order_by("nome")
+            Ministerio.objects.filter(ativo=True)
+            .order_by("nome")
         )
-        grupos = list(
-            Grupo.objects.filter(evento_id=inscricao.evento_id).order_by("nome")
-        )
+
+    # Grupos: AGORA SEMPRE (catálogo global)
+    # Se quiser limitar aos grupos “usados” neste evento, troque por:
+    # grupos = (Grupo.objects
+    #           .filter(alocacoes__inscricao__evento=inscricao.evento)
+    #           .distinct().order_by("nome"))
+    grupos = list(
+        Grupo.objects.all().order_by("nome")
+    )
 
     return render(
         request,
         "inscricoes/ficha_geral_participante.html",
         {
             "inscricao": inscricao,
-            "ministerios": ministerios,  # usados no <select> de Ministério
-            "grupos": grupos,            # usados no <select> de Grupo
+            "ministerios": ministerios,  # só será lista se tipo=servos
+            "grupos": grupos,            # agora sempre presente
         },
     )
+
 
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
@@ -4170,88 +4180,108 @@ def _eh_evento_servos(inscricao: Inscricao) -> bool:
 @require_POST
 def alocar_ministerio(request, inscricao_id: int):
     inscricao = get_object_or_404(
-        Inscricao.objects.select_related("evento", "paroquia"), id=inscricao_id
+        Inscricao.objects.select_related("evento", "participante", "paroquia"),
+        pk=inscricao_id
     )
 
-    # (opcional) segurança: só da mesma paróquia ou admin_geral/superuser
-    u = request.user
-    if (not getattr(u, "is_superuser", False)
-        and getattr(u, "tipo_usuario", "") != "admin_geral"
-        and getattr(u, "paroquia_id", None) != inscricao.paroquia_id):
-        messages.error(request, "Você não tem permissão para alterar esta inscrição.")
-        return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
+    if (not request.user.is_superuser
+        and getattr(request.user, "paroquia_id", None) != inscricao.evento.paroquia_id):
+        return HttpResponseForbidden("Sem permissão.")
 
-    # só faz sentido para eventos de servos
-    if (inscricao.evento.tipo or "").lower() != "servos":
-        messages.error(request, "Alocação de ministério só é permitida em eventos de Servos.")
-        return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
+    ministerio_id = (request.POST.get("ministerio_id") or "").strip()
+    is_coord = (request.POST.get("is_coordenador") or "").lower() in {"1","true","on","yes","sim"}
 
-    ministerio_id = request.POST.get("ministerio_id") or None
-    is_coord = bool(request.POST.get("is_coordenador"))
+    # Helper pra voltar para a MESMA página
+    def back():
+        return redirect(request.META.get("HTTP_REFERER") or
+                        reverse("inscricoes:ver_inscricao", args=[inscricao.id]))
 
-    # cria/atualiza OneToOne
-    alo, _ = AlocacaoMinisterio.objects.get_or_create(inscricao=inscricao)
-    if ministerio_id:
+    # Se veio vazio: remover alocação
+    if not ministerio_id:
+        qs = AlocacaoMinisterio.objects.filter(inscricao=inscricao, evento=inscricao.evento)
+        if qs.exists():
+            qs.delete()
+            messages.success(request, "Removido(a) do ministério.")
+        else:
+            messages.info(request, "Este(a) participante não estava em nenhum ministério.")
+        return back()
+
+    ministerio = get_object_or_404(Ministerio, pk=ministerio_id)
+
+    aloc, created = AlocacaoMinisterio.objects.get_or_create(
+        inscricao=inscricao,
+        evento=inscricao.evento,
+        defaults={"ministerio": ministerio, "is_coordenador": is_coord},
+    )
+
+    if created:
+        # Tentar validar (pode falhar na regra de “um coordenador por ministério/evento”)
         try:
-            m = Ministerio.objects.get(id=ministerio_id, evento_id=inscricao.evento_id)
-        except Ministerio.DoesNotExist:
-            messages.error(request, "Ministério inválido para este evento.")
-            return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
-        alo.ministerio = m
-        # campo extra para coordenador (certifique-se de ter adicionado no model)
-        alo.is_coordenador = is_coord
-    else:
-        alo.ministerio = None
-        alo.is_coordenador = False
-    alo.full_clean()
-    alo.save()
+            aloc.full_clean()
+            aloc.save()
+            messages.success(request, f"{inscricao.participante.nome} alocado(a) em {ministerio.nome}.")
+        except ValidationError as e:
+            # Apaga a criação que não passou na validação
+            aloc.delete()
+            # Pega mensagem amigável, se existir em is_coordenador
+            msg = "; ".join(e.message_dict.get("is_coordenador", e.messages))
+            messages.error(request, msg or "Não foi possível salvar a alocação.")
+        return back()
 
-    messages.success(request, "Ministério salvo com sucesso.")
-    # volta para a MESMA página
-    return redirect(request.META.get(
-        "HTTP_REFERER",
-        reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id])
-    ))
+    # Já havia alocação → atualizar ministério e/ou coordenação
+    antigo = aloc.ministerio.nome
+    aloc.ministerio = ministerio
+    aloc.is_coordenador = is_coord
+    try:
+        aloc.full_clean()   # <- onde a sua validação do “1 coordenador” roda
+        aloc.save(update_fields=["ministerio", "is_coordenador"])
+        if antigo != ministerio.nome:
+            messages.success(request, f"Movido(a) de {antigo} para {ministerio.nome}.")
+        else:
+            messages.success(request, f"Configuração de coordenação atualizada para {ministerio.nome}.")
+    except ValidationError as e:
+        msg = "; ".join(e.message_dict.get("is_coordenador", e.messages))
+        messages.error(request, msg or "Não foi possível atualizar a alocação.")
+    return back()
 
 
 @login_required
 @require_POST
 def alocar_grupo(request, inscricao_id: int):
-    inscricao = get_object_or_404(
-        Inscricao.objects.select_related("evento", "paroquia"), id=inscricao_id
+    insc = get_object_or_404(
+        Inscricao.objects.select_related("evento", "paroquia", "participante"),
+        pk=inscricao_id
+    )
+    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != insc.paroquia_id:
+        return HttpResponseForbidden("Sem permissão.")
+
+    next_url = request.POST.get("next") or request.META.get("HTTP_REFERER") or reverse("inscricoes:ver_inscricao", args=[insc.id])
+
+    grupo_raw = (request.POST.get("grupo_id") or "").strip()
+
+    if not grupo_raw:
+        deleted, _ = AlocacaoGrupo.objects.filter(inscricao=insc, evento=insc.evento).delete()
+        messages.success(request, "Alocação de grupo removida." if deleted else "A inscrição não estava alocada a nenhum grupo.")
+        return redirect(next_url)
+
+    try:
+        grupo_id = int(grupo_raw)
+    except ValueError:
+        messages.error(request, "Grupo inválido.")
+        return redirect(next_url)
+
+    grupo = get_object_or_404(Grupo, pk=grupo_id)
+
+    obj, created = AlocacaoGrupo.objects.update_or_create(
+        inscricao=insc, evento=insc.evento, defaults={"grupo": grupo}
     )
 
-    u = request.user
-    if (not getattr(u, "is_superuser", False)
-        and getattr(u, "tipo_usuario", "") != "admin_geral"
-        and getattr(u, "paroquia_id", None) != inscricao.paroquia_id):
-        messages.error(request, "Você não tem permissão para alterar esta inscrição.")
-        return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
-
-    if (inscricao.evento.tipo or "").lower() != "servos":
-        messages.error(request, "Alocação de grupo só é permitida em eventos de Servos.")
-        return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
-
-    grupo_id = request.POST.get("grupo_id") or None
-
-    alo, _ = AlocacaoGrupo.objects.get_or_create(inscricao=inscricao)
-    if grupo_id:
-        try:
-            g = Grupo.objects.get(id=grupo_id, evento_id=inscricao.evento_id)
-        except Grupo.DoesNotExist:
-            messages.error(request, "Grupo inválido para este evento.")
-            return redirect(reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id]))
-        alo.grupo = g
+    if created:
+        messages.success(request, f"{insc.participante.nome} alocado(a) no grupo “{grupo.nome}”.")
     else:
-        alo.grupo = None
-    alo.full_clean()
-    alo.save()
+        messages.success(request, f"Grupo de {insc.participante.nome} atualizado para “{grupo.nome}”.")
 
-    messages.success(request, "Grupo salvo com sucesso.")
-    return redirect(request.META.get(
-        "HTTP_REFERER",
-        reverse("inscricoes:inscricao_ficha_geral", args=[inscricao.id])
-    ))
+    return redirect(next_url)
 
 @login_required
 def alocar_em_massa(request: HttpRequest, evento_id: int) -> HttpResponse:
@@ -4270,11 +4300,10 @@ def alocar_em_massa(request: HttpRequest, evento_id: int) -> HttpResponse:
 
     if not (is_admin_paroquia or is_admin_geral):
         return HttpResponseForbidden("Sem permissão.")
-
     if is_admin_paroquia and getattr(u, "paroquia_id", None) != evento.paroquia_id:
         return HttpResponseForbidden("Sem permissão para este evento.")
 
-    # Fonte de dados: inscrições deste evento
+    # Inscrições deste evento (fonte da grade)
     inscricoes_qs = (
         Inscricao.objects
         .filter(evento=evento)
@@ -4282,12 +4311,21 @@ def alocar_em_massa(request: HttpRequest, evento_id: int) -> HttpResponse:
         .order_by("participante__nome")
     )
 
-    # Listas para selects
-    grupos = Grupo.objects.filter(evento=evento).order_by("nome") if Grupo else []
-    ministerios = Ministerio.objects.filter(evento=evento).order_by("nome")
+    # Catálogos GLOBAIS (NÃO filtrar por evento)
+    # Opcional: já trazendo contagem de alocados no evento para exibir na UI
+    ministerios = (
+        Ministerio.objects.filter(ativo=True)
+        .annotate(alocados_no_evento=Count("alocacoes", filter=Q(alocacoes__evento=evento)))
+        .order_by("nome")
+    )
+    grupos = (
+        Grupo.objects.all()
+        .annotate(alocados_no_evento=Count("alocacoes", filter=Q(alocacoes__inscricao__evento=evento)))
+        .order_by("nome")
+    )
 
-    # Filtro simples por busca de nome/CPF/email (GET ?q=)
-    q = request.GET.get("q", "").strip()
+    # Filtro por busca de nome/CPF/email (GET ?q=)
+    q = (request.GET.get("q") or "").strip()
     if q:
         inscricoes_qs = inscricoes_qs.filter(
             Q(participante__nome__icontains=q)
@@ -4295,87 +4333,118 @@ def alocar_em_massa(request: HttpRequest, evento_id: int) -> HttpResponse:
             | Q(participante__email__icontains=q)
         )
 
-    # Apenas para feedback/contagem na UI
     total_listados = inscricoes_qs.count()
 
     if request.method == "POST":
-        # Coleta dos campos do formulário
         inscricao_ids = request.POST.getlist("inscricao_ids")  # múltiplos
         ministerio_id = request.POST.get("ministerio_id") or None
         grupo_id = request.POST.get("grupo_id") or None
-        is_coord = request.POST.get("is_coordenador") == "on"
+        is_coord = (request.POST.get("is_coordenador") == "on")
         funcao_default = (request.POST.get("funcao_default") or "").strip()
 
         if not inscricao_ids:
             messages.warning(request, "Selecione pelo menos um participante.")
             return redirect(reverse("inscricoes:alocar_em_massa", args=[evento.id]))
 
-        # Sanitiza o conjunto realmente do evento
+        # Apenas inscrições do próprio evento
         alvo_qs = inscricoes_qs.filter(pk__in=inscricao_ids)
 
-        # Valida pertencimentos
+        # Valida catálogos
         m_obj = None
         g_obj = None
 
-        # Ministério apenas se evento for "servos"
+        # Ministério só faz sentido para evento do tipo "Servos"
         if ministerio_id:
             if (evento.tipo or "").lower() != "servos":
                 messages.error(request, "Este evento não é do tipo Servos — não é possível alocar ministérios aqui.")
                 return redirect(reverse("inscricoes:alocar_em_massa", args=[evento.id]))
-            m_obj = get_object_or_404(Ministerio, pk=ministerio_id, evento=evento)
+            m_obj = get_object_or_404(Ministerio, pk=ministerio_id)
 
-        if grupo_id and Grupo:
-            g_obj = get_object_or_404(Grupo, pk=grupo_id, evento=evento)
+        if grupo_id:
+            g_obj = get_object_or_404(Grupo, pk=grupo_id)
 
-        sucesso_m, sucesso_g = 0, 0
-        erros = 0
+        sucesso_m, sucesso_g, erros = 0, 0, 0
 
         with transaction.atomic():
             for ins in alvo_qs:
-                try:
-                    # Ministério
-                    if m_obj:
-                        # Garante OneToOne: cria ou atualiza
-                        aloc_min, _ = AlocacaoMinisterio.objects.get_or_create(
+                # ====== Ministério ======
+                if m_obj:
+                    try:
+                        # Um registro por inscrição (OneToOne). Se existir, atualiza; senão cria.
+                        aloc_min, _created = AlocacaoMinisterio.objects.get_or_create(
                             inscricao=ins,
-                            defaults={"ministerio": m_obj, "funcao": funcao_default or None}
+                            defaults={
+                                "evento": evento,
+                                "ministerio": m_obj,
+                                "funcao": (funcao_default or None),
+                                "is_coordenador": False,  # decide abaixo
+                            },
                         )
-                        # Atualiza se já tinha
+                        # Garanta que evento e ministerio são deste contexto
+                        aloc_min.evento = evento
                         aloc_min.ministerio = m_obj
-                        if hasattr(aloc_min, "is_coordenador"):
-                            aloc_min.is_coordenador = is_coord
+
+                        # Coordenador: permite só 1 por (evento, ministério)
+                        if is_coord:
+                            existe_coord = (
+                                AlocacaoMinisterio.objects
+                                .filter(evento=evento, ministerio=m_obj, is_coordenador=True)
+                                .exclude(pk=aloc_min.pk)
+                                .exists()
+                            )
+                            if existe_coord:
+                                # Mensagem amigável por pessoa; não interrompe o loop
+                                messages.error(
+                                    request,
+                                    f"{ins.participante.nome}: já existe um(a) coordenador(a) em “{m_obj.nome}” neste evento. "
+                                    "Remova o(a) atual antes de marcar outro(a)."
+                                )
+                            else:
+                                aloc_min.is_coordenador = True
+                        else:
+                            # Se o checkbox não veio marcado, não mexemos no flag atual (mantém o que já está)
+                            pass
+
                         if funcao_default:
                             aloc_min.funcao = funcao_default
+
                         aloc_min.full_clean()
                         aloc_min.save()
                         sucesso_m += 1
 
-                    # Grupo
-                    if g_obj and AlocacaoGrupo:
+                    except Exception as e:
+                        erros += 1
+                        # Evita traceback: registra mensagem e segue
+                        messages.error(request, f"{ins.participante.nome}: não foi possível alocar no ministério ({e}).")
+
+                # ====== Grupo ======
+                if g_obj:
+                    try:
                         ag, _ = AlocacaoGrupo.objects.get_or_create(
                             inscricao=ins,
-                            defaults={"grupo": g_obj}
+                            defaults={"grupo": g_obj},
                         )
                         ag.grupo = g_obj
                         ag.full_clean()
                         ag.save()
                         sucesso_g += 1
+                    except Exception as e:
+                        erros += 1
+                        messages.error(request, f"{ins.participante.nome}: não foi possível alocar no grupo ({e}).")
 
-                except Exception as e:
-                    erros += 1
-
+        # Feedback acumulado
         if sucesso_m:
             messages.success(request, f"{sucesso_m} participante(s) alocado(s) ao ministério {m_obj.nome}.")
             if is_coord:
-                messages.info(request, "Marcado como coordenador(a) para todos os selecionados.")
+                messages.info(request, "Tentativa de marcar como coordenador(a) aplicada onde possível.")
             if funcao_default:
                 messages.info(request, f"Função aplicada: “{funcao_default}”.")
         if sucesso_g:
             messages.success(request, f"{sucesso_g} participante(s) alocado(s) ao grupo {g_obj.nome}.")
         if erros:
-            messages.error(request, f"{erros} registro(s) não puderam ser salvos. Revise dados/validações.")
+            messages.error(request, f"{erros} registro(s) tiveram erro. Revise as mensagens acima.")
 
-        # PRG para a própria página (mantém no mesmo lugar)
+        # PRG: volta para a mesma página
         return redirect(reverse("inscricoes:alocar_em_massa", args=[evento.id]))
 
     # GET: renderiza página
@@ -4391,23 +4460,6 @@ def alocar_em_massa(request: HttpRequest, evento_id: int) -> HttpResponse:
             "pode_ministerio": (evento.tipo or "").lower() == "servos",
         },
     )
-
-def _user_is_admin_paroquia(user) -> bool:
-    if hasattr(user, "is_admin_paroquia") and callable(user.is_admin_paroquia):
-        return bool(user.is_admin_paroquia())
-    return getattr(user, "tipo_usuario", "") == "admin_paroquia"
-
-def _user_is_admin_geral(user) -> bool:
-    if hasattr(user, "is_admin_geral") and callable(user.is_admin_geral):
-        return bool(user.is_admin_geral())
-    return bool(getattr(user, "is_superuser", False)) or getattr(user, "tipo_usuario", "") == "admin_geral"
-
-def _can_manage_event(user, evento: EventoAcampamento) -> bool:
-    if _user_is_admin_geral(user):
-        return True
-    if _user_is_admin_paroquia(user) and getattr(user, "paroquia_id", None) == evento.paroquia_id:
-        return True
-    return False
 
 
 @login_required
@@ -4891,106 +4943,97 @@ def evento_participantes(request, evento_id):
 from .forms import MinisterioForm
 
 @require_http_methods(["GET", "POST"])
+@login_required
 def ministerio_novo(request, evento_id):
     evento = get_object_or_404(EventoAcampamento, pk=evento_id)
 
-    # opcional: bloquear criação se não for evento de servos
     if (evento.tipo or "").lower() != "servos":
-        messages.error(request, "Ministérios só podem ser criados em eventos do tipo Servos.")
+        messages.error(request, "Ministérios só fazem sentido em eventos do tipo Servos.")
         return redirect("inscricoes:ministerios_evento", evento_id=evento.id)
 
+    # Permissão
+    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != evento.paroquia_id:
+        return HttpResponseForbidden("Sem permissão.")
+
     if request.method == "POST":
-        form = MinisterioForm(request.POST, evento=evento)
+        form = MinisterioForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, "Ministério criado com sucesso.")
+            messages.success(request, "Ministério criado no catálogo global.")
             return redirect("inscricoes:ministerios_evento", evento_id=evento.id)
     else:
-        form = MinisterioForm(evento=evento)
+        form = MinisterioForm()
 
     return render(request, "inscricoes/ministerio_novo.html", {
         "evento": evento,
         "form": form,
     })
 
+
 from django.forms import modelform_factory
 
 @login_required
 @require_http_methods(["GET", "POST"])
 def ministerio_editar(request, pk: int):
-    ministerio = get_object_or_404(
-        Ministerio.objects.select_related("evento__paroquia"),
-        pk=pk
-    )
-    evento = ministerio.evento
+    ministerio = get_object_or_404(Ministerio, pk=pk)
 
-    if not _can_manage_event(request.user, evento):
-        return HttpResponseForbidden("Você não tem permissão para esta ação.")
-
-    Form = modelform_factory(Ministerio, fields=["nome", "descricao"])
+    # Por ser GLOBAL, recomendo restringir a superuser.
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Edição do catálogo global restrita ao administrador geral.")
 
     if request.method == "POST":
-        form = Form(request.POST, instance=ministerio)
+        form = MinisterioForm(request.POST, instance=ministerio)
         if form.is_valid():
-            try:
-                obj = form.save(commit=False)
-                obj.full_clean()
-                obj.save()
-                messages.success(request, "Ministério atualizado com sucesso.")
-                return redirect(reverse("inscricoes:ministerios_evento", args=[evento.id]))
-            except ValidationError as e:
-                for errs in e.message_dict.values():
-                    for err in errs:
-                        messages.error(request, err)
+            form.save()
+            messages.success(request, "Ministério atualizado com sucesso.")
+            # Volta para a listagem geral de ministérios do sistema
+            return redirect(reverse("inscricoes:ministerios_evento", args=[request.GET.get("evento")]) if request.GET.get("evento") else "/admin/")
     else:
-        form = Form(instance=ministerio)
+        form = MinisterioForm(instance=ministerio)
 
-    return render(
-        request,
-        "inscricoes/ministerio_form.html",
-        {"form": form, "evento": evento, "ministerio": ministerio},
-    )
+    return render(request, "inscricoes/ministerio_form.html", {
+        "form": form,
+        "ministerio": ministerio,
+    })
+
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponseForbidden
 
 @login_required
-def alocacoes_ministerio(request, pk: int):
+def alocacoes_ministerio(request, pk: int, evento_id):
     """
-    Página com a lista de alocados + formulário para incluir nova alocação.
+    Lista alocados de um ministério *neste evento* e mostra o form para incluir mais.
     """
-    ministerio = get_object_or_404(
-        Ministerio.objects.select_related("evento", "evento__paroquia"),
-        pk=pk
-    )
-    evento = ministerio.evento
+    ministerio = get_object_or_404(Ministerio, pk=pk)
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
 
-    # Permissão básica (ajuste se tiver helper)
     if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != evento.paroquia_id:
-        return HttpResponseForbidden("Sem permissão para este ministério.")
+        return HttpResponseForbidden("Sem permissão.")
 
-    # Lista atual (usa related_name **alocacoes**)
     alocados = (
         AlocacaoMinisterio.objects
-        .filter(ministerio=ministerio)
-        .select_related("inscricao__participante", "inscricao__evento")
-        .order_by("inscricao__participante__nome")
+        .filter(evento=evento, ministerio=ministerio)
+        .select_related("inscricao__participante")
+        .order_by("-is_coordenador", "inscricao__participante__nome")
     )
 
-    form = AlocarInscricaoForm(request.POST or None, ministerio=ministerio)
+    # >>> PASSAR evento e ministerio evita o KeyError
+    form = AlocarInscricaoForm(request.POST or None, evento=evento, ministerio=ministerio)
+
     if request.method == "POST" and form.is_valid():
         insc = form.cleaned_data["inscricao"]
         try:
             AlocacaoMinisterio.objects.create(
                 inscricao=insc,
-                ministerio=ministerio
+                evento=evento,
+                ministerio=ministerio,
             )
             messages.success(request, f"{insc.participante.nome} alocado(a) em {ministerio.nome}.")
-            return redirect(reverse("inscricoes:alocacoes_ministerio", args=[ministerio.id]))
-        except ValidationError as e:
-            for msg in sum(e.message_dict.values(), []):
-                messages.error(request, msg)
+            return redirect(reverse("inscricoes:alocacoes_ministerio", args=[ministerio.id, evento.id]))
+        except Exception as e:
+            messages.error(request, str(e))
 
     return render(request, "inscricoes/alocacoes_ministerio.html", {
         "evento": evento,
@@ -5002,78 +5045,181 @@ def alocacoes_ministerio(request, pk: int):
 
 @login_required
 @require_POST
-def alocar_inscricao_ministerio(request, pk: int):
+def alocar_inscricao_ministerio(request, pk: int, evento_id):
     """
-    Handler do POST (se quiser separar do GET).
-    O template que você mandou POSTa para esta rota.
+    Handler do POST de alocação via botão/linha separada.
     """
     ministerio = get_object_or_404(Ministerio, pk=pk)
-    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != ministerio.evento.paroquia_id:
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+
+    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != evento.paroquia_id:
         return HttpResponseForbidden("Sem permissão.")
 
-    form = AlocarInscricaoForm(request.POST, ministerio=ministerio)
+    # >>> PASSAR evento e ministerio evita o KeyError
+    form = AlocarInscricaoForm(request.POST, evento=evento, ministerio=ministerio)
     if form.is_valid():
         insc = form.cleaned_data["inscricao"]
         try:
             AlocacaoMinisterio.objects.create(
                 inscricao=insc,
-                ministerio=ministerio
+                evento=evento,
+                ministerio=ministerio,
             )
             messages.success(request, f"{insc.participante.nome} alocado(a) em {ministerio.nome}.")
-        except ValidationError as e:
-            for msg in sum(e.message_dict.values(), []):
-                messages.error(request, msg)
+        except Exception as e:
+            messages.error(request, str(e))
     else:
-        # Reapresenta os erros de validação do form
-        for field, errs in form.errors.items():
+        for _, errs in form.errors.items():
             for err in errs:
                 messages.error(request, err)
 
-    return redirect(reverse("inscricoes:alocacoes_ministerio", args=[ministerio.id]))
+    return redirect(reverse("inscricoes:alocacoes_ministerio", args=[ministerio.id, evento.id]))
 
 
 @login_required
 @require_POST
 def desalocar_inscricao_ministerio(request, alocacao_id: int):
-    """
-    Remove a alocação (recebe o ID da alocação).
-    """
     aloc = get_object_or_404(
-        AlocacaoMinisterio.objects.select_related("inscricao__participante", "ministerio__evento__paroquia"),
+        AlocacaoMinisterio.objects.select_related("inscricao__participante", "evento"),
         pk=alocacao_id
     )
-    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != aloc.ministerio.evento.paroquia_id:
+    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != aloc.evento.paroquia_id:
         return HttpResponseForbidden("Sem permissão.")
+
     nome = aloc.inscricao.participante.nome
-    ministerio_id = aloc.ministerio_id
+    mid = aloc.ministerio_id
+    eid = aloc.evento_id
     aloc.delete()
     messages.success(request, f"{nome} removido(a) do ministério.")
-    return redirect(reverse("inscricoes:alocacoes_ministerio", args=[ministerio_id]))
-
+    return redirect(reverse("inscricoes:alocacoes_ministerio", args=[mid, eid]))
 
 @login_required
 @require_POST
 def toggle_coordenador_ministerio(request, alocacao_id: int):
-    """
-    Marca/Desmarca a alocação como coordenador(a).
-    Mantém a constraint de 'apenas 1' (sua Meta já garante).
-    """
     aloc = get_object_or_404(
-        AlocacaoMinisterio.objects.select_related("ministerio", "inscricao__participante"),
+        AlocacaoMinisterio.objects.select_related("evento", "inscricao__participante"),
         pk=alocacao_id
     )
-    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != aloc.ministerio.evento.paroquia_id:
+    if not request.user.is_superuser and getattr(request.user, "paroquia_id", None) != aloc.evento.paroquia_id:
         return HttpResponseForbidden("Sem permissão.")
 
-    ativo = (request.POST.get("ativo") or "").strip() in {"1", "true", "on", "yes", "sim"}
+    ativo = (request.POST.get("ativo") or "").strip().lower() in {"1","true","on","yes","sim"}
     aloc.is_coordenador = ativo
     try:
         aloc.full_clean()
         aloc.save(update_fields=["is_coordenador"])
         msg = "marcado(a) como coordenador(a)." if ativo else "removido(a) da coordenação."
         messages.success(request, f"{aloc.inscricao.participante.nome} {msg}")
-    except ValidationError as e:
-        for msg in sum(e.message_dict.values(), []):
-            messages.error(request, msg)
+    except Exception as e:
+        messages.error(request, str(e))
 
-    return redirect(reverse("inscricoes:alocacoes_ministerio", args=[aloc.ministerio_id]))
+    return redirect(reverse("inscricoes:alocacoes_ministerio", args=[aloc.ministerio_id, aloc.evento_id]))
+
+@login_required
+def ministerios_evento(request, evento_id):
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+
+    # Permissão básica
+    if (not request.user.is_superuser
+        and getattr(request.user, "paroquia_id", None) != evento.paroquia_id):
+        return HttpResponseForbidden("Sem permissão.")
+
+    # IMPORTANTÍSSIMO: o related_name abaixo precisa existir no model de AlocacaoMinisterio
+    # class AlocacaoMinisterio(models.Model):
+    #     ministerio = models.ForeignKey(Ministerio, related_name="alocacoes", ...)
+    #     evento = models.ForeignKey(EventoAcampamento, ...)
+    #
+    # Se o seu related_name não for "alocacoes", ajuste as 2 linhas com "alocacoes" aqui.
+
+    # Pré-busca: todas as alocações deste evento (para montar a lista e também contagens fallback)
+    alocs_qs = (
+        AlocacaoMinisterio.objects
+        .filter(evento=evento)
+        .select_related("inscricao__participante")  # útil para telas de detalhes
+        .order_by()  # evita ORDER BY desnecessário que pode afetar o COUNT DISTINCT
+    )
+
+    # Query principal dos ministérios
+    ministerios_qs = (
+        Ministerio.objects.filter(ativo=True)
+        .annotate(
+            # DISTINCT evita duplicidades de joins (seguro)
+            alocacoes_count=Count("alocacoes", filter=Q(alocacoes__evento=evento), distinct=True)
+        )
+        .prefetch_related(
+            Prefetch("alocacoes", queryset=alocs_qs, to_attr="alocacoes_do_evento")
+        )
+        .order_by("nome")
+    )
+
+    # Convertemos em lista para poder somar e reutilizar sem repetir queries
+    ministerios = list(ministerios_qs)
+
+    # Totais prontos para o template
+    total_ministerios = len(ministerios)
+    # Se você quer o total geral de pessoas alocadas no evento (soma de todos os ministérios):
+    total_alocados = sum(len(m.alocacoes_do_evento) for m in ministerios)
+
+    return render(request, "inscricoes/ministerios_evento.html", {
+        "evento": evento,
+        "ministerios": ministerios,
+        "total_ministerios": total_ministerios,
+        "total_alocados": total_alocados,
+    })
+
+@login_required
+@require_POST
+def ministerio_deletar(request, pk: int):
+    """
+    Deleta um Ministério (catálogo global) **apenas** se não houver alocações.
+    Se vier evento_id (via POST/GET), usamos para voltar à tela do evento.
+    """
+    ministerio = get_object_or_404(Ministerio, pk=pk)
+
+    # Permissão: superuser ou admin da mesma paróquia de um evento alvo (quando informado)
+    evento_id = request.POST.get("evento_id") or request.GET.get("evento_id")
+    evento = None
+    if evento_id:
+        try:
+            evento = EventoAcampamento.objects.get(pk=evento_id)
+        except EventoAcampamento.DoesNotExist:
+            evento = None
+
+    # Regra simples: se não for superuser e houver evento no contexto, só permite se for a mesma paróquia
+    if not request.user.is_superuser and evento and getattr(request.user, "paroquia_id", None) != evento.paroquia_id:
+        return HttpResponseForbidden("Sem permissão.")
+
+    # Bloqueia exclusão se houver qualquer alocação (em qualquer evento)
+    if ministerio.alocacoes.exists():
+        messages.error(request, "Não é possível excluir: existem participantes alocados neste ministério.")
+        if evento:
+            return redirect("inscricoes:ministerios_evento", evento_id=evento.id)
+        return redirect("inscricoes:ministerios_home_sem_paroquia")
+
+    nome = ministerio.nome
+    ministerio.delete()
+    messages.success(request, f"Ministério “{nome}” excluído com sucesso.")
+    if evento:
+        return redirect("inscricoes:ministerios_evento", evento_id=evento.id)
+    return redirect("inscricoes:ministerios_home_sem_paroquia")
+
+@login_required
+def alocacoes_ministerio_short(request, pk: int):
+    """
+    Compat: usuário caiu na rota sem evento_id.
+    Tentamos descobrir o último evento onde esse ministério tem alocação
+    e redirecionamos para a rota correta. Se não houver, mandamos para a home.
+    """
+    ultima = (
+        AlocacaoMinisterio.objects
+        .filter(ministerio_id=pk)
+        .select_related("evento")
+        .order_by("-data_alocacao")
+        .first()
+    )
+    if ultima and ultima.evento_id:
+        return redirect("inscricoes:alocacoes_ministerio",
+                        pk=pk, evento_id=ultima.evento_id)
+
+    messages.warning(request, "Escolha o evento para esse ministério.")
+    return redirect("inscricoes:ministerios_home_sem_paroquia")

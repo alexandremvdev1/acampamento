@@ -1136,26 +1136,48 @@ class MinisterioForm(forms.ModelForm):
 class AlocarInscricaoForm(forms.Form):
     inscricao = forms.ModelChoiceField(
         queryset=Inscricao.objects.none(),
-        label="Inscrição (servo)"
+        label="Inscrição do participante",
+        required=True,
+        help_text="Apenas inscrições deste evento aparecem aqui."
     )
 
     def __init__(self, *args, **kwargs):
-        ministerio = kwargs.pop("ministerio")
+        # >>> Retira os kwargs customizados ANTES do super()
+        self.evento: EventoAcampamento | None = kwargs.pop("evento", None)
+        self.ministerio: Ministerio | None = kwargs.pop("ministerio", None)
+
         super().__init__(*args, **kwargs)
-        # Só inscrições do MESMO evento do ministério, sem alocação ainda
-        self.fields["inscricao"].queryset = (
-            Inscricao.objects
-            .filter(
-                evento=ministerio.evento,
-                alocacao_ministerio__isnull=True
-            )
-            .select_related("participante", "evento")
-            .order_by("participante__nome")
+
+        # Define o queryset do campo conforme o evento
+        qs = Inscricao.objects.none()
+        if self.evento:
+            qs = Inscricao.objects.filter(evento=self.evento)
+            # Se quiser, filtre por status, por ex.:
+            # qs = qs.filter(status__in=["confirmada", "paga", ...])
+
+        self.fields["inscricao"].queryset = qs
+        self.fields["inscricao"].label_from_instance = (
+            lambda obj: f"{obj.participante.nome} — #{obj.id}"
         )
 
-    def clean_inscricao(self):
-        insc = self.cleaned_data["inscricao"]
-        # Garante que é evento de servos (se for sua regra)
-        if (insc.evento.tipo or "").lower() != "servos":
-            raise forms.ValidationError("Apenas inscrições do evento de Servos podem ser alocadas.")
-        return insc
+    def clean(self):
+        cleaned = super().clean()
+        insc: Inscricao | None = cleaned.get("inscricao")
+
+        if not self.evento:
+            raise ValidationError("Evento não informado no formulário.")
+
+        if insc and insc.evento_id != self.evento.id:
+            raise ValidationError("A inscrição selecionada não pertence a este evento.")
+
+        # (Opcional) Bloquear duplicidade de alocação nesse ministério/evento
+        if self.ministerio and insc:
+            existe = AlocacaoMinisterio.objects.filter(
+                evento=self.evento,
+                ministerio=self.ministerio,
+                inscricao=insc,
+            ).exists()
+            if existe:
+                raise ValidationError("Esta inscrição já está alocada neste ministério.")
+
+        return cleaned

@@ -115,36 +115,20 @@ urlpatterns = [
     path("inscricao/<int:inscricao_id>/alocar-ministerio/", views.alocar_ministerio, name="alocar_ministerio"),
     path("inscricao/<int:inscricao_id>/alocar-grupo/", views.alocar_grupo, name="alocar_grupo"),
 
-    # Ministérios
-    path("paroquia/<int:paroquia_id>/ministerios/", views.ministerios_home, name="ministerios_home"),
-    path("ministerios/evento/<iduu:evento_id>/", views.ministerios_evento, name="ministerios_evento"),
-    path("ministerios/evento/<iduu:evento_id>/novo/", views.ministerio_create, name="ministerio_create"),
-    path("ministerio/<int:pk>/excluir/", views.excluir_ministerio, name="excluir_ministerio"),
-    path("ministerios/evento/<uuid:evento_id>/novo/",views.ministerio_novo,name="ministerio_novo",),
-    path(
-        "ministerios/evento/<uuid:evento_id>/",
-        views.ministerios_evento,
-        name="ministerios_evento",
-    ),
-    path(
-        "ministerios/<int:pk>/alocacoes/",
-        views.alocacoes_ministerio,
-        name="alocacoes_ministerio",
-    ),
-    path(
-        "ministerios/<int:pk>/editar/",
-        views.ministerio_editar,
-        name="ministerio_editar",
-    ),
-    path(
-        "ministerios/<int:pk>/excluir/",
-        views.excluir_ministerio,
-        name="ministerio_deletar",   # seu template já usa esse name
-    ),
-
-    path("ministerios/<int:pk>/alocar/", views.alocar_inscricao_ministerio, name="alocar_inscricao_ministerio"),
-    path("ministerios/alocacao/<int:alocacao_id>/remover/", views.desalocar_inscricao_ministerio, name="desalocar_inscricao_ministerio"),
-    path("ministerios/alocacao/<int:alocacao_id>/coordenador/", views.toggle_coordenador_ministerio, name="toggle_coordenador_ministerio"),
+    path("ministerios/evento/<uuid:evento_id>/", views.ministerios_evento, name="ministerios_evento"),
+    path("ministerios/evento/<uuid:evento_id>/novo/", views.ministerio_novo, name="ministerio_novo"),
+    path("ministerios/<int:pk>/editar/", views.ministerio_editar, name="ministerio_editar"),  # global
+    path("ministerios/<int:pk>/evento/<uuid:evento_id>/alocacoes/",views.alocacoes_ministerio,name="alocacoes_ministerio",),
+    path("ministerios/<int:pk>/evento/<uuid:evento_id>/alocar/",views.alocar_inscricao_ministerio,name="alocar_inscricao_ministerio",),
+    path("ministerios/alocacao/<int:alocacao_id>/desalocar/", views.desalocar_inscricao_ministerio, name="desalocar_inscricao_ministerio"),
+    path("ministerios/alocacao/<int:alocacao_id>/toggle-coordenador/", views.toggle_coordenador_ministerio, name="toggle_coordenador_ministerio"),
+    path("ministerios/", views.ministerios_home, name="ministerios_home_sem_paroquia"),
+    path("ministerios/<int:paroquia_id>/", views.ministerios_home, name="ministerios_home"),
+    path("ministerios/evento/<uuid:evento_id>/create/", views.ministerio_novo, name="ministerio_create"),
+    path("ministerios/<int:pk>/deletar/", views.ministerio_deletar, name="ministerio_deletar"),
+    
+    path("ministerios/<int:pk>/alocacoes/",views.alocacoes_ministerio_short,name="alocacoes_ministerio_short"),
+    
     # Formulários complementares
     path("formulario/casais/<uuid:evento_id>/", views.formulario_casais, name="formulario_casais"),
     path("formulario/<int:inscricao_id>/", views.formulario_personalizado, name="formulario_personalizado"),

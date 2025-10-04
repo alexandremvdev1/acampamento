@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import uuid
+import random
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -12,7 +13,7 @@ from inscricoes.models import (
     Paroquia, PastoralMovimento, Participante, EventoAcampamento,
     Inscricao, InscricaoStatus, Pagamento,
     PoliticaPrivacidade, PoliticaReembolso, VideoEventoAcampamento, CrachaTemplate,
-    Grupo, Ministerio, AlocacaoGrupo, AlocacaoMinisterio
+    Grupo, Ministerio, AlocacaoGrupo, AlocacaoMinisterio,
 )
 
 User = get_user_model()
@@ -26,10 +27,11 @@ CIDADES_TO = [
     "Xambioá","Pequizeiro",
 ]
 
-# nomes curtos pra não estourar o slug (SlugField default = 50)
-NOME_CASAIS = "EC São José 2025"       # curto
-NOME_SERVOS = "Servos EC São José 25"  # curto
+# nomes curtos (evita slug gigante)
+NOME_CASAIS = "EC São José 2025"
+NOME_SERVOS = "Servos EC São José 25"
 
+# ---------------------- helpers de datas/CPF/pagamento ----------------------
 def periodo(offset_dias=20, dur=3):
     hoje = date.today()
     di = hoje + timedelta(days=offset_dias)
@@ -57,8 +59,7 @@ def ensure_pagamento(ins, confirmado: bool, valor: Decimal):
         changed = False
         for k, v in defaults.items():
             if getattr(pg, k) != v:
-                setattr(pg, k, v)
-                changed = True
+                setattr(pg, k, v); changed = True
         if changed:
             pg.save()
 
@@ -80,8 +81,72 @@ def fast_status(ins: Inscricao, target: str):
     ins.pagamento_confirmado = conf
     ins.inscricao_concluida = conc
 
+# ---------- nomes realistas brasileiros (únicos e variados) ----------
+FIRST_MALE = [
+    "Alexandre","Carlos","João","Lucas","Rafael","Gustavo","Bruno","André","Marcelo","Thiago",
+    "Paulo","Pedro","Felipe","Diego","Eduardo","Henrique","Leandro","Rodrigo","Roberto","Mateus",
+    "Caio","Daniel","Murilo","Vitor","Fábio","Gabriel","Ícaro","Leonardo","Marcos","Rogério",
+]
+FIRST_FEMALE = [
+    "Ana","Mariana","Fernanda","Juliana","Camila","Patrícia","Larissa","Renata","Aline","Roberta",
+    "Carolina","Bianca","Beatriz","Bruna","Daniela","Elaine","Isabela","Letícia","Michele","Natália",
+    "Paula","Priscila","Rafaela","Sabrina","Simone","Talita","Vanessa","Viviane","Yasmin","Kelly",
+]
+# partículas comuns
+PARTICULAS = ["da", "de", "do", "dos", "das"]
+# pool amplo de sobrenomes brasileiros
+SURNAMES_POOL = [
+    "Silva","Souza","Santos","Oliveira","Pereira","Lima","Carvalho","Ribeiro","Almeida","Gomes","Martins",
+    "Araújo","Barbosa","Cardoso","Castro","Correia","Costa","Dias","Duarte","Ferreira","Fernandes",
+    "Garcia","Gonçalves","Mendes","Moura","Nogueira","Pires","Rocha","Rodrigues","Santiago","Teixeira",
+    "Vieira","Moraes","Barros","Batista","Campos","Figueiredo","Machado","Monteiro","Moreira","Macedo",
+    "Ramos","Rezende","Tavares","Matos","Peixoto","Queiroz","Sales","Xavier","Aquino","Bezerra",
+    "Cavalcante","Chaves","Coelho","Coutinho","Dantas","Freitas","Leite","Melo","Mesquita","Prado",
+    "Santana","Silveira","Soares","Valente","Vasconcelos","Viana","Menezes","Pinheiro","Assis","Aguiar",
+    "Cunha","Nunes","Pimentel","Barreto","Borges","Camargo","Farias","Franco","Junior","Lopes",
+]
+
+def gerar_nome_realista(genero: str, usados: set[str]) -> str:
+    first = random.choice(FIRST_MALE if genero.upper() == "M" else FIRST_FEMALE)
+    # escolhe 2 sobrenomes distintos
+    s1, s2 = random.sample(SURNAMES_POOL, 2)
+    # 40% de chance de inserir partícula antes do último
+    if random.random() < 0.40:
+        part = random.choice(PARTICULAS)
+        full = f"{first} {s1} {part} {s2}"
+    else:
+        full = f"{first} {s1} {s2}"
+    # evita duplicar (inclui checagem no banco via 'usados')
+    return full if full not in usados else gerar_nome_realista(genero, usados)
+
+def gerar_lote_nomes(qtd: int, genero: str) -> list[str]:
+    # carrega existentes do banco para evitar colisão com dados já criados
+    usados = set(Participante.objects.values_list("nome", flat=True))
+    saida = []
+    while len(saida) < qtd:
+        nome = gerar_nome_realista(genero, usados)
+        usados.add(nome)
+        saida.append(nome)
+    return saida
+
+# ---------- ministérios padrão (amplo) ----------
+MINISTERIOS_PADRAO = [
+    "Liturgia","Música","Intercessão","Cozinha","Ambientação","Acolhida",
+    "Secretaria","Comunicação","Fotografia","Transporte","Limpeza","Apoio",
+    "Financeiro","Segurança","Crianças","Saúde/Enfermaria",
+]
+
+# ---------- grupos com cores HEX (atualiza se já existir) ----------
+GRUPOS_CORES = {
+    "Amarelo":  "#FDE047",  # yellow-300
+    "Vermelho": "#EF4444",  # red-500
+    "Azul":     "#3B82F6",  # blue-500
+    "Verde":    "#22C55E",  # green-500
+}
+
+# ======================================================
 class Command(BaseCommand):
-    help = "Seed: 1 evento de CASAIS + evento de SERVOS (auto-vinculado), casais com cidades variadas do TO, grupos/ministérios/alocações."
+    help = "Seed: 1 evento de CASAIS + evento de SERVOS, casais com nomes realistas/únicos, grupos (com cores), ministérios e alocações."
 
     @transaction.atomic
     def handle(self, *args, **opts):
@@ -117,7 +182,7 @@ class Command(BaseCommand):
         for nome in ["ECC", "RCC", "Pastoral do Dízimo", "Catequese", "Liturgia", "Música"]:
             PastoralMovimento.objects.get_or_create(nome=nome)
 
-        # ===== evento CASAIS (nome curto para slug não estourar) =====
+        # ===== evento CASAIS =====
         di, df, inicio_ins, fim_ins = periodo(20, 3)
         evento_casais, _ = EventoAcampamento.objects.get_or_create(
             nome=NOME_CASAIS,
@@ -129,10 +194,9 @@ class Command(BaseCommand):
                 "inicio_inscricoes": inicio_ins,
                 "fim_inscricoes": fim_ins,
                 "valor_inscricao": Decimal("150.00"),
-                "permitir_inscricao_servos": True,  # libera inscrições no servos
+                "permitir_inscricao_servos": True,
             },
         )
-        # garante flag mesmo se o evento já existia
         if not getattr(evento_casais, "permitir_inscricao_servos", False):
             evento_casais.permitir_inscricao_servos = True
             evento_casais.save(update_fields=["permitir_inscricao_servos"])
@@ -150,7 +214,7 @@ class Command(BaseCommand):
             evento=evento_casais, defaults={"titulo": f"Chamada — {NOME_CASAIS}"}
         )
 
-        # ===== evento SERVOS: vem do post_save; se não veio, criamos curto =====
+        # ===== evento SERVOS (pode vir pelo post_save; se não, garante aqui) =====
         evento_servos = evento_casais.servos_evento
         if not evento_servos:
             evento_servos, _ = EventoAcampamento.objects.get_or_create(
@@ -166,7 +230,6 @@ class Command(BaseCommand):
                     "evento_relacionado": evento_casais,
                 },
             )
-
         PoliticaReembolso.objects.get_or_create(
             evento=evento_servos,
             defaults={"ativo": True, "permite_reembolso": False, "prazo_solicitacao_dias": 0}
@@ -175,24 +238,17 @@ class Command(BaseCommand):
             evento=evento_servos, defaults={"titulo": f"Chamada — {NOME_SERVOS}"}
         )
 
-        # ===== nomes de pessoas (reais/inteiros) =====
-        nomes_masc = [
-            "Carlos Eduardo Almeida","João Pedro Ferreira","Lucas Menezes",
-            "Rafael Souza","Gustavo Martins","Bruno Oliveira","André Santos",
-            "Marcelo Ribeiro","Thiago Carvalho","Paulo Henrique Lima",
-        ]
-        nomes_fem = [
-            "Ana Carolina Pereira","Mariana Rocha","Fernanda Alves",
-            "Juliana Barros","Camila Duarte","Patrícia Nogueira","Larissa Pinto",
-            "Renata Teixeira","Aline Moreira","Roberta Figueiredo",
-        ]
+        # ===== nomes completos, variados e únicos (40 pessoas) =====
+        random.seed()  # mais aleatório por execução
+        nomes_homens = gerar_lote_nomes(20, 'M')
+        nomes_mulheres = gerar_lote_nomes(20, 'F')
 
         # ===== inscrições de CASAIS (20 casais = 40 pessoas) =====
         casais = []
         total_casais = 20
         for i in range(total_casais):
-            nm = nomes_masc[i % len(nomes_masc)]
-            nf = nomes_fem[i % len(nomes_fem)]
+            nm = nomes_homens[i]
+            nf = nomes_mulheres[i]
             cidade = CIDADES_TO[i % len(CIDADES_TO)]
 
             p1, _ = Participante.objects.get_or_create(
@@ -223,7 +279,7 @@ class Command(BaseCommand):
                 defaults={"paroquia": paroquia, "status": InscricaoStatus.ENVIADA}
             )
 
-            # pareia (método do modelo cuida dos dois lados)
+            # parear (modelo garante bidirecional)
             try:
                 ins1.set_pareada(ins2)
             except Exception:
@@ -248,14 +304,17 @@ class Command(BaseCommand):
 
             casais.append((ins1, ins2))
 
-        # ===== SERVOS: grupos, ministérios, alocações =====
+        # ===== SERVOS: cria/atualiza 4 grupos com CORES e TODOS os ministérios =====
         grupos = []
-        for nome in ["Amarelo", "Vermelho", "Azul", "Verde"]:
-            g, _ = Grupo.objects.get_or_create(evento=evento_servos, nome=nome, defaults={"cor": nome})
+        for nome, cor_hex in GRUPOS_CORES.items():
+            g, created = Grupo.objects.get_or_create(evento=evento_servos, nome=nome, defaults={"cor": cor_hex})
+            if not created and g.cor != cor_hex:
+                g.cor = cor_hex
+                g.save(update_fields=["cor"])
             grupos.append(g)
 
         ministerios = []
-        for nome in ["Liturgia", "Música", "Intercessão", "Cozinha", "Ambientação", "Acolhida"]:
+        for nome in MINISTERIOS_PADRAO:
             m, _ = Ministerio.objects.get_or_create(
                 evento=evento_servos,
                 nome=nome,
@@ -274,7 +333,7 @@ class Command(BaseCommand):
                 participante=p, evento=evento_servos,
                 defaults={"paroquia": paroquia, "status": InscricaoStatus.CONVOCADA}
             )
-            # aloca grupo
+            # aloca grupo (round-robin)
             AlocacaoGrupo.objects.get_or_create(
                 inscricao=ins_sv,
                 defaults={"grupo": grupos[idx % len(grupos)]},
@@ -287,5 +346,5 @@ class Command(BaseCommand):
                 defaults={"ministerio": mref, "funcao": "Serviço", "is_coordenador": is_coord},
             )
 
-        self.stdout.write(self.style.SUCCESS("OK: Casais (cidades TO) + Servos, grupos, ministérios e alocações criados."))
+        self.stdout.write(self.style.SUCCESS("OK: Casais (nomes realistas, variados e únicos; cidades TO) + Servos, grupos (com cores), ministérios e alocações criados."))
         self.stdout.write(self.style.SUCCESS("Login admin/admin123 (se necessário)."))

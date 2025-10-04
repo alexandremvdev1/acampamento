@@ -16,7 +16,7 @@
 
   <style>
     :root{ --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
-           --g1:#0b1020; --g2:#111a3a; --base-font:14px; }
+           --g1:#0b1020; --g2:#111a3a; --base-font:14px; --line:#e5e7eb; }
     html{ font-size: var(--base-font); }
     body{ background:#f6f8fb; color:var(--ink); }
 
@@ -26,7 +26,7 @@
     .navbar-brand{ font-size:1rem; }
 
     /* Sidebar */
-    .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
+    .sidebar-card{ border:1px solid var(--line); border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
     .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
     .nav-list{ list-style:none; padding:6px; margin:0; }
     .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none; }
@@ -36,11 +36,11 @@
     .sticky-topbar{
       position: sticky; top: 0; z-index: 20;
       background:#ffffffd6; backdrop-filter: blur(6px);
-      border:1px solid #e5e7eb; border-radius:.9rem;
+      border:1px solid var(--line); border-radius:.9rem;
     }
 
     .card-clean{
-      border:1px solid #e5e7eb; border-radius:.9rem; background:#fff;
+      border:1px solid var(--line); border-radius:.9rem; background:#fff;
       box-shadow:0 10px 24px rgba(17,24,39,.08);
       transition:transform .12s ease, box-shadow .12s ease;
     }
@@ -54,30 +54,30 @@
 
     .chip{
       display:inline-flex; align-items:center; gap:.5rem;
-      padding:.35rem .7rem; border-radius:999px; border:1px solid #e5e7eb; background:#fff;
+      padding:.35rem .7rem; border-radius:999px; border:1px solid var(--line); background:#fff;
       font-weight:700; font-size:.85rem;
     }
 
-    .kpi{ background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.6rem .8rem; }
+    .kpi{ background:#fff; border:1px solid var(--line); border-radius:.8rem; padding:.6rem .8rem; }
     .kpi .small{ color:var(--muted); font-size:.78rem; }
     .kpi .fs-5{ font-size:1rem !important; }
 
     .avatar{
-      width:60px; height:60px; border-radius:999px; object-fit:cover; border:1px solid #e5e7eb;
+      width:60px; height:60px; border-radius:999px; object-fit:cover; border:1px solid var(--line);
       background:#f1f5f9;
     }
 
     .dl-mini dt{ font-size:.75rem; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
     .dl-mini dd{ margin-bottom:.6rem; }
 
-    .badge-soft{ background:#eef2f7; color:#334155; border:1px solid #e5e7eb; }
+    .badge-soft{ background:#eef2f7; color:#334155; border:1px solid var(--line); }
 
     .table-sm .btn-icon{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; }
 
     a.link-ink{ color:var(--ink); text-decoration:none; }
     a.link-ink:hover{ text-decoration:underline; }
 
-    /* ===== FAIXA DE COR DO GRUPO (ribbon) ===== */
+    /* Ribbon cor do grupo */
     .group-ribbon{
       height:10px;
       border-radius:.6rem;
@@ -85,13 +85,11 @@
       box-shadow:0 6px 14px rgba(15,23,42,.12) inset, 0 2px 6px rgba(15,23,42,.08);
       margin-bottom:.75rem;
     }
-
-    /* bolinha de cor ao lado do nome do grupo */
     .group-swatch{
       inline-size: .9rem;
       block-size: .9rem;
       border-radius: .25rem;
-      border: 1px solid #e5e7eb;
+      border: 1px solid var(--line);
       display:inline-block;
       vertical-align:middle;
     }
@@ -118,8 +116,12 @@
       <div class="sidebar-card p-2">
         <div class="nav-title">Evento</div>
         <ul class="nav-list">
-          <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_eventos' inscricao.paroquia.id %}">🗂️ <span>Lista de eventos</span></a></li>
-          <li class="nav-item"><a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">👥 <span>Participantes</span></a></li>
+          <li class="nav-item">
+            <a href="{% url 'inscricoes:admin_paroquia_eventos' inscricao.evento.paroquia.id %}">🗂️ <span>Lista de eventos</span></a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">👥 <span>Participantes</span></a>
+          </li>
         </ul>
 
         <div class="nav-title">Resumo</div>
@@ -150,7 +152,7 @@
           </div>
         </div>
 
-        {# ====== ALOCAÇÃO RÁPIDA NA SIDEBAR ====== #}
+        {# ===== Alocação rápida ===== #}
         {% if inscricao.evento.tipo|lower == "servos" %}
           <div class="nav-title">Alocação (Servos)</div>
 
@@ -178,7 +180,9 @@
               <i class="fa-solid fa-floppy-disk"></i> Salvar Ministério
             </button>
           </form>
+        {% endif %}
 
+        {% if grupos %}
           <!-- Grupo -->
           <form method="post" action="{% url 'inscricoes:alocar_grupo' inscricao.id %}" class="p-2 border rounded">
             {% csrf_token %}
@@ -188,7 +192,7 @@
               {% for g in grupos %}
                 <option value="{{ g.id }}"
                   {% if inscricao.alocacao_grupo and inscricao.alocacao_grupo.grupo_id == g.id %}selected{% endif %}>
-                  {{ g.nome }}{% if g.cor %} — {{ g.cor }}{% endif %}
+                  {{ g.nome }}{% if g.cor_nome %} — {{ g.cor_nome }}{% endif %}
                 </option>
               {% endfor %}
             </select>
@@ -198,7 +202,7 @@
             </button>
           </form>
         {% endif %}
-        {# ====== FIM ====== #}
+        {# ===== Fim alocação rápida ===== #}
 
       </div>
     </aside>
@@ -206,10 +210,12 @@
     <!-- CONTEÚDO -->
     <section class="col-lg-9">
 
-      {# ===== FAIXA DE COR DO GRUPO (no topo do conteúdo) ===== #}
-      {% with grp=inscricao.alocacao_grupo.grupo %}
-        {% if grp and grp.cor %}
-          <div class="group-ribbon" style="--grp: {{ grp.cor }};"></div>
+      {# Ribbon com cor do grupo #}
+      {% with ag=inscricao.alocacao_grupo %}
+        {% if ag and ag.grupo %}
+          {% with hex=ag.grupo.cor_hex|default:'#999' %}
+            <div class="group-ribbon" style="--grp: {{ hex }};"></div>
+          {% endwith %}
         {% endif %}
       {% endwith %}
 
@@ -230,7 +236,6 @@
             </div>
           </div>
 
-          <!-- AÇÕES no topo -->
           <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
             <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}" class="btn btn-primary btn-sm">
               <i class="fa-solid fa-pen"></i> Editar
@@ -248,7 +253,7 @@
             {% if inscricao.participante.qr_token %}
               <span class="d-inline-flex align-items-center gap-2 ms-1">
                 <img src="{% url 'inscricoes:qr_code_png' inscricao.participante.qr_token %}"
-                     alt="QR" style="width:42px;height:42px;border:1px solid #e5e7eb;border-radius:.5rem;">
+                     alt="QR" style="width:42px;height:42px;border:1px solid var(--line);border-radius:.5rem;">
               </span>
             {% endif %}
           </div>
@@ -274,6 +279,16 @@
         </div>
       </div>
 
+      {% if messages %}
+        <div class="mb-3">
+          {% for message in messages %}
+            <div class="alert {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% elif 'warning' in message.tags %}alert-warning{% else %}alert-info{% endif %} mb-2">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
       <!-- DADOS PRINCIPAIS -->
       <section class="mb-3">
         <h2 class="sec-title"><i class="fa-solid fa-id-badge me-1"></i> Dados da inscrição</h2>
@@ -282,7 +297,7 @@
             <div class="col-md-6">
               <dl class="dl-mini">
                 <dt>Evento</dt><dd><a class="link-ink" href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">{{ inscricao.evento.nome }}</a> <span class="text-muted-2">({{ inscricao.evento.get_tipo_display|default:inscricao.evento.tipo }})</span></dd>
-                <dt>Paróquia</dt><dd>{{ inscricao.paroquia.nome }}</dd>
+                <dt>Paróquia</dt><dd>{{ inscricao.evento.paroquia.nome }}</dd>
                 <dt>Data da inscrição</dt><dd>{{ inscricao.data_inscricao|date:"d/m/Y H:i" }}</dd>
               </dl>
             </div>
@@ -297,7 +312,7 @@
         </div>
       </section>
 
-      <!-- DADOS ADICIONAIS (por tipo) -->
+      <!-- DADOS ADICIONAIS -->
       {% with s=inscricao.inscricaosenior j=inscricao.inscricaojuvenil m=inscricao.inscricaomirim sv=inscricao.inscricaoservos c=inscricao.inscricaocasais e=inscricao.inscricaoevento r=inscricao.inscricaoretiro %}
       {% if s or j or m or sv or c or e or r %}
       {% with base=s|default:j|default:m|default:sv|default:c|default:e|default:r %}
@@ -407,11 +422,11 @@
               <div class="small text-muted-2">Grupo</div>
               <div>
                 {% if inscricao.alocacao_grupo and inscricao.alocacao_grupo.grupo %}
-                  {# ===== SWATCH DO GRUPO AO LADO DO NOME ===== #}
-                  <span class="group-swatch me-2" style="background: {{ inscricao.alocacao_grupo.grupo.cor|default:'#999' }};"></span>
+                  <span class="group-swatch me-2"
+                        style="background: {{ inscricao.alocacao_grupo.grupo.cor_hex|default:'#999' }};"></span>
                   {{ inscricao.alocacao_grupo.grupo.nome }}
-                  {% if inscricao.alocacao_grupo.grupo.cor %}
-                    <span class="badge rounded-pill badge-soft ms-2">{{ inscricao.alocacao_grupo.grupo.cor }}</span>
+                  {% if inscricao.alocacao_grupo.grupo.cor_nome %}
+                    <span class="badge rounded-pill badge-soft ms-2">{{ inscricao.alocacao_grupo.grupo.cor_nome }}</span>
                   {% endif %}
                 {% else %}
                   —

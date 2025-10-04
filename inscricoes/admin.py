@@ -700,52 +700,154 @@ except LookupError:
     pass
 
 
-# ======================= Grupo ========================
-class GrupoInline(admin.TabularInline):
-    model = Grupo
-    extra = 1
-    fields = ("nome", "cor")
-    show_change_link = True
+def has_field(model, field_name: str) -> bool:
+    try:
+        model._meta.get_field(field_name)
+        return True
+    except Exception:
+        return False
 
 @admin.register(Grupo)
-class GrupoAdmin(SomenteMinhaParoquiaAdmin):
-    list_display = ("nome", "evento", "cor")
-    search_fields = ("nome", "evento__nome")
-    list_filter = ("evento__paroquia", "evento__tipo")
-    fk_limitadas_por_paroquia = ("evento",)
+class GrupoAdmin(admin.ModelAdmin):
+    # Base das colunas
+    _cols = ["nome", "cor_preview"]
+    if has_field(Grupo, "cor"):
+        # Insere 'cor' logo após 'nome'
+        _cols = ["nome", "cor", "cor_preview"]
+    list_display = tuple(_cols)
 
+    # Busca
+    _search = ["nome"]
+    if has_field(Grupo, "cor"):
+        _search.append("cor")
+    search_fields = tuple(_search)
 
-# ====================== Ministério =====================
-class MinisterioInline(admin.TabularInline):
-    model = Ministerio
-    extra = 1
-    fields = ("nome", "descricao")
-    show_change_link = True
+    # Filtros
+    _filters = []
+    if has_field(Grupo, "cor"):
+        _filters.append("cor")
+    list_filter = tuple(_filters)
 
+    def cor_preview(self, obj):
+        """
+        Quadradinho com a cor (quando for um HEX válido, ex.: #FF0000).
+        Se não for hex, mostra um degradê neutro.
+        """
+        c = (getattr(obj, "cor", None) or "").strip()
+        is_hex = c.startswith("#") and len(c) in (4, 7)
+        css = c if is_hex else ""
+        style = f"background:{css};" if css else "background:linear-gradient(45deg,#bbb,#ddd);"
+        title = c or "—"
+        return format_html(
+            '<span title="{}" style="display:inline-block;width:1.2em;height:1.2em;'
+            'border-radius:3px;border:1px solid #999;vertical-align:middle;{}"></span>',
+            title, style
+        )
+    cor_preview.short_description = "Cor"
+
+# ============ MINISTÉRIO (catálogo global) =============
 @admin.register(Ministerio)
-class MinisterioAdmin(SomenteMinhaParoquiaAdmin):
-    list_display = ("nome", "evento", "descricao_curta")
-    search_fields = ("nome", "evento__nome", "descricao")
-    list_filter = ("evento__paroquia", "evento__tipo")
-    fk_limitadas_por_paroquia = ("evento",)
+class MinisterioAdmin(admin.ModelAdmin):
+    list_display = ("nome", "descricao_curta")
+    search_fields = ("nome", "descricao")
 
     def descricao_curta(self, obj):
-        return (obj.descricao[:50] + "...") if obj.descricao else "-"
+        return (obj.descricao[:60] + "…") if obj.descricao else "—"
     descricao_curta.short_description = "Descrição"
 
 
-# ============ Alocações (Inscrição -> Grupo/Ministério) ============
+# ======== ALOCAÇÕES (ligadas à inscrição) =========
+@admin.register(AlocacaoGrupo)
+class AlocacaoGrupoAdmin(admin.ModelAdmin):
+    list_display = ("inscricao", "evento_nome", "grupo", "cor_do_grupo")
+    search_fields = (
+        "inscricao__participante__nome",
+        "inscricao__participante__cpf",
+        "inscricao__evento__nome",
+        "grupo__nome",
+    )
+    list_filter = ("inscricao__evento__paroquia", "inscricao__evento__tipo", "grupo__nome")
+    raw_id_fields = ("inscricao",)
+    autocomplete_fields = ("grupo",)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related("inscricao__participante", "inscricao__evento", "grupo")
+
+    def evento_nome(self, obj):
+        ev = getattr(obj.inscricao, "evento", None)
+        return ev.nome if ev else "—"
+    evento_nome.short_description = "Evento"
+
+    def cor_do_grupo(self, obj):
+        if not obj.grupo:
+            return "—"
+        c = (obj.grupo.cor or "").strip()
+        is_hex = c.startswith("#") and (len(c) in (4, 7))
+        css = c if is_hex else ""
+        style = ("background:{};".format(css)) if css else "background:linear-gradient(45deg,#bbb,#ddd);"
+        rotulo = getattr(obj.grupo, "nome", "Grupo")
+        return format_html(
+            '<span style="display:inline-block;width:1em;height:1em;'
+            'border-radius:3px;border:1px solid #888;vertical-align:middle;{}"></span> {}',
+            style, rotulo
+        )
+    cor_do_grupo.short_description = "Cor/Grupo"
+
+
+@admin.register(AlocacaoMinisterio)
+class AlocacaoMinisterioAdmin(admin.ModelAdmin):
+    list_display = ("inscricao", "evento_nome", "ministerio", "is_coordenador", "funcao")
+    search_fields = (
+        "inscricao__participante__nome",
+        "inscricao__participante__cpf",
+        "inscricao__evento__nome",
+        "ministerio__nome",
+        "funcao",
+    )
+    list_filter = ("inscricao__evento__paroquia", "inscricao__evento__tipo", "ministerio__nome", "is_coordenador")
+    raw_id_fields = ("inscricao",)
+    autocomplete_fields = ("ministerio",)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related("inscricao__participante", "inscricao__evento", "ministerio")
+
+    def evento_nome(self, obj):
+        ev = getattr(obj.inscricao, "evento", None)
+        return ev.nome if ev else "—"
+    evento_nome.short_description = "Evento"
+
+
+# ============ Inlines na Inscrição (1:1) ============
 class AlocacaoGrupoInline(admin.StackedInline):
     model = AlocacaoGrupo
     extra = 0
     fields = ("grupo",)
     show_change_link = True
+    autocomplete_fields = ("grupo",)
 
 class AlocacaoMinisterioInline(admin.StackedInline):
     model = AlocacaoMinisterio
     extra = 0
-    fields = ("ministerio", "funcao")
+    fields = ("ministerio", "funcao", "is_coordenador")
     show_change_link = True
+    autocomplete_fields = ("ministerio",)
 
-# Estende InscricaoAdmin adicionando as inlines
-InscricaoAdmin.inlines += [AlocacaoGrupoInline, AlocacaoMinisterioInline]
+# ---- Anexa as inlines ao admin JÁ registrado de Inscricao (sem re-registrar) ----
+if Inscricao in admin.site._registry:
+    _admin_instance = admin.site._registry[Inscricao]
+    current_inlines = list(getattr(_admin_instance, "inlines", []))  # pode ser tupla
+    # evita duplicar se rodar mais de uma vez
+    for inline in (AlocacaoGrupoInline, AlocacaoMinisterioInline):
+        if inline not in current_inlines:
+            current_inlines.append(inline)
+    _admin_instance.inlines = current_inlines
+else:
+    # fallback: se por algum motivo ainda não estiver registrado, registra com as inlines
+    @admin.register(Inscricao)
+    class InscricaoAdmin(admin.ModelAdmin):
+        list_display = ("participante", "evento", "status", "inscricao_enviada", "pagamento_confirmado")
+        search_fields = ("participante__nome", "participante__cpf", "evento__nome")
+        list_filter = ("evento__paroquia", "evento__tipo", "status")
+        inlines = [AlocacaoGrupoInline, AlocacaoMinisterioInline]

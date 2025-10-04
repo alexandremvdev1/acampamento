@@ -1,4 +1,4 @@
-{% load static %}
+{% load static widget_tweaks %}
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -11,7 +11,8 @@
   <style>
     :root{ --ink:#0f172a; --muted:#64748b; --g1:#0b1020; --g2:#111a3a; --line:#e5e7eb; --base-font:14px; }
     html{ font-size:var(--base-font) } body{ background:#f6f8fb; color:var(--ink) }
-    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)) } .navbar .btn{ font-size:.85rem; padding:.35rem .6rem } .navbar-brand{ font-size:1rem }
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)) }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem } .navbar-brand{ font-size:1rem }
     .sticky-topbar{ position:sticky; top:0; z-index:20; background:#ffffffd6; backdrop-filter:blur(6px); border:1px solid var(--line); border-radius:.9rem }
     .text-muted-2{ color:var(--muted) } .btn-sm,.btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem }
     .card-clean{ border:1px solid var(--line); border-radius:.95rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.08) }
@@ -53,18 +54,24 @@
   </div>
   {% endif %}
 
-  <form id="form-ministerio" method="post" class="card-clean p-3 p-md-4">
+  <form id="form-ministerio" method="post" class="card-clean p-3 p-md-4" novalidate>
     {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger mb-3">
+        {% for err in form.non_field_errors %}{{ err }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+      </div>
+    {% endif %}
+
     <h2 class="sec-title"><i class="fa-solid fa-sliders me-1"></i> Dados do Ministério</h2>
     <div class="row g-3">
       <div class="col-12 col-md-6">
-        <label class="form-label fw-bold text-muted-2">Nome</label>
-        {{ form.nome|add_class:"form-control" }}
+        <label for="{{ form.nome.id_for_label }}" class="form-label fw-bold text-muted-2">Nome</label>
+        {% render_field form.nome class+="form-control" aria-invalid=form.nome.errors|yesno:"true,false" %}
         {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors.0 }}</div>{% endif %}
       </div>
       <div class="col-12">
-        <label class="form-label fw-bold text-muted-2">Descrição</label>
-        {{ form.descricao|add_class:"form-control"|attr:"rows:4" }}
+        <label for="{{ form.descricao.id_for_label }}" class="form-label fw-bold text-muted-2">Descrição</label>
+        {% render_field form.descricao class+="form-control" rows="4" aria-invalid=form.descricao.errors|yesno:"true,false" %}
         {% if form.descricao.errors %}<div class="text-danger small mt-1">{{ form.descricao.errors.0 }}</div>{% endif %}
       </div>
     </div>

@@ -1498,104 +1498,111 @@ class EventoComunitario(models.Model):
 
 
 # ---------------------------------------------------------------------
-# Grupos e Ministérios (Servos)
+# Catálogo fixo de Grupos (com cores) e Ministérios + Alocações por evento
 # ---------------------------------------------------------------------
+from django.core.validators import RegexValidator
+
+# Paleta padrão (nome → hex). Pode ampliar quando quiser.
+CORES_PADRAO = {
+    "Amarelo":   "#F59E0B",
+    "Vermelho":  "#EF4444",
+    "Azul":      "#3B82F6",
+    "Verde":     "#10B981",
+    "Laranja":   "#FB923C",
+    "Roxo":      "#8B5CF6",
+    "Rosa":      "#EC4899",
+    "Ciano":     "#06B6D4",
+    "Lima":      "#84CC16",
+    "Cinza":     "#6B7280",
+}
+
+HEX_VALIDATOR = RegexValidator(
+    regex=r"^#([A-Fa-f0-9]{6})$",
+    message="Use um HEX no formato #RRGGBB (ex.: #3B82F6).",
+)
+
 class Grupo(models.Model):
-    evento = models.ForeignKey("EventoAcampamento", on_delete=models.CASCADE, related_name="grupos")
-    nome = models.CharField(max_length=100)
-    cor = models.CharField(max_length=20, blank=True, null=True,
-                           help_text="Ex.: Amarelo, Vermelho, Azul...")
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["evento", "nome"], name="uniq_grupo_nome_por_evento"),
-        ]
-
-    def clean(self):
-        super().clean()
-        if not self.nome:
-            raise ValidationError({"nome": "Informe o nome do grupo."})
-
-    def __str__(self):
-        return f"{self.nome} ({self.evento.nome})"
-
-
-class Ministerio(models.Model):
-    evento = models.ForeignKey(
-        "EventoAcampamento",
-        on_delete=models.CASCADE,
-        related_name="ministerios"
+    """
+    Catálogo global de grupos. NÃO depende do evento.
+    A cor é escolhida do catálogo e guardamos o HEX para exibir nos relatórios/fichas.
+    """
+    nome = models.CharField(max_length=100, unique=True)
+    cor_nome = models.CharField(
+        max_length=20,
+        choices=[(n, n) for n in CORES_PADRAO.keys()],
+        default="Amarelo",
+        help_text="Nome da cor do catálogo (ex.: Amarelo, Vermelho, Azul...)",
     )
-    nome = models.CharField(max_length=100)
+    cor_hex = models.CharField(
+        max_length=7,  # #RRGGBB
+        validators=[HEX_VALIDATOR],
+        default=CORES_PADRAO["Amarelo"],
+        help_text="Hex da cor (preenchido automaticamente ao salvar).",
+    )
     descricao = models.TextField(blank=True, null=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["evento", "nome"],
-                name="uniq_ministerio_nome_por_evento",
-            ),
-        ]
+        ordering = ["nome"]
 
     def clean(self):
         super().clean()
-        if (self.evento.tipo or "").lower() != "servos":
-            raise ValidationError(
-                {"evento": "Ministérios só podem ser cadastrados em eventos do tipo Servos."}
-            )
+        # mantém hex coerente com o nome da cor
+        if self.cor_nome in CORES_PADRAO:
+            self.cor_hex = CORES_PADRAO[self.cor_nome]
+
+    def save(self, *args, **kwargs):
+        if self.cor_nome in CORES_PADRAO:
+            self.cor_hex = CORES_PADRAO[self.cor_nome]
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.nome} ({self.evento.nome})"
+        return f"{self.nome} ({self.cor_nome})"
 
-    # ===== Helpers convenientes =====
-    @cached_property
-    def coordenador_alocacao(self):
-        """
-        Retorna a AlocacaoMinisterio marcada como coordenador (ou None).
-        Usa select_related para evitar N+1.
-        """
-        return (
-            self.alocacoes.filter(is_coordenador=True)
-            .select_related("inscricao__participante")
-            .first()
-        )
 
-    @property
-    def coordenador_participante(self):
-        """Retorna o Participante do coordenador (ou None)."""
-        a = self.coordenador_alocacao
-        return a.inscricao.participante if a else None
+class Ministerio(models.Model):
+    """
+    Catálogo global de ministérios. NÃO depende do evento.
+    """
+    nome = models.CharField(max_length=100, unique=True)
+    descricao = models.TextField(blank=True, null=True)
+    ativo = models.BooleanField(default=True)
 
-    @property
-    def alocados_count(self) -> int:
-        """Contagem rápida sem depender de annotate na view."""
-        # se a view já anotou Count('alocacoes'), use-a; senão, calcula aqui
-        if hasattr(self, "alocacoes__count"):
-            return getattr(self, "alocacoes__count") or 0
-        if hasattr(self, "alocacoes_count"):
-            return getattr(self, "alocacoes_count") or 0
-        return self.alocacoes.count()
+    class Meta:
+        ordering = ["nome"]
 
+    def __str__(self):
+        return self.nome
+
+
+# ======================= ALOCAÇÕES por evento =======================
 
 class AlocacaoMinisterio(models.Model):
+    """
+    Liga uma inscrição (que deve ser de um evento 'servos') a um Ministério (global) em um EVENTO específico.
+    Garante no máximo 1 coordenador por (evento, ministério).
+    """
     inscricao = models.OneToOneField(
         "Inscricao",
         on_delete=models.CASCADE,
         related_name="alocacao_ministerio",
         help_text="A inscrição deste servo (no evento de Servos).",
     )
+    evento = models.ForeignKey(
+        "EventoAcampamento",
+        on_delete=models.CASCADE,
+        related_name="alocacoes_ministerio",
+    )
     ministerio = models.ForeignKey(
         "Ministerio",
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name="alocacoes"   # <- padronizado (ANTES era 'inscricoes')
+        related_name="alocacoes",
     )
     funcao = models.CharField(
         max_length=100,
         blank=True, null=True,
         help_text="Ex.: Coordenação, Liturgia, Música..."
     )
-    # flag de coordenador
     is_coordenador = models.BooleanField(
         default=False,
         verbose_name="É coordenador(a) do ministério?"
@@ -1603,51 +1610,81 @@ class AlocacaoMinisterio(models.Model):
     data_alocacao = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # Garante **apenas um** coordenador por ministério
+        # Um coordenador por ministério em cada evento
         constraints = [
             models.UniqueConstraint(
-                fields=["ministerio"],
+                fields=["evento", "ministerio"],
                 condition=Q(is_coordenador=True),
-                name="uniq_um_coordenador_por_ministerio",
+                name="uniq_um_coordenador_por_ministerio_em_evento",
             )
         ]
 
     def clean(self):
         super().clean()
+        # Inscrição e evento devem bater
+        if self.inscricao and self.evento and self.inscricao.evento_id != self.evento_id:
+            raise ValidationError({"evento": "O evento da alocação deve ser o mesmo da inscrição."})
 
-        # Mesmo evento
-        if self.ministerio and (self.inscricao.evento_id != self.ministerio.evento_id):
-            raise ValidationError({"ministerio": "Ministério deve pertencer ao mesmo evento da inscrição."})
-
-        # Só em eventos 'servos'
-        if (self.inscricao.evento.tipo or "").lower() != "servos":
-            raise ValidationError({"inscricao": "Atribuição de ministério só é permitida para eventos de Servos."})
+        # Só em eventos de Servos
+        if self.evento and (self.evento.tipo or "").lower() != "servos":
+            raise ValidationError({"evento": "Atribuição de ministério só é permitida para eventos de Servos."})
 
         # Impedir 2 coordenadores
         if self.is_coordenador and self.ministerio_id:
-            qs = AlocacaoMinisterio.objects.filter(
+            qs = type(self).objects.filter(
+                evento_id=self.evento_id,
                 ministerio_id=self.ministerio_id,
                 is_coordenador=True
             )
             if self.pk:
                 qs = qs.exclude(pk=self.pk)
             if qs.exists():
-                raise ValidationError({"is_coordenador": "Este ministério já possui um(a) coordenador(a)."})
+                raise ValidationError({"is_coordenador": "Este ministério já possui um(a) coordenador(a) neste evento."})
 
     def __str__(self):
         tag = " (Coord.)" if self.is_coordenador else ""
         nome_min = self.ministerio.nome if self.ministerio else "Sem ministério"
-        return f"{self.inscricao.participante.nome}{tag} → {nome_min}"
+        return f"{self.inscricao.participante.nome}{tag} → {nome_min} @ {self.evento.nome}"
+
 
 class AlocacaoGrupo(models.Model):
-    inscricao = models.OneToOneField("Inscricao", on_delete=models.CASCADE, related_name="alocacao_grupo")
-    grupo = models.ForeignKey("Grupo", on_delete=models.SET_NULL, null=True, blank=True, related_name="inscricoes")
+    """
+    Liga uma inscrição (que deve ser de um evento 'servos') a um Grupo (global) em um EVENTO específico.
+    """
+    inscricao = models.OneToOneField(
+        "Inscricao",
+        on_delete=models.CASCADE,
+        related_name="alocacao_grupo"
+    )
+    evento = models.ForeignKey(
+        "EventoAcampamento",
+        on_delete=models.CASCADE,
+        related_name="alocacoes_grupo",
+    )
+    grupo = models.ForeignKey(
+        "Grupo",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="alocacoes"
+    )
     data_alocacao = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["evento"]),
+            models.Index(fields=["grupo"]),
+        ]
 
     def clean(self):
         super().clean()
-        if self.grupo and (self.inscricao.evento_id != self.grupo.evento_id):
-            raise ValidationError({"grupo": "Grupo deve pertencer ao mesmo evento da inscrição."})
+        # Inscrição e evento devem bater
+        if self.inscricao and self.evento and self.inscricao.evento_id != self.evento_id:
+            raise ValidationError({"evento": "O evento da alocação deve ser o mesmo da inscrição."})
+
+        # Só em eventos de Servos
+        if self.evento and (self.evento.tipo or "").lower() != "servos":
+            raise ValidationError({"evento": "Atribuição de grupo só é permitida para eventos de Servos."})
 
     def __str__(self):
-        return f"{self.inscricao.participante.nome} → {self.grupo.nome if self.grupo else 'Sem grupo'}"
+        g = self.grupo.nome if self.grupo else "Sem grupo"
+        return f"{self.inscricao.participante.nome} → {g} @ {self.evento.nome}"

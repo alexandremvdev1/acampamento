@@ -14,10 +14,10 @@ from django.db import transaction
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 
-from .models import Paroquia, EventoAcampamento, Ministerio
+from .models import Paroquia, EventoAcampamento, Ministerio, Grupo
 
 logger = logging.getLogger("django")
-User = get_user_model()  # usa AUTH_USER_MODEL
+User = get_user_model()  # AUTH_USER_MODEL
 
 
 # =========================
@@ -31,9 +31,7 @@ def get_client_ip(request):
 
 
 def gerar_senha_aleatoria(tamanho: int = 10) -> str:
-    """
-    Senha aleatória (letras+algarismos) usando 'secrets' (seguro).
-    """
+    """Senha aleatória (letras+algarismos) usando 'secrets' (seguro)."""
     chars = string.ascii_letters + string.digits
     return "".join(secrets.choice(chars) for _ in range(tamanho))
 
@@ -137,9 +135,9 @@ def criar_usuario_paroquia(sender, instance: Paroquia, created: bool, **kwargs):
 
 
 # =========================
-# Ministérios padrão (evento tipo Servos)
+# Catálogo GLOBAL (fixo) de Ministérios e Grupos com cores
 # =========================
-MINISTERIOS_PADRAO = [
+MINISTERIOS_FIXOS = [
     "Capela/Liturgia",
     "Música",
     "Intercessão",
@@ -154,26 +152,47 @@ MINISTERIOS_PADRAO = [
     "Cantina/Livraria",
 ]
 
+# nome → hex (deve bater com CORES_PADRAO no models.py)
+GRUPOS_FIXOS = {
+    "Amarelo":  "#F59E0B",
+    "Vermelho": "#EF4444",
+    "Azul":     "#3B82F6",
+    "Verde":    "#10B981",
+}
+
 
 def _eh_servos(tipo: str | None) -> bool:
     return (tipo or "").strip().lower() == "servos"
 
 
-def _criar_ministerios_padrao(evento: EventoAcampamento) -> None:
+def _garantir_catalogo_global():
     """
-    Cria (se necessário) os ministérios padrão para eventos de Servos.
-    Usa on_commit para rodar após o evento estar persistido.
+    Garante a existência (global) dos Ministérios e Grupos fixos.
+    Não referencia evento.ministerios nem evento.grupos (pois não existem mais).
     """
-    def _do():
-        existentes = set(evento.ministerios.values_list("nome", flat=True))
-        novos = [Ministerio(evento=evento, nome=n) for n in MINISTERIOS_PADRAO if n not in existentes]
-        if novos:
-            Ministerio.objects.bulk_create(novos, ignore_conflicts=True)
-            logger.info("Ministérios padrão criados para o evento '%s'.", evento.nome)
-        else:
-            logger.info("Nenhum ministério novo necessário para o evento '%s'.", evento.nome)
+    # Ministérios globais
+    for nome in MINISTERIOS_FIXOS:
+        Ministerio.objects.get_or_create(
+            nome=nome,
+            defaults={"descricao": f"Ministério de {nome}", "ativo": True},
+        )
 
-    transaction.on_commit(_do)
+    # Grupos globais (com coerência de cor)
+    for nome, hexcor in GRUPOS_FIXOS.items():
+        g, _ = Grupo.objects.get_or_create(
+            nome=nome,
+            defaults={"cor_nome": nome, "cor_hex": hexcor},
+        )
+        # Se já existe e a cor diverge, alinhar
+        to_update = []
+        if g.cor_nome != nome:
+            g.cor_nome = nome
+            to_update.append("cor_nome")
+        if not g.cor_hex or g.cor_hex.upper() != hexcor.upper():
+            g.cor_hex = hexcor
+            to_update.append("cor_hex")
+        if to_update:
+            g.save(update_fields=to_update)
 
 
 @receiver(pre_save, sender=EventoAcampamento)
@@ -192,15 +211,21 @@ def _memorizar_tipo_antigo(sender, instance: EventoAcampamento, **kwargs):
 
 
 @receiver(post_save, sender=EventoAcampamento)
-def criar_ministerios_padrao_servos(sender, instance: EventoAcampamento, created: bool, **kwargs):
+def criar_catalogos_globais_para_servos(sender, instance: EventoAcampamento, created: bool, **kwargs):
     """
-    - Se CRIADO como 'servos' → cria ministérios padrão.
-    - Se ATUALIZADO e mudou para 'servos' → cria ministérios padrão.
+    NOVO fluxo, compatível com o modelo atual:
+    - Se CRIADO como 'servos' → garante catálogo GLOBAL de ministérios e grupos.
+    - Se ATUALIZADO e mudou para 'servos' → idem.
+    (Não cria objetos atrelados ao evento.)
     """
+    def _do():
+        _garantir_catalogo_global()
+        logger.info("Catálogos globais (ministérios e grupos) garantidos.")
+
     if created and _eh_servos(instance.tipo):
-        _criar_ministerios_padrao(instance)
+        transaction.on_commit(_do)
         return
 
     tipo_antigo = getattr(instance, "_tipo_antigo", None)
     if not created and not _eh_servos(tipo_antigo) and _eh_servos(instance.tipo):
-        _criar_ministerios_padrao(instance)
+        transaction.on_commit(_do)
