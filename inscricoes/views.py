@@ -4035,6 +4035,22 @@ import re
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
+from uuid import uuid4, UUID
+from decimal import Decimal
+from datetime import date, datetime
+
+from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect, render
+from django.http import Http404
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.utils.dateparse import parse_date, parse_datetime
+
+# importe seus forms e models reais
+# from .forms import ParticipanteInicialForm, InscricaoCasaisForm
+# from .models import (EventoAcampamento, PoliticaPrivacidade, Participante, Inscricao,
+#                      InscricaoCasais, Filho, Contato)
+
 def _digits(s: str) -> str:
     return "".join(ch for ch in (s or "") if ch.isdigit())
 
@@ -4180,7 +4196,7 @@ def _deserialize_assign_kwargs(model_cls, data_dict):
         kwargs[k] = v
     return kwargs
 
-def _pair_inscricoes(a: Inscricao, b: Inscricao):
+def _pair_inscricoes(a, b):
     """Vincula as inscrições nas duas pontas."""
     if hasattr(a, "set_pareada"):
         try:
@@ -4219,6 +4235,24 @@ def _parse_filhos_from_post(post):
         filhos.append({"nome": nome, "idade": idade, "telefone": tel})
     return filhos
 
+# =========================================================
+# Helper: salva bytes em um dos possíveis campos de arquivo
+# =========================================================
+def _save_binary_to_filefield(instance, candidate_field_names, filename, data) -> str | None:
+    """
+    Tenta salvar `data` (bytes) no primeiro campo FileField/ImageField
+    existente em `candidate_field_names`. Retorna o nome usado ou None.
+    Evita AttributeError: 'NoneType' object has no attribute 'save'.
+    """
+    for name in candidate_field_names:
+        ff = getattr(instance, name, None)
+        if ff is not None and hasattr(ff, "save"):
+            try:
+                ff.save(filename, ContentFile(data), save=True)
+                return name
+            except Exception:
+                continue
+    return None
 
 @transaction.atomic
 def formulario_casais(request, evento_id):
@@ -4367,32 +4401,31 @@ def formulario_casais(request, evento_id):
             # ===================== FOTO (AGORA SIM) =====================
             # prioridade: arquivo enviado nesta etapa; senão, tenta o tmp da sessão
             foto_file = request.FILES.get("foto_casal")
+            data = None
+            base_name = "foto_casal.jpg"
+
             if foto_file:
                 data = foto_file.read()
-                base_name = getattr(foto_file, "name", "foto_casal.jpg")
-
-                # salva nos dois registros de casais
-                ic1.foto_casal.save(base_name, ContentFile(data), save=True)
-                ic2.foto_casal.save(base_name, ContentFile(data), save=True)
-
-                # sincroniza também com os dois participantes
-                participante1.foto.save(base_name, ContentFile(data), save=True)
-                participante2.foto.save(base_name, ContentFile(data), save=True)
-
+                base_name = getattr(foto_file, "name", base_name)
             else:
                 tmp_path = (c1 or {}).get("foto_tmp_path")
-                name_from_session = (c1 or {}).get("foto_original_name") or "foto_casal.jpg"
+                base_name = (c1 or {}).get("foto_original_name") or base_name
                 if tmp_path and default_storage.exists(tmp_path):
                     with default_storage.open(tmp_path, "rb") as fh:
                         data = fh.read()
-                    ic1.foto_casal.save(name_from_session, ContentFile(data), save=True)
-                    ic2.foto_casal.save(name_from_session, ContentFile(data), save=True)
-                    participante1.foto.save(name_from_session, ContentFile(data), save=True)
-                    participante2.foto.save(name_from_session, ContentFile(data), save=True)
                     try:
                         default_storage.delete(tmp_path)
                     except Exception:
                         pass
+
+            if data:
+                # InscricaoCasais — tenta nos nomes mais prováveis
+                _save_binary_to_filefield(ic1, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
+                _save_binary_to_filefield(ic2, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
+
+                # Participantes — tenta nos nomes mais comuns
+                _save_binary_to_filefield(participante1, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
+                _save_binary_to_filefield(participante2, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
             # ============================================================
 
             # FILHOS do passo 1 → replicar nos DOIS cônjuges
@@ -4440,6 +4473,7 @@ def formulario_casais(request, evento_id):
         "form_insc": form_inscricao,
         "etapa": etapa,
     })
+
 
 
 # --- helper: resolve o tipo de formulário efetivo do evento ---
