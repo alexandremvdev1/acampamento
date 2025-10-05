@@ -4240,18 +4240,38 @@ def _parse_filhos_from_post(post):
 # =========================================================
 def _save_binary_to_filefield(instance, candidate_field_names, filename, data) -> str | None:
     """
-    Tenta salvar `data` (bytes) no primeiro campo FileField/ImageField
-    existente em `candidate_field_names`. Retorna o nome usado ou None.
-    Evita AttributeError: 'NoneType' object has no attribute 'save'.
+    Salva `data` (bytes) no primeiro campo de arquivo encontrado.
+    1) Se o atributo atual tiver `.save`, usa `.save(...)` (ImageField/FileField).
+    2) Caso contrário, faz atribuição direta e salva o modelo (funciona em CloudinaryField).
+    Retorna o nome do campo salvo ou None.
     """
+    # garanta que `candidate_field_names` exista no model (evita setar atributo inexistente)
+    field_names = {f.name for f in instance._meta.get_fields() if hasattr(f, "attname")}
+
     for name in candidate_field_names:
-        ff = getattr(instance, name, None)
-        if ff is not None and hasattr(ff, "save"):
+        if name not in field_names:
+            continue
+
+        current = getattr(instance, name, None)
+
+        # Estratégia 1: FieldFile existente → .save(...)
+        if hasattr(current, "save"):
             try:
-                ff.save(filename, ContentFile(data), save=True)
+                current.save(filename, ContentFile(data), save=True)
                 return name
             except Exception:
-                continue
+                # cai para a estratégia 2
+                pass
+
+        # Estratégia 2: atribuição direta (p/ CloudinaryField ou quando current é None)
+        try:
+            cf = ContentFile(data, name=filename)  # novo objeto a cada tentativa
+            setattr(instance, name, cf)
+            instance.save(update_fields=[name])
+            return name
+        except Exception:
+            continue
+
     return None
 
 @transaction.atomic
