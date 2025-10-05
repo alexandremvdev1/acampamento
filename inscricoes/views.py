@@ -4032,9 +4032,6 @@ def _digits(s: str | None) -> str:
     return re.sub(r"\D", "", s or "")
 
 import re
-from django.db import transaction
-from django.shortcuts import get_object_or_404, redirect, render
-
 from uuid import uuid4, UUID
 from decimal import Decimal
 from datetime import date, datetime
@@ -4236,40 +4233,42 @@ def _parse_filhos_from_post(post):
     return filhos
 
 # =========================================================
-# Helper: salva bytes em um dos possíveis campos de arquivo
+# Helper: salva bytes em um dos possíveis campos de arquivo (com savepoint)
 # =========================================================
 def _save_binary_to_filefield(instance, candidate_field_names, filename, data) -> str | None:
     """
     Salva `data` (bytes) no primeiro campo de arquivo encontrado.
     1) Se o atributo atual tiver `.save`, usa `.save(...)` (ImageField/FileField).
-    2) Caso contrário, faz atribuição direta e salva o modelo (funciona em CloudinaryField).
+    2) Caso contrário, atribuição direta + save(update_fields=[...]) (ok p/ CloudinaryField).
+    Protegido por savepoint para não "quebrar" a transação inteira se falhar.
     Retorna o nome do campo salvo ou None.
     """
-    # garanta que `candidate_field_names` exista no model (evita setar atributo inexistente)
     field_names = {f.name for f in instance._meta.get_fields() if hasattr(f, "attname")}
 
     for name in candidate_field_names:
         if name not in field_names:
             continue
 
-        current = getattr(instance, name, None)
-
-        # Estratégia 1: FieldFile existente → .save(...)
-        if hasattr(current, "save"):
-            try:
-                current.save(filename, ContentFile(data), save=True)
-                return name
-            except Exception:
-                # cai para a estratégia 2
-                pass
-
-        # Estratégia 2: atribuição direta (p/ CloudinaryField ou quando current é None)
+        sid = transaction.savepoint()
         try:
-            cf = ContentFile(data, name=filename)  # novo objeto a cada tentativa
+            current = getattr(instance, name, None)
+
+            # Estratégia 1: FieldFile existente → .save(...)
+            if hasattr(current, "save"):
+                current.save(filename, ContentFile(data), save=True)
+                transaction.savepoint_commit(sid)
+                return name
+
+            # Estratégia 2: atribuição direta (CloudinaryField / current None)
+            cf = ContentFile(data, name=filename)
             setattr(instance, name, cf)
             instance.save(update_fields=[name])
+            transaction.savepoint_commit(sid)
             return name
+
         except Exception:
+            transaction.savepoint_rollback(sid)
+            # tenta próximo nome
             continue
 
     return None
@@ -4394,7 +4393,7 @@ def formulario_casais(request, evento_id):
             tema_acamp = (shared_contacts.get("tema_acampamento") or "").strip() or None
 
             insc1 = Inscricao.objects.create(
-                participante=participante1,
+                participante=partic ipante1,  # <<< garanta que não exista espaço aqui no seu arquivo real!
                 evento=evento,
                 paroquia=getattr(evento, "paroquia", None),
                 cpf_conjuge=participante2.cpf,
@@ -4433,19 +4432,25 @@ def formulario_casais(request, evento_id):
                 if tmp_path and default_storage.exists(tmp_path):
                     with default_storage.open(tmp_path, "rb") as fh:
                         data = fh.read()
-                    try:
-                        default_storage.delete(tmp_path)
-                    except Exception:
-                        pass
+                    # deletar o tmp somente após commit
+                    def _delete_tmp():
+                        try:
+                            default_storage.delete(tmp_path)
+                        except Exception:
+                            pass
+                    transaction.on_commit(_delete_tmp)
 
             if data:
-                # InscricaoCasais — tenta nos nomes mais prováveis
-                _save_binary_to_filefield(ic1, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
-                _save_binary_to_filefield(ic2, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
+                # agenda salvamento das imagens após o COMMIT (evita quebrar a transação)
+                def _save_all_images():
+                    # InscricaoCasais
+                    _save_binary_to_filefield(ic1, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
+                    _save_binary_to_filefield(ic2, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
+                    # Participantes
+                    _save_binary_to_filefield(participante1, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
+                    _save_binary_to_filefield(participante2, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
 
-                # Participantes — tenta nos nomes mais comuns
-                _save_binary_to_filefield(participante1, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
-                _save_binary_to_filefield(participante2, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
+                transaction.on_commit(_save_all_images)
             # ============================================================
 
             # FILHOS do passo 1 → replicar nos DOIS cônjuges
