@@ -48,7 +48,6 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import models, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date, parse_datetime
-from django.core.files.base import ContentFile
 
 from .models import EventoAcampamento, Participante, Inscricao, InscricaoCasais
 from .forms import ParticipanteInicialForm, InscricaoCasaisForm
@@ -4132,7 +4131,6 @@ def _serialize_value_for_session(v):
         return float(v)
     if isinstance(v, UUID):
         return str(v)
-
     return v
 
 def _serialize_for_session_from_form(form):
@@ -4220,6 +4218,8 @@ def _parse_filhos_from_post(post):
     return filhos
 
 
+# ------------------ VIEW (2 ETAPAS) ------------------
+
 @transaction.atomic
 def formulario_casais(request, evento_id):
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
@@ -4267,12 +4267,12 @@ def formulario_casais(request, evento_id):
             if foto_file:
                 foto_original_name = getattr(foto_file, "name", "foto_casal.jpg")
                 tmp_name = f"tmp/casais/{uuid4()}_{foto_original_name}"
+                # importante: salvar via storage; evita ler tudo em memória manualmente
                 foto_tmp_path = default_storage.save(tmp_name, foto_file)
 
             # dados do form de inscrições (sem arquivo) serializados
             dados_insc_serial = _serialize_for_session_from_form(form_inscricao)
-            # garantir que não guardamos o arquivo na sessão
-            dados_insc_serial.pop("foto_casal", None)
+            dados_insc_serial.pop("foto_casal", None)  # nunca guardar arquivo na sessão
 
             # contatos compartilhados (vão ser aplicados nas duas inscrições)
             shared_contacts = _get_optional_post(
@@ -4355,8 +4355,6 @@ def formulario_casais(request, evento_id):
             )
 
             if tema_acamp:
-                insc1.tema_acampamento = tema_acamp
-                insc2.tema_acampamento = tema_acamp
                 Inscricao.objects.filter(pk__in=[insc1.pk, insc2.pk]).update(tema_acampamento=tema_acamp)
 
             # parear
@@ -4368,14 +4366,28 @@ def formulario_casais(request, evento_id):
             ic1 = InscricaoCasais.objects.create(inscricao=insc1, **safe1)
             ic2 = InscricaoCasais.objects.create(inscricao=insc2, **safe2)
 
-            # FOTO do passo 1 → gravar nos dois registros de casais
+            # FOTO do passo 1 → gravar nos dois InscricaoCasais E nos dois Participante
             tmp_path = (c1 or {}).get("foto_tmp_path")
             name_from_session = (c1 or {}).get("foto_original_name") or "foto_casal.jpg"
             if tmp_path and default_storage.exists(tmp_path):
                 with default_storage.open(tmp_path, "rb") as fh:
                     data = fh.read()
+
+                # InscricaoCasais (duas cópias independentes)
                 ic1.foto_casal.save(name_from_session, ContentFile(data), save=True)
                 ic2.foto_casal.save(name_from_session, ContentFile(data), save=True)
+
+                # Participante (duas cópias)
+                try:
+                    participante1.foto.save(name_from_session, ContentFile(data), save=True)
+                except Exception:
+                    pass
+                try:
+                    participante2.foto.save(name_from_session, ContentFile(data), save=True)
+                except Exception:
+                    pass
+
+                # remover temporário
                 try:
                     default_storage.delete(tmp_path)
                 except Exception:
