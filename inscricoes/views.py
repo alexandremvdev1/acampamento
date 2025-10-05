@@ -35,7 +35,19 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from django.core.exceptions import ValidationError
 from .models import Inscricao, EventoAcampamento, InscricaoStatus
 from django.db.models import Prefetch, Count, Q
+from decimal import Decimal
+import re
+from datetime import date, datetime
 
+from django.apps import apps
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import UploadedFile
+from django.db import models, transaction
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date, parse_datetime
+
+from .models import EventoAcampamento, Participante, Inscricao, InscricaoCasais
+from .forms import ParticipanteInicialForm, InscricaoCasaisForm
 # ——— Terceiros
 import mercadopago
 import qrcode
@@ -4056,6 +4068,86 @@ def _deserialize_from_session(data):
     return deserialized
 
 
+# -------------------- Helpers --------------------
+
+def _digits(s: str) -> str:
+    return re.sub(r"\D+", "", s or "")
+
+def _serialize_for_session_from_form(form) -> dict:
+    """
+    Converte form.cleaned_data -> payload 100% serializável em JSON para guardar na sessão.
+    - FKs viram {"__fk__": "app_label.ModelName", "pk": ...}
+    - listas/QuerySets de modelos viram lista desses dicionários
+    - datas/datetimes -> ISO
+    - Decimal -> str
+    - UploadedFile é ignorado (não pode ir pra sessão)
+    """
+    out = {}
+    fields = getattr(form.Meta, "fields", [])
+    for name in fields:
+        v = form.cleaned_data.get(name, None)
+        if v is None:
+            continue
+        if isinstance(v, UploadedFile):
+            continue  # nunca salve arquivos na sessão
+        if isinstance(v, (date, datetime)):
+            out[name] = v.isoformat()
+            continue
+        if isinstance(v, Decimal):
+            out[name] = str(v)
+            continue
+        if isinstance(v, models.Model):
+            out[name] = {"__fk__": v._meta.label, "pk": v.pk}
+            continue
+        if isinstance(v, (list, tuple, set, models.QuerySet)):
+            arr = []
+            for item in v:
+                if isinstance(item, models.Model):
+                    arr.append({"__fk__": item._meta.label, "pk": item.pk})
+                else:
+                    arr.append(item)
+            out[name] = arr
+            continue
+        out[name] = v
+    return out
+
+def _deserialize_from_session(payload: dict, model_class) -> dict:
+    """
+    Converte payload salvo na sessão -> dict pronto para **kwargs do model.
+    Usa introspecção do model para reconstruir FKs / datas / decimais.
+    """
+    data = {}
+    for name, raw in (payload or {}).items():
+        try:
+            field = model_class._meta.get_field(name)
+        except Exception:
+            data[name] = raw
+            continue
+
+        if isinstance(raw, dict) and "__fk__" in raw:
+            mdl = apps.get_model(raw["__fk__"])
+            data[name] = mdl.objects.get(pk=raw["pk"])
+            continue
+
+        if isinstance(raw, list) and raw and isinstance(raw[0], dict) and "__fk__" in raw[0]:
+            mdl = apps.get_model(raw[0]["__fk__"])
+            pks = [d["pk"] for d in raw]
+            data[name] = mdl.objects.filter(pk__in=pks)  # geralmente aplicar após .save() se for M2M
+            continue
+
+        if isinstance(field, models.DateTimeField):
+            data[name] = parse_datetime(raw) if isinstance(raw, str) else raw
+        elif isinstance(field, models.DateField):
+            data[name] = parse_date(raw) if isinstance(raw, str) else raw
+        elif isinstance(field, models.DecimalField):
+            data[name] = Decimal(raw) if isinstance(raw, str) else raw
+        else:
+            data[name] = raw
+    return data
+
+
+# -------------------- View --------------------
+
 @transaction.atomic
 def formulario_casais(request, evento_id):
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
@@ -4068,10 +4160,10 @@ def formulario_casais(request, evento_id):
     except ImportError:
         pass
 
-    # 🔹 etapa atual (1 = cônjuge 1, 2 = cônjuge 2)
-    etapa = request.session.get("casais_etapa", 1)
+    # Etapa atual (1 = cônjuge 1, 2 = cônjuge 2)
+    etapa = int(request.session.get("casais_etapa", 1))
 
-    # inicializa os forms sempre
+    # Forms
     form_participante = ParticipanteInicialForm(request.POST or None)
     form_inscricao = InscricaoCasaisForm(request.POST or None, request.FILES or None)
 
@@ -4088,15 +4180,17 @@ def formulario_casais(request, evento_id):
                 }
             )
 
-            # guarda dados do cônjuge 1 na sessão (serializados)
+            # Serializa apenas campos JSON-safe
+            payload_seguro = _serialize_for_session_from_form(form_inscricao)
+
+            # Guarda cônjuge 1
             request.session["conjuge1"] = {
                 "participante_id": participante.id,
-                "dados_inscricao": _serialize_for_session({
-                    k: v for k, v in form_inscricao.cleaned_data.items()
-                    if k in InscricaoCasaisForm.Meta.fields
-                })
+                "dados_inscricao": payload_seguro,
             }
             request.session["casais_etapa"] = 2
+            request.session.modified = True
+
             return redirect("inscricoes:formulario_casais", evento_id=evento.id)
 
     # =================== ETAPA 2 ===================
@@ -4112,20 +4206,25 @@ def formulario_casais(request, evento_id):
                 }
             )
 
-            # recupera cônjuge 1 da sessão
+            # Recupera cônjuge 1 da sessão
             c1 = request.session.get("conjuge1")
             if not c1:
                 request.session["casais_etapa"] = 1
+                request.session.modified = True
                 return redirect("inscricoes:formulario_casais", evento_id=evento.id)
 
             participante1 = Participante.objects.get(id=c1["participante_id"])
-            dados1 = _deserialize_from_session(c1["dados_inscricao"])
-            dados2 = _deserialize_from_session({
-                k: v for k, v in form_inscricao.cleaned_data.items()
-                if k in InscricaoCasaisForm.Meta.fields
-            })
 
-            # cria inscrições
+            # Reconstrói dados dos dois formulários
+            dados1 = _deserialize_from_session(c1["dados_inscricao"], InscricaoCasais)
+            payload2 = _serialize_for_session_from_form(form_inscricao)
+            dados2 = _deserialize_from_session(payload2, InscricaoCasais)
+
+            # Garante a paróquia do evento
+            dados1["paroquia"] = evento.paroquia
+            dados2["paroquia"] = evento.paroquia
+
+            # Cria inscrições base (uma pra cada participante)
             insc1 = Inscricao.objects.create(
                 participante=participante1,
                 evento=evento,
@@ -4139,13 +4238,23 @@ def formulario_casais(request, evento_id):
                 cpf_conjuge=participante1.cpf,
             )
 
-            # cria dados extras casais
-            InscricaoCasais.objects.create(inscricao=insc1, **dados1)
-            InscricaoCasais.objects.create(inscricao=insc2, **dados2)
+            # Arquivo (foto_casal), se veio na etapa 2
+            foto_casal = form_inscricao.cleaned_data.get("foto_casal")
 
-            # limpa sessão
+            # Cria dados extras casais
+            ic1 = InscricaoCasais.objects.create(
+                inscricao=insc1,
+                **{k: v for k, v in dados1.items() if k in InscricaoCasaisForm.Meta.fields}
+            )
+            ic2_kwargs = {k: v for k, v in dados2.items() if k in InscricaoCasaisForm.Meta.fields}
+            if foto_casal:
+                ic2_kwargs["foto_casal"] = foto_casal
+            ic2 = InscricaoCasais.objects.create(inscricao=insc2, **ic2_kwargs)
+
+            # Limpa sessão
             request.session.pop("conjuge1", None)
             request.session.pop("casais_etapa", None)
+            request.session.modified = True
 
             return redirect("inscricoes:ver_inscricao", pk=insc1.id)
 

@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from django.utils.deprecation import MiddlewareMixin
 
+
 logger = logging.getLogger('django')
 
 
