@@ -4038,20 +4038,19 @@ from datetime import date, datetime
 
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import Http404
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils.dateparse import parse_date, parse_datetime
 
-# importe seus forms e models reais
 # from .forms import ParticipanteInicialForm, InscricaoCasaisForm
-# from .models import (EventoAcampamento, PoliticaPrivacidade, Participante, Inscricao,
-#                      InscricaoCasais, Filho, Contato)
+# from .models import (
+#     EventoAcampamento, PoliticaPrivacidade, Participante, Inscricao,
+#     InscricaoCasais, Filho, Contato
+# )
 
 def _digits(s: str) -> str:
     return "".join(ch for ch in (s or "") if ch.isdigit())
 
-# aliases aceitos vindo do HTML para endereço
 ADDRESS_ALIASES = {
     "cep": ["CEP", "cep", "zip", "postal_code"],
     "endereco": ["endereco", "endereço", "address", "rua", "logradouro"],
@@ -4062,14 +4061,12 @@ ADDRESS_ALIASES = {
 }
 
 def _extract_address_from_request(request):
-    """Coleta endereço do POST aceitando aliases e devolve dict canônico."""
     out = {}
     for canonical, variants in ADDRESS_ALIASES.items():
         for name in variants:
             if name in request.POST and request.POST.get(name):
                 out[canonical] = request.POST.get(name).strip()
                 break
-    # aceita também padrões com prefixo (addr_*) e arrays addr[cidade]
     for k in ["cep","endereco","numero","bairro","cidade","estado"]:
         if k not in out:
             v = request.POST.get(f"addr_{k}") or request.POST.get(f"end_{k}")
@@ -4080,7 +4077,6 @@ def _extract_address_from_request(request):
     return out
 
 def _apply_address_to_participante(participante, addr_dict: dict):
-    """Aplica endereço no participante, respeitando nomes reais e maiúsculo de 'CEP'."""
     if not addr_dict:
         return
     model_fields_map = {f.name.lower(): f.name for f in participante._meta.get_fields() if hasattr(f, "attname")}
@@ -4105,7 +4101,6 @@ def _apply_address_to_participante(participante, addr_dict: dict):
         participante.save(update_fields=to_update)
 
 def _get_optional_post(request, fields):
-    """Coleta campos avulsos do POST se existirem; útil p/ contatos compartilhados."""
     data = {}
     for f in fields:
         if f in request.POST:
@@ -4115,44 +4110,37 @@ def _get_optional_post(request, fields):
     return data
 
 def _serialize_value_for_session(v):
-    """Torna cleaned_data serializável pra sessão."""
     try:
         from django.core.files.uploadedfile import UploadedFile
         if isinstance(v, UploadedFile):
             return None
     except Exception:
         pass
-
-    if hasattr(v, "pk"):  # model instance
+    if hasattr(v, "pk"):
         return v.pk
-
     if isinstance(v, (list, tuple, set)):
         out = []
         for item in v:
             out.append(item.pk if hasattr(item, "pk") else _serialize_value_for_session(item))
         return out
-
     try:
         from django.db.models.query import QuerySet
         if isinstance(v, QuerySet):
             return list(v.values_list("pk", flat=True))
     except Exception:
         pass
-
     if isinstance(v, (date, datetime)):
         return v.isoformat()
     if isinstance(v, Decimal):
         return float(v)
     if isinstance(v, UUID):
         return str(v)
-
     return v
 
 def _serialize_for_session_from_form(form):
     return {k: _serialize_value_for_session(v) for k, v in (form.cleaned_data or {}).items()}
 
 def _deserialize_assign_kwargs(model_cls, data_dict):
-    """Converte dict serializado em kwargs tipados com os Field do model."""
     if not data_dict:
         return {}
     from django.db import models as dj_models
@@ -4194,7 +4182,6 @@ def _deserialize_assign_kwargs(model_cls, data_dict):
     return kwargs
 
 def _pair_inscricoes(a, b):
-    """Vincula as inscrições nas duas pontas."""
     if hasattr(a, "set_pareada"):
         try:
             a.set_pareada(b)
@@ -4213,7 +4200,6 @@ def _pair_inscricoes(a, b):
         pass
 
 def _parse_filhos_from_post(post):
-    """Lê qtd_filhos e campos filho_i_nome/idade/telefone do POST."""
     filhos = []
     try:
         qtd = int(post.get("qtd_filhos") or post.get("id_qtd_filhos") or 0)
@@ -4223,7 +4209,7 @@ def _parse_filhos_from_post(post):
         nome = (post.get(f"filho_{i}_nome") or "").strip()
         idade_raw = (post.get(f"filho_{i}_idade") or "").strip()
         tel  = (post.get(f"filho_{i}_telefone") or "").strip()
-        if not (nome or idade_raw or tel):
+        if not (nome or idade_raw or tel):   # ✅ nada de "ou" em Python
             continue
         try:
             idade = int(idade_raw) if idade_raw else 0
@@ -4232,265 +4218,214 @@ def _parse_filhos_from_post(post):
         filhos.append({"nome": nome, "idade": idade, "telefone": tel})
     return filhos
 
-# =========================================================
-# Helper: salva bytes em um dos possíveis campos de arquivo (com savepoint)
-# =========================================================
 def _save_binary_to_filefield(instance, candidate_field_names, filename, data) -> str | None:
-    """
-    Salva `data` (bytes) no primeiro campo de arquivo encontrado.
-    1) Se o atributo atual tiver `.save`, usa `.save(...)` (ImageField/FileField).
-    2) Caso contrário, atribuição direta + save(update_fields=[...]) (ok p/ CloudinaryField).
-    Protegido por savepoint para não "quebrar" a transação inteira se falhar.
-    Retorna o nome do campo salvo ou None.
-    """
     field_names = {f.name for f in instance._meta.get_fields() if hasattr(f, "attname")}
-
     for name in candidate_field_names:
         if name not in field_names:
             continue
-
         sid = transaction.savepoint()
         try:
             current = getattr(instance, name, None)
-
-            # Estratégia 1: FieldFile existente → .save(...)
             if hasattr(current, "save"):
                 current.save(filename, ContentFile(data), save=True)
                 transaction.savepoint_commit(sid)
                 return name
-
-            # Estratégia 2: atribuição direta (CloudinaryField / current None)
             cf = ContentFile(data, name=filename)
             setattr(instance, name, cf)
             instance.save(update_fields=[name])
             transaction.savepoint_commit(sid)
             return name
-
         except Exception:
             transaction.savepoint_rollback(sid)
-            # tenta próximo nome
             continue
-
     return None
 
-@transaction.atomic
 def formulario_casais(request, evento_id):
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
 
-    # política (se houver)
     politica = None
     try:
         politica = PoliticaPrivacidade.objects.first()
     except Exception:
         pass
 
-    # etapa atual (1 cônjuge 1; 2 cônjuge 2)
     etapa = int(request.session.get("casais_etapa", 1))
 
     form_participante = ParticipanteInicialForm(request.POST or None)
     form_inscricao = InscricaoCasaisForm(request.POST or None, request.FILES or None)
 
-    # Foto: obrigatória só na etapa 2; opcional/ignorada na etapa 1
     if hasattr(form_inscricao, "fields") and "foto_casal" in form_inscricao.fields:
         form_inscricao.fields["foto_casal"].required = (etapa == 2)
 
-    # =================== ETAPA 1 ===================
-    if etapa == 1 and request.method == "POST":
-        if form_participante.is_valid() and form_inscricao.is_valid():
-            cpf = _digits(form_participante.cleaned_data.get("cpf"))
-            participante1, _ = Participante.objects.update_or_create(
-                cpf=cpf,
-                defaults={
-                    "nome": form_participante.cleaned_data.get("nome"),
-                    "email": form_participante.cleaned_data.get("email"),
-                    "telefone": form_participante.cleaned_data.get("telefone"),
-                }
-            )
+    # Tudo que mexe em DB fica dentro do atomic:
+    if request.method == "POST":
+        try:
+            with transaction.atomic():
+                if etapa == 1:
+                    if form_participante.is_valid() and form_inscricao.is_valid():
+                        cpf = _digits(form_participante.cleaned_data.get("cpf"))
+                        participante1, _ = Participante.objects.update_or_create(
+                            cpf=cpf,
+                            defaults={
+                                "nome": form_participante.cleaned_data.get("nome"),
+                                "email": form_participante.cleaned_data.get("email"),
+                                "telefone": form_participante.cleaned_data.get("telefone"),
+                            }
+                        )
+                        addr1 = _extract_address_from_request(request)
+                        if addr1:
+                            _apply_address_to_participante(participante1, addr1)
 
-            # endereço do passo 1 => aplica no participante 1
-            addr1 = _extract_address_from_request(request)
-            if addr1:
-                _apply_address_to_participante(participante1, addr1)
+                        foto_tmp_path = None
+                        foto_original_name = None
+                        foto_file = form_inscricao.cleaned_data.get("foto_casal")
+                        if foto_file:
+                            foto_original_name = getattr(foto_file, "name", "foto_casal.jpg")
+                            tmp_name = f"tmp/casais/{uuid4()}_{foto_original_name}"
+                            foto_tmp_path = default_storage.save(tmp_name, foto_file)
 
-            # (opcional) guardar foto em tmp se anexarem por engano na etapa 1
-            foto_tmp_path = None
-            foto_original_name = None
-            foto_file = form_inscricao.cleaned_data.get("foto_casal")
-            if foto_file:
-                foto_original_name = getattr(foto_file, "name", "foto_casal.jpg")
-                tmp_name = f"tmp/casais/{uuid4()}_{foto_original_name}"
-                foto_tmp_path = default_storage.save(tmp_name, foto_file)
+                        dados_insc_serial = _serialize_for_session_from_form(form_inscricao)
+                        dados_insc_serial.pop("foto_casal", None)
 
-            # dados do form de inscrições (sem arquivo) serializados p/ sessão
-            dados_insc_serial = _serialize_for_session_from_form(form_inscricao)
-            dados_insc_serial.pop("foto_casal", None)  # nunca guarda arquivo na sessão
+                        shared_contacts = _get_optional_post(
+                            request,
+                            [
+                                "responsavel_1_nome", "responsavel_1_telefone", "responsavel_1_grau_parentesco", "responsavel_1_ja_e_campista",
+                                "responsavel_2_nome", "responsavel_2_telefone", "responsavel_2_grau_parentesco", "responsavel_2_ja_e_campista",
+                                "contato_emergencia_nome", "contato_emergencia_telefone", "contato_emergencia_grau_parentesco", "contato_emergencia_ja_e_campista",
+                                "tema_acampamento",
+                            ]
+                        )
+                        filhos_serial = _parse_filhos_from_post(request.POST)
 
-            # contatos compartilhados (aplicados em ambas inscrições)
-            shared_contacts = _get_optional_post(
-                request,
-                [
-                    "responsavel_1_nome", "responsavel_1_telefone", "responsavel_1_grau_parentesco", "responsavel_1_ja_e_campista",
-                    "responsavel_2_nome", "responsavel_2_telefone", "responsavel_2_grau_parentesco", "responsavel_2_ja_e_campista",
-                    "contato_emergencia_nome", "contato_emergencia_telefone", "contato_emergencia_grau_parentesco", "contato_emergencia_ja_e_campista",
-                    "tema_acampamento",
-                ]
-            )
+                        request.session["conjuge1"] = {
+                            "participante_id": participante1.id,
+                            "dados_inscricao": dados_insc_serial,
+                            "foto_tmp_path": foto_tmp_path,
+                            "foto_original_name": foto_original_name,
+                            "shared": {
+                                "endereco": addr1,
+                                "contatos": shared_contacts,
+                                "filhos": filhos_serial,
+                            }
+                        }
+                        request.session["casais_etapa"] = 2
+                        return redirect("inscricoes:formulario_casais", evento_id=evento.id)
 
-            # filhos (apenas etapa 1)
-            filhos_serial = _parse_filhos_from_post(request.POST)
+                elif etapa == 2:
+                    if form_participante.is_valid() and form_inscricao.is_valid():
+                        c1 = request.session.get("conjuge1")
+                        if not c1:
+                            request.session["casais_etapa"] = 1
+                            return redirect("inscricoes:formulario_casais", evento_id=evento.id)
 
-            request.session["conjuge1"] = {
-                "participante_id": participante1.id,
-                "dados_inscricao": dados_insc_serial,
-                "foto_tmp_path": foto_tmp_path,
-                "foto_original_name": foto_original_name,
-                "shared": {
-                    "endereco": addr1,
-                    "contatos": shared_contacts,
-                    "filhos": filhos_serial,
-                }
-            }
-            request.session["casais_etapa"] = 2
-            return redirect("inscricoes:formulario_casais", evento_id=evento.id)
+                        participante1 = Participante.objects.get(id=c1["participante_id"])
 
-    # =================== ETAPA 2 ===================
-    elif etapa == 2 and request.method == "POST":
-        if form_participante.is_valid() and form_inscricao.is_valid():
+                        cpf2 = _digits(form_participante.cleaned_data.get("cpf"))
+                        participante2, _ = Participante.objects.update_or_create(
+                            cpf=cpf2,
+                            defaults={
+                                "nome": form_participante.cleaned_data.get("nome"),
+                                "email": form_participante.cleaned_data.get("email"),
+                                "telefone": form_participante.cleaned_data.get("telefone"),
+                            }
+                        )
 
-            c1 = request.session.get("conjuge1")
-            if not c1:
-                request.session["casais_etapa"] = 1
-                return redirect("inscricoes:formulario_casais", evento_id=evento.id)
+                        addr2 = _extract_address_from_request(request) or (c1.get("shared") or {}).get("endereco") or {}
+                        if addr2:
+                            _apply_address_to_participante(participante1, addr2)
+                            _apply_address_to_participante(participante2, addr2)
 
-            participante1 = Participante.objects.get(id=c1["participante_id"])
+                        dados1 = _deserialize_assign_kwargs(InscricaoCasais, c1["dados_inscricao"])
+                        dados2 = _deserialize_assign_kwargs(InscricaoCasais, _serialize_for_session_from_form(form_inscricao))
+                        dados1.pop("foto_casal", None)
+                        dados2.pop("foto_casal", None)
 
-            # cônjuge 2
-            cpf2 = _digits(form_participante.cleaned_data.get("cpf"))
-            participante2, _ = Participante.objects.update_or_create(
-                cpf=cpf2,
-                defaults={
-                    "nome": form_participante.cleaned_data.get("nome"),
-                    "email": form_participante.cleaned_data.get("email"),
-                    "telefone": form_participante.cleaned_data.get("telefone"),
-                }
-            )
+                        shared = (c1.get("shared") or {})
+                        shared_contacts = (shared.get("contatos") or {})
+                        tema_acamp = (shared_contacts.get("tema_acampamento") or "").strip() or None
 
-            # endereço do passo 2 (ou reaproveita do passo 1)
-            addr2 = _extract_address_from_request(request) or (c1.get("shared") or {}).get("endereco") or {}
-            if addr2:
-                _apply_address_to_participante(participante1, addr2)
-                _apply_address_to_participante(participante2, addr2)
+                        insc1 = Inscricao.objects.create(
+                            participante=participante1,   # ✅ sem espaço
+                            evento=evento,
+                            paroquia=getattr(evento, "paroquia", None),
+                            cpf_conjuge=participante2.cpf,
+                            **{k: v for k, v in shared_contacts.items() if k != "tema_acampamento"},
+                        )
+                        insc2 = Inscricao.objects.create(
+                            participante=participante2,
+                            evento=evento,
+                            paroquia=getattr(evento, "paroquia", None),
+                            cpf_conjuge=participante1.cpf,
+                            **{k: v for k, v in shared_contacts.items() if k != "tema_acampamento"},
+                        )
 
-            # dados de inscrição (sem arquivo) dos dois lados
-            dados1 = _deserialize_assign_kwargs(InscricaoCasais, c1["dados_inscricao"])
-            dados2 = _deserialize_assign_kwargs(InscricaoCasais, _serialize_for_session_from_form(form_inscricao))
-            dados1.pop("foto_casal", None)
-            dados2.pop("foto_casal", None)
+                        if tema_acamp:
+                            Inscricao.objects.filter(pk__in=[insc1.pk, insc2.pk]).update(tema_acampamento=tema_acamp)
 
-            # criar inscrições base (aplica contatos/tema nos dois)
-            shared = (c1.get("shared") or {})
-            shared_contacts = (shared.get("contatos") or {})
-            tema_acamp = (shared_contacts.get("tema_acampamento") or "").strip() or None
+                        _pair_inscricoes(insc1, insc2)
 
-            insc1 = Inscricao.objects.create(
-                participante=partic ipante1,  # <<< garanta que não exista espaço aqui no seu arquivo real!
-                evento=evento,
-                paroquia=getattr(evento, "paroquia", None),
-                cpf_conjuge=participante2.cpf,
-                **{k: v for k, v in shared_contacts.items() if k != "tema_acampamento"},
-            )
-            insc2 = Inscricao.objects.create(
-                participante=participante2,
-                evento=evento,
-                paroquia=getattr(evento, "paroquia", None),
-                cpf_conjuge=participante1.cpf,
-                **{k: v for k, v in shared_contacts.items() if k != "tema_acampamento"},
-            )
+                        ic1 = InscricaoCasais.objects.create(inscricao=insc1, **dados1)
+                        ic2 = InscricaoCasais.objects.create(inscricao=insc2, **dados2)
 
-            if tema_acamp:
-                Inscricao.objects.filter(pk__in=[insc1.pk, insc2.pk]).update(tema_acampamento=tema_acamp)
+                        # FOTO: lê bytes agora (uma vez) e salva só após o commit
+                        foto_file = request.FILES.get("foto_casal")
+                        data = None
+                        base_name = "foto_casal.jpg"
 
-            # parear
-            _pair_inscricoes(insc1, insc2)
+                        if foto_file:
+                            data = foto_file.read()
+                            base_name = getattr(foto_file, "name", base_name)
+                        else:
+                            tmp_path = (c1 or {}).get("foto_tmp_path")
+                            base_name = (c1 or {}).get("foto_original_name") or base_name
+                            if tmp_path and default_storage.exists(tmp_path):
+                                with default_storage.open(tmp_path, "rb") as fh:
+                                    data = fh.read()
+                                def _delete_tmp():
+                                    try:
+                                        default_storage.delete(tmp_path)
+                                    except Exception:
+                                        pass
+                                transaction.on_commit(_delete_tmp)
 
-            # criar InscricaoCasais (sem foto primeiro)
-            ic1 = InscricaoCasais.objects.create(inscricao=insc1, **dados1)
-            ic2 = InscricaoCasais.objects.create(inscricao=insc2, **dados2)
+                        if data:
+                            def _save_all_images():
+                                _save_binary_to_filefield(ic1, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
+                                _save_binary_to_filefield(ic2, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
+                                _save_binary_to_filefield(participante1, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
+                                _save_binary_to_filefield(participante2, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
+                            transaction.on_commit(_save_all_images)
 
-            # ===================== FOTO (AGORA SIM) =====================
-            # prioridade: arquivo enviado nesta etapa; senão, tenta o tmp da sessão
-            foto_file = request.FILES.get("foto_casal")
-            data = None
-            base_name = "foto_casal.jpg"
+                        filhos = ((c1.get("shared") or {}).get("filhos")) or []
+                        for f in filhos:
+                            if f.get("nome") or f.get("idade") or f.get("telefone"):
+                                Filho.objects.create(inscricao=insc1, nome=f.get("nome",""), idade=f.get("idade") or 0, telefone=f.get("telefone",""))
+                                Filho.objects.create(inscricao=insc2, nome=f.get("nome",""), idade=f.get("idade") or 0, telefone=f.get("telefone",""))
 
-            if foto_file:
-                data = foto_file.read()
-                base_name = getattr(foto_file, "name", base_name)
-            else:
-                tmp_path = (c1 or {}).get("foto_tmp_path")
-                base_name = (c1 or {}).get("foto_original_name") or base_name
-                if tmp_path and default_storage.exists(tmp_path):
-                    with default_storage.open(tmp_path, "rb") as fh:
-                        data = fh.read()
-                    # deletar o tmp somente após commit
-                    def _delete_tmp():
-                        try:
-                            default_storage.delete(tmp_path)
-                        except Exception:
-                            pass
-                    transaction.on_commit(_delete_tmp)
+                        c_nome = shared_contacts.get("contato_emergencia_nome")
+                        c_tel  = shared_contacts.get("contato_emergencia_telefone")
+                        c_grau = shared_contacts.get("contato_emergencia_grau_parentesco") or "outro"
+                        if c_nome or c_tel:
+                            for insc in (insc1, insc2):
+                                Contato.objects.create(
+                                    inscricao=insc,
+                                    nome=c_nome or "",
+                                    telefone=c_tel or "",
+                                    grau_parentesco=c_grau,
+                                    ja_e_campista=False,
+                                )
 
-            if data:
-                # agenda salvamento das imagens após o COMMIT (evita quebrar a transação)
-                def _save_all_images():
-                    # InscricaoCasais
-                    _save_binary_to_filefield(ic1, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
-                    _save_binary_to_filefield(ic2, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
-                    # Participantes
-                    _save_binary_to_filefield(participante1, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
-                    _save_binary_to_filefield(participante2, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
+                        request.session.pop("conjuge1", None)
+                        request.session.pop("casais_etapa", None)
 
-                transaction.on_commit(_save_all_images)
-            # ============================================================
+                        return redirect("inscricoes:ver_inscricao", pk=insc1.id)
 
-            # FILHOS do passo 1 → replicar nos DOIS cônjuges
-            filhos = ((c1.get("shared") or {}).get("filhos")) or []
-            for f in filhos:
-                if f.get("nome") or f.get("idade") or f.get("telefone"):
-                    Filho.objects.create(
-                        inscricao=insc1,
-                        nome=f.get("nome", ""),
-                        idade=f.get("idade") or 0,
-                        telefone=f.get("telefone", ""),
-                    )
-                    Filho.objects.create(
-                        inscricao=insc2,
-                        nome=f.get("nome", ""),
-                        idade=f.get("idade") or 0,
-                        telefone=f.get("telefone", ""),
-                    )
+        except Exception:
+            # Se algo falhar, deixe o Django mostrar a stacktrace em DEBUG
+            # (e evita “transação quebrada” continuando a fazer queries)
+            raise
 
-            # CONTATOS adicionais
-            c_nome = shared_contacts.get("contato_emergencia_nome")
-            c_tel  = shared_contacts.get("contato_emergencia_telefone")
-            c_grau = shared_contacts.get("contato_emergencia_grau_parentesco") or "outro"
-            if c_nome or c_tel:
-                for insc in (insc1, insc2):
-                    Contato.objects.create(
-                        inscricao=insc,
-                        nome=c_nome or "",
-                        telefone=c_tel or "",
-                        grau_parentesco=c_grau,
-                        ja_e_campista=False,
-                    )
-
-            # limpar sessão e ir para a confirmação
-            request.session.pop("conjuge1", None)
-            request.session.pop("casais_etapa", None)
-
-            return redirect("inscricoes:ver_inscricao", pk=insc1.id)
-
-    # =================== RENDER ===================
     return render(request, "inscricoes/formulario_casais.html", {
         "evento": evento,
         "politica": politica,
