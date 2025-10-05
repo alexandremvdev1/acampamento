@@ -39,6 +39,7 @@ from django.core.exceptions import ValidationError
 from .models import Inscricao, EventoAcampamento, InscricaoStatus
 from django.db.models import Prefetch, Count, Q
 from decimal import Decimal
+from django.core.files.base import ContentFile
 import re
 from datetime import date, datetime
 import uuid
@@ -4131,6 +4132,7 @@ def _serialize_value_for_session(v):
         return float(v)
     if isinstance(v, UUID):
         return str(v)
+
     return v
 
 def _serialize_for_session_from_form(form):
@@ -4218,8 +4220,6 @@ def _parse_filhos_from_post(post):
     return filhos
 
 
-# ------------------ VIEW (2 ETAPAS) ------------------
-
 @transaction.atomic
 def formulario_casais(request, evento_id):
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
@@ -4238,8 +4238,8 @@ def formulario_casais(request, evento_id):
     form_participante = ParticipanteInicialForm(request.POST or None)
     form_inscricao = InscricaoCasaisForm(request.POST or None, request.FILES or None)
 
-    # Foto só no passo 1: remove o field no passo 2 para não aparecer/validar
-    if etapa == 2 and hasattr(form_inscricao, "fields"):
+    # >>> Foto só no PASSO 2: remove o field no PASSO 1 para não aparecer/validar
+    if etapa == 1 and hasattr(form_inscricao, "fields"):
         form_inscricao.fields.pop("foto_casal", None)
 
     # ============== ETAPA 1 ==============
@@ -4260,21 +4260,11 @@ def formulario_casais(request, evento_id):
             if addr1:
                 _apply_address_to_participante(participante1, addr1)
 
-            # FOTO do passo 1 → salvar temporariamente (MEDIA/tmp/casais/)
-            foto_tmp_path = None
-            foto_original_name = None
-            foto_file = form_inscricao.cleaned_data.get("foto_casal")
-            if foto_file:
-                foto_original_name = getattr(foto_file, "name", "foto_casal.jpg")
-                tmp_name = f"tmp/casais/{uuid4()}_{foto_original_name}"
-                # importante: salvar via storage; evita ler tudo em memória manualmente
-                foto_tmp_path = default_storage.save(tmp_name, foto_file)
-
-            # dados do form de inscrições (sem arquivo) serializados
+            # dados do form de inscrições (sem arquivo) serializados (garante tirar a foto caso escape)
             dados_insc_serial = _serialize_for_session_from_form(form_inscricao)
-            dados_insc_serial.pop("foto_casal", None)  # nunca guardar arquivo na sessão
+            dados_insc_serial.pop("foto_casal", None)
 
-            # contatos compartilhados (vão ser aplicados nas duas inscrições)
+            # contatos compartilhados
             shared_contacts = _get_optional_post(
                 request,
                 [
@@ -4291,8 +4281,6 @@ def formulario_casais(request, evento_id):
             request.session["conjuge1"] = {
                 "participante_id": participante1.id,
                 "dados_inscricao": dados_insc_serial,
-                "foto_tmp_path": foto_tmp_path,
-                "foto_original_name": foto_original_name,
                 "shared": {
                     "endereco": addr1,
                     "contatos": shared_contacts,
@@ -4355,6 +4343,8 @@ def formulario_casais(request, evento_id):
             )
 
             if tema_acamp:
+                insc1.tema_acampamento = tema_acamp
+                insc2.tema_acampamento = tema_acamp
                 Inscricao.objects.filter(pk__in=[insc1.pk, insc2.pk]).update(tema_acampamento=tema_acamp)
 
             # parear
@@ -4366,30 +4356,23 @@ def formulario_casais(request, evento_id):
             ic1 = InscricaoCasais.objects.create(inscricao=insc1, **safe1)
             ic2 = InscricaoCasais.objects.create(inscricao=insc2, **safe2)
 
-            # FOTO do passo 1 → gravar nos dois InscricaoCasais E nos dois Participante
-            tmp_path = (c1 or {}).get("foto_tmp_path")
-            name_from_session = (c1 or {}).get("foto_original_name") or "foto_casal.jpg"
-            if tmp_path and default_storage.exists(tmp_path):
-                with default_storage.open(tmp_path, "rb") as fh:
-                    data = fh.read()
+            # FOTO (coletada no PASSO 2) -> salvar em ic1, ic2 e também em participante1/participante2
+            foto_file = form_inscricao.cleaned_data.get("foto_casal")
+            if foto_file:
+                content = foto_file.read()
+                name = getattr(foto_file, "name", "foto_casal.jpg")
 
-                # InscricaoCasais (duas cópias independentes)
-                ic1.foto_casal.save(name_from_session, ContentFile(data), save=True)
-                ic2.foto_casal.save(name_from_session, ContentFile(data), save=True)
+                # InscricaoCasais (os dois)
+                ic1.foto_casal.save(name, ContentFile(content), save=True)
+                ic2.foto_casal.save(name, ContentFile(content), save=True)
 
-                # Participante (duas cópias)
+                # Participantes (os dois) - ajuste o nome do campo caso não seja 'foto'
                 try:
-                    participante1.foto.save(name_from_session, ContentFile(data), save=True)
+                    participante1.foto.save(name, ContentFile(content), save=True)
                 except Exception:
                     pass
                 try:
-                    participante2.foto.save(name_from_session, ContentFile(data), save=True)
-                except Exception:
-                    pass
-
-                # remover temporário
-                try:
-                    default_storage.delete(tmp_path)
+                    participante2.foto.save(name, ContentFile(content), save=True)
                 except Exception:
                     pass
 
