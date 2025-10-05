@@ -48,6 +48,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import models, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date, parse_datetime
+from django.core.files.base import ContentFile
 
 from .models import EventoAcampamento, Participante, Inscricao, InscricaoCasais
 from .forms import ParticipanteInicialForm, InscricaoCasaisForm
