@@ -3,6 +3,7 @@ import os
 import csv
 import json
 import logging
+from uuid import UUID
 from io import BytesIO
 from types import SimpleNamespace
 from decimal import Decimal
@@ -38,7 +39,7 @@ from django.db.models import Prefetch, Count, Q
 from decimal import Decimal
 import re
 from datetime import date, datetime
-
+import uuid
 from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
@@ -4031,122 +4032,195 @@ import re
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
-def _digits(s: str | None) -> str:
-    """Remove tudo que não é dígito."""
-    return re.sub(r"\D", "", s or "")
-
-
-def _serialize_for_session(data):
-    """Converte objetos não serializáveis (ex.: date, ForeignKey) em valores simples."""
-    serialized = {}
-    for k, v in data.items():
-        if isinstance(v, date):
-            serialized[k] = v.isoformat()
-        elif isinstance(v, Paroquia):  # ForeignKey -> id
-            serialized[k] = v.id
-        else:
-            serialized[k] = v
-    return serialized
-
-
-def _deserialize_from_session(data):
-    """Converte strings ISO de volta para date e ids para objetos (ex.: Paroquia)."""
-    deserialized = {}
-    for k, v in data.items():
-        if isinstance(v, str):
-            try:
-                deserialized[k] = date.fromisoformat(v)
-            except ValueError:
-                deserialized[k] = v
-        elif k == "paroquia" and isinstance(v, int):
-            try:
-                deserialized[k] = Paroquia.objects.get(id=v)
-            except Paroquia.DoesNotExist:
-                deserialized[k] = None
-        else:
-            deserialized[k] = v
-    return deserialized
-
-
-# -------------------- Helpers --------------------
-
 def _digits(s: str) -> str:
-    return re.sub(r"\D+", "", s or "")
+    return "".join(ch for ch in (s or "") if ch.isdigit())
 
-def _serialize_for_session_from_form(form) -> dict:
-    """
-    Converte form.cleaned_data -> payload 100% serializável em JSON para guardar na sessão.
-    - FKs viram {"__fk__": "app_label.ModelName", "pk": ...}
-    - listas/QuerySets de modelos viram lista desses dicionários
-    - datas/datetimes -> ISO
-    - Decimal -> str
-    - UploadedFile é ignorado (não pode ir pra sessão)
-    """
+# aliases aceitos vindo do HTML para endereço
+ADDRESS_ALIASES = {
+    "cep": ["CEP", "cep", "zip", "postal_code"],
+    "endereco": ["endereco", "endereço", "address", "rua", "logradouro"],
+    "numero": ["numero", "número", "nro", "num"],
+    "bairro": ["bairro", "district"],
+    "cidade": ["cidade", "city", "municipio", "município"],
+    "estado": ["estado", "uf", "state"],
+}
+
+def _extract_address_from_request(request):
+    """Coleta endereço do POST aceitando aliases e devolve dict canônico."""
     out = {}
-    fields = getattr(form.Meta, "fields", [])
-    for name in fields:
-        v = form.cleaned_data.get(name, None)
-        if v is None:
-            continue
-        if isinstance(v, UploadedFile):
-            continue  # nunca salve arquivos na sessão
-        if isinstance(v, (date, datetime)):
-            out[name] = v.isoformat()
-            continue
-        if isinstance(v, Decimal):
-            out[name] = str(v)
-            continue
-        if isinstance(v, models.Model):
-            out[name] = {"__fk__": v._meta.label, "pk": v.pk}
-            continue
-        if isinstance(v, (list, tuple, set, models.QuerySet)):
-            arr = []
-            for item in v:
-                if isinstance(item, models.Model):
-                    arr.append({"__fk__": item._meta.label, "pk": item.pk})
-                else:
-                    arr.append(item)
-            out[name] = arr
-            continue
-        out[name] = v
+    for canonical, variants in ADDRESS_ALIASES.items():
+        for name in variants:
+            if name in request.POST and request.POST.get(name):
+                out[canonical] = request.POST.get(name).strip()
+                break
+    # aceita também padrões com prefixo (addr_*) e arrays addr[cidade]
+    # sem quebrar o que já existe
+    for k in ["cep","endereco","numero","bairro","cidade","estado"]:
+        if k not in out:
+            v = request.POST.get(f"addr_{k}") or request.POST.get(f"end_{k}")
+            if not v:
+                v = request.POST.get(f"endereco[{k}]") or request.POST.get(f"address[{k}]")
+            if v:
+                out[k] = str(v).strip()
     return out
 
-def _deserialize_from_session(payload: dict, model_class) -> dict:
+def _apply_address_to_participante(participante, addr_dict: dict):
     """
-    Converte payload salvo na sessão -> dict pronto para **kwargs do model.
-    Usa introspecção do model para reconstruir FKs / datas / decimais.
+    Aplica endereço no participante, mapeando para o nome real do field no model
+    (case-insensitive). Só atualiza campos que existem.
+    Preferência: 'CEP' maiúsculo, se existir no model.
     """
+    if not addr_dict:
+        return
+    model_fields_map = {f.name.lower(): f.name for f in participante._meta.get_fields() if hasattr(f, "attname")}
+    preferred_keys = {
+        "cep": ["CEP", "cep"],
+        "endereco": ["endereco", "endereço", "logradouro", "rua"],
+        "numero": ["numero", "número", "num", "nro"],
+        "bairro": ["bairro", "district"],
+        "cidade": ["cidade", "city"],
+        "estado": ["estado", "uf", "state"],
+    }
+    to_update = []
+    for canonical_key, value in (addr_dict or {}).items():
+        if value in (None, ""):
+            continue
+        candidates = [k.lower() for k in preferred_keys.get(canonical_key, [])] + [canonical_key.lower()]
+        real_attr = next((model_fields_map[c] for c in candidates if c in model_fields_map), None)
+        if real_attr:
+            setattr(participante, real_attr, value)
+            to_update.append(real_attr)
+    if to_update:
+        participante.save(update_fields=to_update)
+
+def _get_optional_post(request, fields):
+    """Coleta campos avulsos do POST se existirem; útil p/ contatos compartilhados."""
     data = {}
-    for name, raw in (payload or {}).items():
-        try:
-            field = model_class._meta.get_field(name)
-        except Exception:
-            data[name] = raw
-            continue
-
-        if isinstance(raw, dict) and "__fk__" in raw:
-            mdl = apps.get_model(raw["__fk__"])
-            data[name] = mdl.objects.get(pk=raw["pk"])
-            continue
-
-        if isinstance(raw, list) and raw and isinstance(raw[0], dict) and "__fk__" in raw[0]:
-            mdl = apps.get_model(raw[0]["__fk__"])
-            pks = [d["pk"] for d in raw]
-            data[name] = mdl.objects.filter(pk__in=pks)  # geralmente aplicar após .save() se for M2M
-            continue
-
-        if isinstance(field, models.DateTimeField):
-            data[name] = parse_datetime(raw) if isinstance(raw, str) else raw
-        elif isinstance(field, models.DateField):
-            data[name] = parse_date(raw) if isinstance(raw, str) else raw
-        elif isinstance(field, models.DecimalField):
-            data[name] = Decimal(raw) if isinstance(raw, str) else raw
-        else:
-            data[name] = raw
+    for f in fields:
+        if f in request.POST:
+            val = request.POST.get(f)
+            if val is not None and val != "":
+                data[f] = val
     return data
 
+def _serialize_value_for_session(v):
+    """
+    Converte cleaned_data em algo JSON-serializable:
+    - UploadedFile -> None
+    - Model instance -> pk
+    - QuerySet/list/tuple/set -> lista (itens: pk se model, senão valor)
+    - date/datetime -> ISO 8601 string
+    - Decimal -> float
+    - UUID -> str
+    - bool/int/str/dict -> como estão
+    """
+    try:
+        from django.core.files.uploadedfile import UploadedFile
+        if isinstance(v, UploadedFile):
+            return None
+    except Exception:
+        pass
 
-# -------------------- View --------------------
+    if hasattr(v, "pk"):  # model instance
+        return v.pk
+
+    if isinstance(v, (list, tuple, set)):
+        out = []
+        for item in v:
+            out.append(item.pk if hasattr(item, "pk") else _serialize_value_for_session(item))
+        return out
+
+    try:
+        from django.db.models.query import QuerySet
+        if isinstance(v, QuerySet):
+            return list(v.values_list("pk", flat=True))
+    except Exception:
+        pass
+
+    if isinstance(v, (date, datetime)):
+        return v.isoformat()
+    if isinstance(v, Decimal):
+        return float(v)
+    if isinstance(v, UUID):
+        return str(v)
+
+    return v
+
+def _serialize_for_session_from_form(form):
+    return {k: _serialize_value_for_session(v) for k, v in (form.cleaned_data or {}).items()}
+
+def _deserialize_assign_kwargs(model_cls, data_dict):
+    """
+    Converte dict (strings/ids vindos da sessão) em kwargs válidos p/ criar o model.
+    - FKs viram <campo>_id
+    - Date/DateTime/Decimal/Bool parseados a partir de strings
+    """
+    if not data_dict:
+        return {}
+
+    from django.db import models as dj_models
+    fields = {f.name: f for f in model_cls._meta.get_fields() if hasattr(f, "attname")}
+    kwargs = {}
+
+    def _to_bool(val):
+        if isinstance(val, bool):
+            return val
+        s = str(val).strip().lower()
+        return s in {"1", "true", "on", "yes", "sim"}
+
+    for k, v in data_dict.items():
+        if v in (None, "") or k not in fields:
+            continue
+
+        f = fields[k]
+
+        # FKs
+        if isinstance(f, (dj_models.ForeignKey, dj_models.OneToOneField)):
+            kwargs[f"{k}_id"] = v
+            continue
+
+        # Tipagem por Field
+        if isinstance(f, dj_models.DateField) and not isinstance(f, dj_models.DateTimeField):
+            if isinstance(v, str):
+                dv = parse_date(v)
+                if dv is not None:
+                    kwargs[k] = dv
+                    continue
+        if isinstance(f, dj_models.DateTimeField):
+            if isinstance(v, str):
+                dtv = parse_datetime(v) or parse_datetime(v.replace("Z", "+00:00"))
+                if dtv is not None:
+                    kwargs[k] = dtv
+                    continue
+        if isinstance(f, dj_models.DecimalField):
+            kwargs[k] = Decimal(str(v)); continue
+        if isinstance(f, dj_models.BooleanField):
+            kwargs[k] = _to_bool(v); continue
+        if isinstance(f, dj_models.IntegerField) and isinstance(v, str) and v.isdigit():
+            kwargs[k] = int(v); continue
+
+        kwargs[k] = v
+
+    return kwargs
+
+def _pair_inscricoes(a, b):
+    """
+    Vincula inscrições nas duas pontas, priorizando helpers do model se existirem.
+    """
+    if hasattr(a, "set_pareada") and hasattr(b, "set_pareada"):
+        a.set_pareada(b)
+        b.set_pareada(a)
+    else:
+        try:
+            a.inscricao_pareada = b
+            a.save(update_fields=["inscricao_pareada"])
+        except Exception:
+            pass
+        try:
+            b.inscricao_pareada = a
+            b.save(update_fields=["inscricao_pareada"])
+        except Exception:
+            pass
 
 @transaction.atomic
 def formulario_casais(request, evento_id):
@@ -4157,108 +4231,139 @@ def formulario_casais(request, evento_id):
     try:
         from .models import PoliticaPrivacidade
         politica = PoliticaPrivacidade.objects.first()
-    except ImportError:
+    except Exception:
         pass
 
-    # Etapa atual (1 = cônjuge 1, 2 = cônjuge 2)
+    # etapa atual (1 = cônjuge 1, 2 = cônjuge 2)
     etapa = int(request.session.get("casais_etapa", 1))
 
-    # Forms
+    # forms
     form_participante = ParticipanteInicialForm(request.POST or None)
     form_inscricao = InscricaoCasaisForm(request.POST or None, request.FILES or None)
 
-    # =================== ETAPA 1 ===================
+    # ============== PASSO 1 ==============
     if etapa == 1 and request.method == "POST":
         if form_participante.is_valid() and form_inscricao.is_valid():
-            cpf = _digits(form_participante.cleaned_data["cpf"])
+            cpf = _digits(form_participante.cleaned_data.get("cpf"))
             participante, _ = Participante.objects.update_or_create(
                 cpf=cpf,
                 defaults={
-                    "nome": form_participante.cleaned_data["nome"],
-                    "email": form_participante.cleaned_data["email"],
-                    "telefone": form_participante.cleaned_data["telefone"],
+                    "nome": form_participante.cleaned_data.get("nome"),
+                    "email": form_participante.cleaned_data.get("email"),
+                    "telefone": form_participante.cleaned_data.get("telefone"),
                 }
             )
 
-            # Serializa apenas campos JSON-safe
-            payload_seguro = _serialize_for_session_from_form(form_inscricao)
+            # endereço do passo 1 => aplica no participante 1
+            addr1 = _extract_address_from_request(request)
+            if addr1:
+                _apply_address_to_participante(participante, addr1)
 
-            # Guarda cônjuge 1
+            # salvamos apenas dados serializáveis do form de inscrição (sem arquivo)
+            dados_insc_serial = _serialize_for_session_from_form(form_inscricao)
+
+            # contatos/compartilhados (virão do POST) para usar nos dois
+            shared_contacts = _get_optional_post(
+                request,
+                [
+                    "responsavel_1_nome", "responsavel_1_telefone", "responsavel_1_grau_parentesco", "responsavel_1_ja_e_campista",
+                    "responsavel_2_nome", "responsavel_2_telefone", "responsavel_2_grau_parentesco", "responsavel_2_ja_e_campista",
+                    "contato_emergencia_nome", "contato_emergencia_telefone", "contato_emergencia_grau_parentesco", "contato_emergencia_ja_e_campista",
+                ]
+            )
+
             request.session["conjuge1"] = {
                 "participante_id": participante.id,
-                "dados_inscricao": payload_seguro,
+                "dados_inscricao": dados_insc_serial,
+                "shared": {
+                    "endereco": addr1,
+                    "contatos": shared_contacts,
+                }
             }
             request.session["casais_etapa"] = 2
-            request.session.modified = True
-
             return redirect("inscricoes:formulario_casais", evento_id=evento.id)
 
-    # =================== ETAPA 2 ===================
+    # ============== PASSO 2 ==============
     elif etapa == 2 and request.method == "POST":
         if form_participante.is_valid() and form_inscricao.is_valid():
-            cpf = _digits(form_participante.cleaned_data["cpf"])
-            participante2, _ = Participante.objects.update_or_create(
-                cpf=cpf,
-                defaults={
-                    "nome": form_participante.cleaned_data["nome"],
-                    "email": form_participante.cleaned_data["email"],
-                    "telefone": form_participante.cleaned_data["telefone"],
-                }
-            )
 
-            # Recupera cônjuge 1 da sessão
+            # recupera cônjuge 1
             c1 = request.session.get("conjuge1")
             if not c1:
                 request.session["casais_etapa"] = 1
-                request.session.modified = True
                 return redirect("inscricoes:formulario_casais", evento_id=evento.id)
 
             participante1 = Participante.objects.get(id=c1["participante_id"])
 
-            # Reconstrói dados dos dois formulários
-            dados1 = _deserialize_from_session(c1["dados_inscricao"], InscricaoCasais)
-            payload2 = _serialize_for_session_from_form(form_inscricao)
-            dados2 = _deserialize_from_session(payload2, InscricaoCasais)
+            # participante 2
+            cpf2 = _digits(form_participante.cleaned_data.get("cpf"))
+            participante2, _ = Participante.objects.update_or_create(
+                cpf=cpf2,
+                defaults={
+                    "nome": form_participante.cleaned_data.get("nome"),
+                    "email": form_participante.cleaned_data.get("email"),
+                    "telefone": form_participante.cleaned_data.get("telefone"),
+                }
+            )
 
-            # Garante a paróquia do evento
-            dados1["paroquia"] = evento.paroquia
-            dados2["paroquia"] = evento.paroquia
+            # endereço do passo 2 (ou reaproveita do passo 1)
+            addr2 = _extract_address_from_request(request)
+            if not addr2:
+                addr2 = (c1.get("shared") or {}).get("endereco") or {}
+            if addr2:
+                _apply_address_to_participante(participante1, addr2)
+                _apply_address_to_participante(participante2, addr2)
 
-            # Cria inscrições base (uma pra cada participante)
+            # dados de inscrição (sem arquivo) dos 2 lados
+            dados1 = _deserialize_assign_kwargs(InscricaoCasais, c1["dados_inscricao"])
+            dados2 = _deserialize_assign_kwargs(InscricaoCasais, _serialize_for_session_from_form(form_inscricao))
+
+            # cria as inscrições base
             insc1 = Inscricao.objects.create(
                 participante=participante1,
                 evento=evento,
-                paroquia=evento.paroquia,
+                paroquia=getattr(evento, "paroquia", None),
                 cpf_conjuge=participante2.cpf,
+                **((c1.get("shared") or {}).get("contatos") or {}),
             )
             insc2 = Inscricao.objects.create(
                 participante=participante2,
                 evento=evento,
-                paroquia=evento.paroquia,
+                paroquia=getattr(evento, "paroquia", None),
                 cpf_conjuge=participante1.cpf,
+                **((c1.get("shared") or {}).get("contatos") or {}),
             )
 
-            # Arquivo (foto_casal), se veio na etapa 2
-            foto_casal = form_inscricao.cleaned_data.get("foto_casal")
+            # pareia as inscrições (duas pontas)
+            _pair_inscricoes(insc1, insc2)
 
-            # Cria dados extras casais
-            ic1 = InscricaoCasais.objects.create(
-                inscricao=insc1,
-                **{k: v for k, v in dados1.items() if k in InscricaoCasaisForm.Meta.fields}
-            )
-            ic2_kwargs = {k: v for k, v in dados2.items() if k in InscricaoCasaisForm.Meta.fields}
-            if foto_casal:
-                ic2_kwargs["foto_casal"] = foto_casal
-            ic2 = InscricaoCasais.objects.create(inscricao=insc2, **ic2_kwargs)
+            # cria os dados extras (casais) — primeiro sem foto
+            safe1 = dict(dados1)
+            safe2 = dict(dados2)
+            safe1.pop("foto_casal", None)
+            safe2.pop("foto_casal", None)
 
-            # Limpa sessão
+            ic1 = InscricaoCasais.objects.create(inscricao=insc1, **safe1)
+            ic2 = InscricaoCasais.objects.create(inscricao=insc2, **safe2)
+
+            # FOTO: pega do passo 2 e replica nos dois registros
+            foto_file = form_inscricao.cleaned_data.get("foto_casal")
+            if foto_file:
+                ic1.foto_casal = foto_file
+                ic1.save(update_fields=["foto_casal"])
+                ic2.foto_casal.save(
+                    foto_file.name,
+                    ContentFile(foto_file.read()),
+                    save=True
+                )
+
+            # limpa sessão
             request.session.pop("conjuge1", None)
             request.session.pop("casais_etapa", None)
-            request.session.modified = True
 
             return redirect("inscricoes:ver_inscricao", pk=insc1.id)
 
-    # =================== RENDERIZAÇÃO ===================
+    # ============== RENDER ==============
     return render(request, "inscricoes/formulario_casais.html", {
         "evento": evento,
         "politica": politica,
@@ -4920,17 +5025,9 @@ from inscricoes.models import (
 
 @login_required
 def evento_participantes(request, evento_id):
-    """
-    Lista participantes do evento com:
-      - ordem alfabética por nome
-      - idade calculada (respeitando subtipos)
-      - contadores (participantes, confirmados, selecionados, pendentes)
-      - choices de status para o <select> do template
-      - em eventos de CASAIS e SERVOS-DE-CASAL: deduplica e mostra "Participante — Vinculado"
-    """
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
 
-    # ===== Permissão (robusta com fallbacks) =====
+    # -------- Permissões --------
     u = request.user
     try:
         is_admin_paroquia = bool(u.is_admin_paroquia())
@@ -4950,7 +5047,7 @@ def evento_participantes(request, evento_id):
     elif not is_admin_geral:
         return HttpResponseForbidden("Acesso negado.")
 
-    # ===== Query base (inscrições deste evento) =====
+    # -------- Query base --------
     inscricoes = (
         Inscricao.objects.filter(evento=evento)
         .select_related(
@@ -4963,9 +5060,8 @@ def evento_participantes(request, evento_id):
     )
     total_participantes = inscricoes.count()
 
-    # ===== Idade (usa data_inicio como referência; senão hoje) =====
+    # -------- Idade --------
     ref_date = getattr(evento, "data_inicio", None) or timezone.localdate()
-
     attr_by_tipo = {
         "senior": "inscricaosenior",
         "juvenil": "inscricaojuvenil",
@@ -5008,91 +5104,134 @@ def evento_participantes(request, evento_id):
     for insc in inscricoes:
         insc.idade = _calc_age(_get_birth(insc), ref_date)
 
-    # ===== Helper para obter "par" de uma inscrição (casais) =====
+    # -------- Pegar "par" dentro de um mesmo evento (se existir esse vínculo no modelo) --------
     def _par_de(insc: Inscricao):
-        """Tenta achar a inscrição pareada do MESMO evento (para eventos de casais)."""
-        # 1) property par (se existir no modelo)
         try:
             p = insc.par
             if p:
                 return p
         except Exception:
             pass
-        # 2) campo direto
         if getattr(insc, "inscricao_pareada_id", None):
             return getattr(insc, "inscricao_pareada", None)
-        # 3) reverse comum (se existir)
         return getattr(insc, "pareada_por", None)
 
-    # ===== Contexto "casais" e "servos de casal" =====
+    # -------- Flags de tipo --------
     tipo_evento = (getattr(evento, "tipo", "") or "").lower()
     rel = getattr(evento, "evento_relacionado", None)
     tipo_rel = (getattr(rel, "tipo", "") or "").lower() if rel else ""
     is_evento_casais = (tipo_evento == "casais")
     is_servos_de_casal = (tipo_evento == "servos" and rel and tipo_rel == "casais")
 
+    # ======================================================================
+    # Servos vinculados a casal — lógica ROBUSTA de pareamento e dedup
+    # ======================================================================
     linhas = []
 
     if is_evento_casais:
-        # Deduplicação usando o "par" no próprio evento de casais
         for insc in inscricoes:
             par = _par_de(insc)
-            # mantém só a "primeira metade" do par (menor id)
             if par and getattr(par, "id", None) and insc.id and not (insc.id < par.id):
                 continue
-            # expõe o parceiro para o template (sem tocar em properties do modelo)
             setattr(insc, "par_inscrito", par if par else None)
             linhas.append(insc)
 
     elif is_servos_de_casal:
-        # Monta um mapa participante_id -> parceiro_participante_id a partir do evento de casais relacionado
-        casal_qs = (
-            Inscricao.objects.filter(evento=rel)
-            .select_related("participante")
-            .only("id", "participante_id")  # leve
-        )
-
-        # Para evitar N+1 ao pegar o "par" nas casais, traga um dicionário id->inscricao
-        casal_by_id = {i.id: i for i in casal_qs}
-        # Precisamos conseguir _par_de() nessas inscrições; se seu "par" também está no rel,
-        # esse helper funciona igual.
+        # 1) Mapa de pares vindo do evento de CASAIS relacionado (se existir)
         par_map = {}  # participante_id -> parceiro_participante_id
-        for insc_casal in casal_by_id.values():
-            par = _par_de(insc_casal)
-            if par:
-                try:
-                    a = insc_casal.participante_id
-                    b = par.participante_id
+        if rel:
+            casal_qs = (
+                Inscricao.objects.filter(evento=rel)
+                .select_related("participante")
+                .only("id", "participante_id", "inscricao_pareada_id")
+            )
+            # Constrói o mapa usando o mesmo helper _par_de
+            for insc_casal in casal_qs:
+                par = _par_de(insc_casal)
+                if par:
+                    a = getattr(insc_casal, "participante_id", None)
+                    b = getattr(par, "participante_id", None)
                     if a and b:
                         par_map[a] = b
                         par_map[b] = a
-                except Exception:
-                    continue
 
-        # Agora, no evento de servos, localiza a inscrição do parceiro via participante
-        # e deduplica por id de participante (mostra só o "menor id de participante")
-        # Para lookup rápido: participante_id -> inscrição de servos
+        # 2) Fallback por atributos do PARTICIPANTE (conjuge_id / spouse_id / etc.)
+        def _partner_pid_from_participant(participante):
+            # tente várias convenções comuns sem quebrar caso não exista
+            for attr in ("conjuge_id", "parceiro_id", "spouse_id", "par_id", "conjugue_id", "conjuge__id"):
+                pid = getattr(participante, attr, None)
+                if pid:
+                    return pid
+            # às vezes vem o objeto relacionado:
+            for obj_attr in ("conjuge", "parceiro", "spouse", "par"):
+                obj = getattr(participante, obj_attr, None)
+                pid = getattr(obj, "id", None)
+                if pid:
+                    return pid
+            return None
+
+        # 3) Também tente parear dentro do PRÓPRIO evento de servos (se alguém armazenou esse vínculo)
         servos_by_part = {i.participante_id: i for i in inscricoes}
 
-        for insc in inscricoes:
-            pid = insc.participante_id
+        def _find_partner_inscricao(insc: Inscricao):
+            pid = getattr(insc, "participante_id", None)
+            if not pid:
+                return None
+
+            # a) via evento de casais relacionado
             pid_par = par_map.get(pid)
-            par_insc = servos_by_part.get(pid_par) if pid_par else None
+            if pid_par:
+                insc_par = servos_by_part.get(pid_par)
+                if insc_par:
+                    return insc_par
 
-            # dedup: se houver par, mostra só quem tem participante_id menor
-            if par_insc and pid and pid_par and not (pid < pid_par):
+            # b) via atributos do participante
+            participante = getattr(insc, "participante", None)
+            if participante:
+                pid_par_b = _partner_pid_from_participant(participante)
+                if pid_par_b:
+                    insc_par_b = servos_by_part.get(pid_par_b)
+                    if insc_par_b:
+                        return insc_par_b
+
+            # c) via vínculo direto na própria inscrição (caso exista)
+            par_local = _par_de(insc)
+            if par_local:
+                return par_local
+
+            return None
+
+        # Dedup por menor participante_id (quando houver par encontrado)
+        vistos = set()
+        for insc in inscricoes:
+            if insc.id in vistos:
                 continue
+            par_insc = _find_partner_inscricao(insc)
 
-            setattr(insc, "par_inscrito", par_insc if par_insc else None)
-            linhas.append(insc)
+            if par_insc:
+                vistos.add(getattr(par_insc, "id", None))
+                # decide quem fica (menor participante_id se possível; senão menor id)
+                a = getattr(insc, "participante_id", 0) or 0
+                b = getattr(par_insc, "participante_id", 0) or 0
+                keep = insc
+                drop = par_insc
+                if a and b and b < a:
+                    keep, drop = par_insc, insc
+                elif (not a or not b) and getattr(par_insc, "id", 0) < getattr(insc, "id", 0):
+                    keep, drop = par_insc, insc
+
+                setattr(keep, "par_inscrito", drop)
+                linhas.append(keep)
+            else:
+                setattr(insc, "par_inscrito", None)
+                linhas.append(insc)
 
     else:
-        # Outros tipos de evento: lista normal
         for insc in inscricoes:
             setattr(insc, "par_inscrito", None)
             linhas.append(insc)
 
-    # ===== Contadores oficiais =====
+    # -------- Contadores --------
     qs = Inscricao.objects.filter(evento=evento)
 
     total_confirmados = qs.filter(status=InscricaoStatus.PAG_CONFIRMADO).count()
@@ -5116,19 +5255,17 @@ def evento_participantes(request, evento_id):
         ]
     ).count()
 
-    status_choices = InscricaoStatus.choices
-
     context = {
         "evento": evento,
-        "participantes": linhas,               # <- já deduplicado quando for o caso
-        "is_evento_casais": is_evento_casais,  # útil se quiser usar no template
+        "participantes": linhas,               # já deduplicado
+        "is_evento_casais": (tipo_evento == "casais"),
         "is_servos_de_casal": is_servos_de_casal,
         "valor_inscricao": getattr(evento, "valor_inscricao", None),
         "total_participantes": total_participantes,
         "total_confirmados": total_confirmados,
         "total_selecionados": total_selecionados,
         "total_pendentes": total_pendentes,
-        "status_choices": status_choices,
+        "status_choices": InscricaoStatus.choices,
     }
     return render(request, "inscricoes/evento_participantes.html", context)
 
@@ -5482,31 +5619,90 @@ def _can_manage_inscricao(user, insc) -> bool:
 
 @login_required
 @require_POST
-def toggle_selecao_inscricao(request, inscricao_id: int):
+def toggle_selecao_inscricao(request, inscricao_id):
     insc = get_object_or_404(Inscricao, id=inscricao_id)
-    if not _can_manage_inscricao(request.user, insc):
+    evento = insc.evento
+
+    # --- Permissão (mesma regra da listagem) ---
+    u = request.user
+    try:
+        is_admin_paroquia = bool(u.is_admin_paroquia())
+    except Exception:
+        is_admin_paroquia = (getattr(u, "tipo_usuario", "") == "admin_paroquia")
+
+    try:
+        is_admin_geral = bool(u.is_admin_geral())
+    except Exception:
+        is_admin_geral = bool(getattr(u, "is_superuser", False)) or (
+            getattr(u, "tipo_usuario", "") == "admin_geral"
+        )
+
+    if is_admin_paroquia:
+        if getattr(u, "paroquia_id", None) != getattr(evento, "paroquia_id", None):
+            return HttpResponseForbidden("Acesso negado.")
+    elif not is_admin_geral:
         return HttpResponseForbidden("Acesso negado.")
 
-    sel_str = (request.POST.get("selected") or "").strip().lower()
-    selected = sel_str in {"1", "true", "on", "yes", "sim"}
+    # --- Parse do 'selected' ---
+    val = (request.POST.get('selected') or '').strip().lower()
+    wanted_selected = val in ('true', '1', 'on', 'yes', 'sim')
 
-    # acha o par (se houver, conforme a regra do evento)
-    par = _find_pair_in_same_event(insc)
+    # --- Helper para achar parceiro ---
+    def _par_de(i: Inscricao):
+        # pareamento dentro do mesmo evento (casais normalmente)
+        try:
+            if getattr(i, "par", None):
+                return i.par
+        except Exception:
+            pass
+        if getattr(i, "inscricao_pareada_id", None):
+            return getattr(i, "inscricao_pareada", None)
+        return getattr(i, "pareada_por", None)
 
-    with transaction.atomic():
-        if insc.foi_selecionado != selected:
-            insc.foi_selecionado = selected
-            insc.save(update_fields=["foi_selecionado"])
-        if par and par.foi_selecionado != selected:
-            par.foi_selecionado = selected
-            par.save(update_fields=["foi_selecionado"])
+    partner = None
+    tipo_evento = (getattr(evento, "tipo", "") or "").lower()
 
-    msg = "Participante selecionado." if selected else "Participante desmarcado."
+    if tipo_evento == "casais":
+        partner = _par_de(insc)
+
+    elif tipo_evento == "servos":
+        # Se for servos vinculados a casais, tentamos achar o parceiro via evento_relacionado (casais)
+        rel = getattr(evento, "evento_relacionado", None)
+        if rel and (getattr(rel, "tipo", "") or "").lower() == "casais":
+            # 1) ache a inscrição do participante no evento de casais
+            insc_casal = (
+                Inscricao.objects.filter(evento=rel, participante_id=insc.participante_id)
+                .select_related("participante")
+                .first()
+            )
+            if insc_casal:
+                # 2) pegue o "par" nessa inscrição de casais
+                par_casal = _par_de(insc_casal)
+                if par_casal and getattr(par_casal, "participante_id", None):
+                    # 3) agora ache a inscrição do PAR no próprio evento de servos
+                    partner = (
+                        Inscricao.objects.filter(evento=evento, participante_id=par_casal.participante_id)
+                        .first()
+                    )
+        # fallback: se alguém armazenou pareamento direto também em servos
+        if partner is None:
+            partner = _par_de(insc)
+
+    # --- Persistência (atual + parceiro) ---
+    insc.foi_selecionado = wanted_selected
+    insc.save(update_fields=["foi_selecionado"])
+
+    partner_id = None
+    if partner:
+        partner.foi_selecionado = wanted_selected
+        partner.save(update_fields=["foi_selecionado"])
+        partner_id = partner.id
+
     return JsonResponse({
         "ok": True,
-        "selected": selected,
-        "paired_updated": bool(par),
-        "msg": msg,
+        "selected": wanted_selected,
+        "partner_id": partner_id,
+        "msg": "Seleção atualizada" + (" (par também atualizado)" if partner_id else ""),
     })
 
 from django.utils import timezone

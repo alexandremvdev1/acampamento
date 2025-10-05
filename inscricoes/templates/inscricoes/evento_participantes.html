@@ -269,23 +269,40 @@
               <tbody id="tbodyRows">
                 {% for inscricao in participantes %}
                 <tr id="row_{{ inscricao.id }}">
-                  <td class="col-nome">
-                    <!-- Nome clicável em UMA LINHA -->
-                    <a href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.id %}"
-                       class="link-ink fw-semibold nome-single-line"
-                       title="Abrir inscrição de {{ inscricao.participante.nome }}">
-                      {% if is_evento_casais and inscricao.par_inscrito %}
-                        {{ inscricao.participante.nome }} — {{ inscricao.par_inscrito.participante.nome }}
-                      {% else %}
-                        {{ inscricao.participante.nome }}
-                      {% endif %}
-                    </a>
-                    {% if inscricao.participante.cidade or inscricao.participante.estado %}
-                      <div class="small text-muted-2">
-                        {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
-                      </div>
-                    {% endif %}
-                  </td>
+ <td class="col-nome">
+  <a href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.id %}"
+     class="link-ink fw-semibold nome-single-line"
+     title="Abrir inscrição">
+    {{ inscricao.participante.nome }}
+    {# parceiro do evento de casais (modelo direto) #}
+    {% if inscricao.par_inscrito %}
+      — {{ inscricao.par_inscrito.participante.nome }}
+
+    {# parceiro vindo de um vínculo a inscrição de casal #}
+    {% elif inscricao.inscricao_casal %}
+      {% if inscricao.inscricao_casal.par_inscrito %}
+        — {{ inscricao.inscricao_casal.par_inscrito.participante.nome }}
+      {% else %}
+        — {{ inscricao.inscricao_casal.participante.nome }}
+      {% endif %}
+
+    {# parceiro vindo de outro alias/relacionamento #}
+    {% elif inscricao.casal_vinculado %}
+      {% if inscricao.casal_vinculado.par_inscrito %}
+        — {{ inscricao.casal_vinculado.par_inscrito.participante.nome }}
+      {% else %}
+        — {{ inscricao.casal_vinculado.participante.nome }}
+      {% endif %}
+    {% endif %}
+  </a>
+
+  {% if inscricao.participante.cidade or inscricao.participante.estado %}
+    <div class="small text-muted-2">
+      {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
+    </div>
+  {% endif %}
+</td>
+
 
                   <td class="text-center col-idade">
                     {% if inscricao.idade is not None %}{{ inscricao.idade }}{% else %}-{% endif %}
