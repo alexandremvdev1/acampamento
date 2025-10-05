@@ -4227,7 +4227,6 @@ def formulario_casais(request, evento_id):
     # política (se houver)
     politica = None
     try:
-        from .models import PoliticaPrivacidade
         politica = PoliticaPrivacidade.objects.first()
     except Exception:
         pass
@@ -4238,11 +4237,11 @@ def formulario_casais(request, evento_id):
     form_participante = ParticipanteInicialForm(request.POST or None)
     form_inscricao = InscricaoCasaisForm(request.POST or None, request.FILES or None)
 
-    # >>> Foto só no PASSO 2: remove o field no PASSO 1 para não aparecer/validar
-    if etapa == 1 and hasattr(form_inscricao, "fields"):
-        form_inscricao.fields.pop("foto_casal", None)
+    # ⚠️ Foto: obrigatória só na etapa 2; opcional na etapa 1
+    if hasattr(form_inscricao, "fields") and "foto_casal" in form_inscricao.fields:
+        form_inscricao.fields["foto_casal"].required = (etapa == 2)
 
-    # ============== ETAPA 1 ==============
+    # =================== ETAPA 1 ===================
     if etapa == 1 and request.method == "POST":
         if form_participante.is_valid() and form_inscricao.is_valid():
             cpf = _digits(form_participante.cleaned_data.get("cpf"))
@@ -4260,11 +4259,22 @@ def formulario_casais(request, evento_id):
             if addr1:
                 _apply_address_to_participante(participante1, addr1)
 
-            # dados do form de inscrições (sem arquivo) serializados (garante tirar a foto caso escape)
-            dados_insc_serial = _serialize_for_session_from_form(form_inscricao)
-            dados_insc_serial.pop("foto_casal", None)
+            # NÃO gravamos imagem na etapa 1; se quiser manter "rascunho", use tmp:
+            # (opcional; pode remover este bloco se não quiser cache temporário)
+            foto_tmp_path = None
+            foto_original_name = None
+            foto_file = form_inscricao.cleaned_data.get("foto_casal")
+            if foto_file:
+                # guardamos só para não perder se usuário já anexar por engano na etapa 1
+                foto_original_name = getattr(foto_file, "name", "foto_casal.jpg")
+                tmp_name = f"tmp/casais/{uuid4()}_{foto_original_name}"
+                foto_tmp_path = default_storage.save(tmp_name, foto_file)
 
-            # contatos compartilhados
+            # dados do form de inscrições (sem arquivo) serializados para sessão
+            dados_insc_serial = _serialize_for_session_from_form(form_inscricao)
+            dados_insc_serial.pop("foto_casal", None)  # nunca guardar arquivo na sessão
+
+            # contatos compartilhados (vão ser aplicados nas duas inscrições)
             shared_contacts = _get_optional_post(
                 request,
                 [
@@ -4281,6 +4291,8 @@ def formulario_casais(request, evento_id):
             request.session["conjuge1"] = {
                 "participante_id": participante1.id,
                 "dados_inscricao": dados_insc_serial,
+                "foto_tmp_path": foto_tmp_path,
+                "foto_original_name": foto_original_name,
                 "shared": {
                     "endereco": addr1,
                     "contatos": shared_contacts,
@@ -4290,7 +4302,7 @@ def formulario_casais(request, evento_id):
             request.session["casais_etapa"] = 2
             return redirect("inscricoes:formulario_casais", evento_id=evento.id)
 
-    # ============== ETAPA 2 ==============
+    # =================== ETAPA 2 ===================
     elif etapa == 2 and request.method == "POST":
         if form_participante.is_valid() and form_inscricao.is_valid():
 
@@ -4321,6 +4333,8 @@ def formulario_casais(request, evento_id):
             # dados de inscrição (sem arquivo) dos 2 lados
             dados1 = _deserialize_assign_kwargs(InscricaoCasais, c1["dados_inscricao"])
             dados2 = _deserialize_assign_kwargs(InscricaoCasais, _serialize_for_session_from_form(form_inscricao))
+            dados1.pop("foto_casal", None)
+            dados2.pop("foto_casal", None)
 
             # criar inscrições base (aplica contatos/tema nos dois)
             shared = (c1.get("shared") or {})
@@ -4343,38 +4357,47 @@ def formulario_casais(request, evento_id):
             )
 
             if tema_acamp:
-                insc1.tema_acampamento = tema_acamp
-                insc2.tema_acampamento = tema_acamp
                 Inscricao.objects.filter(pk__in=[insc1.pk, insc2.pk]).update(tema_acampamento=tema_acamp)
 
             # parear
             _pair_inscricoes(insc1, insc2)
 
             # criar InscricaoCasais (sem foto primeiro)
-            safe1 = dict(dados1); safe1.pop("foto_casal", None)
-            safe2 = dict(dados2); safe2.pop("foto_casal", None)
-            ic1 = InscricaoCasais.objects.create(inscricao=insc1, **safe1)
-            ic2 = InscricaoCasais.objects.create(inscricao=insc2, **safe2)
+            ic1 = InscricaoCasais.objects.create(inscricao=insc1, **dados1)
+            ic2 = InscricaoCasais.objects.create(inscricao=insc2, **dados2)
 
-            # FOTO (coletada no PASSO 2) -> salvar em ic1, ic2 e também em participante1/participante2
-            foto_file = form_inscricao.cleaned_data.get("foto_casal")
+            # ===================== FOTO (AGORA SIM) =====================
+            # prioridade: arquivo enviado nesta etapa; senão, tenta o tmp da sessão
+            foto_file = request.FILES.get("foto_casal")
             if foto_file:
-                content = foto_file.read()
-                name = getattr(foto_file, "name", "foto_casal.jpg")
+                # lê bytes uma vez e reaproveita
+                data = foto_file.read()
+                base_name = getattr(foto_file, "name", "foto_casal.jpg")
 
-                # InscricaoCasais (os dois)
-                ic1.foto_casal.save(name, ContentFile(content), save=True)
-                ic2.foto_casal.save(name, ContentFile(content), save=True)
+                # salva nos dois registros de casais
+                ic1.foto_casal.save(base_name, ContentFile(data), save=True)
+                ic2.foto_casal.save(base_name, ContentFile(data), save=True)
 
-                # Participantes (os dois) - ajuste o nome do campo caso não seja 'foto'
-                try:
-                    participante1.foto.save(name, ContentFile(content), save=True)
-                except Exception:
-                    pass
-                try:
-                    participante2.foto.save(name, ContentFile(content), save=True)
-                except Exception:
-                    pass
+                # também sincroniza com os dois participantes
+                participante1.foto.save(base_name, ContentFile(data), save=True)
+                participante2.foto.save(base_name, ContentFile(data), save=True)
+
+            else:
+                # fallback: se usuário anexou na etapa 1 e guardamos em tmp
+                tmp_path = (c1 or {}).get("foto_tmp_path")
+                name_from_session = (c1 or {}).get("foto_original_name") or "foto_casal.jpg"
+                if tmp_path and default_storage.exists(tmp_path):
+                    with default_storage.open(tmp_path, "rb") as fh:
+                        data = fh.read()
+                    ic1.foto_casal.save(name_from_session, ContentFile(data), save=True)
+                    ic2.foto_casal.save(name_from_session, ContentFile(data), save=True)
+                    participante1.foto.save(name_from_session, ContentFile(data), save=True)
+                    participante2.foto.save(name_from_session, ContentFile(data), save=True)
+                    try:
+                        default_storage.delete(tmp_path)
+                    except Exception:
+                        pass
+            # ============================================================
 
             # FILHOS do passo 1 → replicar nos DOIS cônjuges
             filhos = ((c1.get("shared") or {}).get("filhos")) or []
@@ -4393,7 +4416,7 @@ def formulario_casais(request, evento_id):
                         telefone=f.get("telefone",""),
                     )
 
-            # CONTATOS (opcional): além dos campos da própria Inscricao, populamos tabela Contato
+            # CONTATOS adicionais
             c_nome = shared_contacts.get("contato_emergencia_nome")
             c_tel  = shared_contacts.get("contato_emergencia_telefone")
             c_grau = shared_contacts.get("contato_emergencia_grau_parentesco") or "outro"
@@ -4413,7 +4436,7 @@ def formulario_casais(request, evento_id):
 
             return redirect("inscricoes:ver_inscricao", pk=insc1.id)
 
-    # ============== RENDER ==============
+    # =================== RENDER ===================
     return render(request, "inscricoes/formulario_casais.html", {
         "evento": evento,
         "politica": politica,
