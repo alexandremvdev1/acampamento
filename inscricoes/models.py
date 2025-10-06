@@ -970,12 +970,13 @@ class InscricaoCasais(BaseInscricao):
     Inscrição específica para eventos de casais.
     Herda todos os campos de BaseInscricao e adiciona informações extras.
     """
-    foto_casal = models.ImageField(
-        upload_to="casais/fotos/",
+    # trocado de ImageField -> CloudinaryField
+    foto_casal = CloudinaryField(
         null=True,
         blank=True,
         verbose_name="Foto do casal"
     )
+
     tempo_casado_uniao = models.CharField(
         max_length=100,
         null=True,
