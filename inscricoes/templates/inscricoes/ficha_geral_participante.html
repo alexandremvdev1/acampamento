@@ -222,19 +222,25 @@
       <!-- HEADER (foto + botões + badges) -->
       <div class="sticky-topbar p-3 mb-3 bg-white">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-          <div class="d-flex align-items-center gap-3">
-            {% if inscricao.participante.foto %}
-              <img src="{{ inscricao.participante.foto.url }}" class="avatar" alt="Foto de {{ inscricao.participante.nome }}">
-            {% else %}
-              <img src="{% static 'img/user-placeholder.png' %}" class="avatar" alt="Foto">
-            {% endif %}
-            <div>
-              <h1 class="h6 m-0">{{ inscricao.participante.nome }}</h1>
-              <div class="small text-muted-2">
-                {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
-              </div>
-            </div>
-          </div>
+<div class="d-flex align-items-center gap-3">
+  {% with casal=inscricao.inscricaocasais %}
+    {% if inscricao.participante.foto %}
+      <img src="{{ inscricao.participante.foto.url }}" class="avatar" alt="Foto de {{ inscricao.participante.nome }}">
+    {% elif casal and casal.foto_casal %}
+      <img src="{{ casal.foto_casal.url }}" class="avatar" alt="Foto do casal">
+    {% else %}
+      <img src="{% static 'img/user-placeholder.png' %}" class="avatar" alt="Foto">
+    {% endif %}
+  {% endwith %}
+
+  <div>
+    <h1 class="h6 m-0">{{ inscricao.participante.nome }}</h1>
+    <div class="small text-muted-2">
+      {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
+    </div>
+  </div>
+</div>
+
 
           <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
             <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}" class="btn btn-primary btn-sm">
