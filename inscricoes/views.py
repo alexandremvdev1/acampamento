@@ -4218,20 +4218,21 @@ def _parse_filhos_from_post(post):
         filhos.append({"nome": nome, "idade": idade, "telefone": tel})
     return filhos
 
+# ===================== AJUSTE 1 (helper de salvar arquivo) =====================
 def _save_binary_to_filefield(instance, candidate_field_names, filename, data) -> str | None:
+    """
+    Atribui um ContentFile diretamente ao campo de arquivo (ImageField/CloudinaryField).
+    Mantém a tentativa em múltiplos nomes de campo e usa savepoints.
+    """
     field_names = {f.name for f in instance._meta.get_fields() if hasattr(f, "attname")}
+    content = ContentFile(data, name=filename)
+
     for name in candidate_field_names:
         if name not in field_names:
             continue
         sid = transaction.savepoint()
         try:
-            current = getattr(instance, name, None)
-            if hasattr(current, "save"):
-                current.save(filename, ContentFile(data), save=True)
-                transaction.savepoint_commit(sid)
-                return name
-            cf = ContentFile(data, name=filename)
-            setattr(instance, name, cf)
+            setattr(instance, name, content)
             instance.save(update_fields=[name])
             transaction.savepoint_commit(sid)
             return name
@@ -4239,6 +4240,7 @@ def _save_binary_to_filefield(instance, candidate_field_names, filename, data) -
             transaction.savepoint_rollback(sid)
             continue
     return None
+# ==============================================================================
 
 def formulario_casais(request, evento_id):
     evento = get_object_or_404(EventoAcampamento, id=evento_id)
@@ -4368,14 +4370,16 @@ def formulario_casais(request, evento_id):
                         ic1 = InscricaoCasais.objects.create(inscricao=insc1, **dados1)
                         ic2 = InscricaoCasais.objects.create(inscricao=insc2, **dados2)
 
-                        # FOTO: lê bytes agora (uma vez) e salva só após o commit
-                        foto_file = request.FILES.get("foto_casal")
+                        # ===================== AJUSTE 2 (leitura do arquivo) =====================
+                        # Lê do form_inscricao.files primeiro; se não tiver, cai no request.FILES
+                        foto_up = (getattr(form_inscricao, "files", None) or {}).get("foto_casal") \
+                                  or request.FILES.get("foto_casal")
                         data = None
                         base_name = "foto_casal.jpg"
 
-                        if foto_file:
-                            data = foto_file.read()
-                            base_name = getattr(foto_file, "name", base_name)
+                        if foto_up:
+                            data = foto_up.read()
+                            base_name = getattr(foto_up, "name", base_name)
                         else:
                             tmp_path = (c1 or {}).get("foto_tmp_path")
                             base_name = (c1 or {}).get("foto_original_name") or base_name
@@ -4388,6 +4392,7 @@ def formulario_casais(request, evento_id):
                                     except Exception:
                                         pass
                                 transaction.on_commit(_delete_tmp)
+                        # ==========================================================================
 
                         if data:
                             def _save_all_images():
@@ -4400,9 +4405,8 @@ def formulario_casais(request, evento_id):
                         filhos = ((c1.get("shared") or {}).get("filhos")) or []
                         for f in filhos:
                             if f.get("nome") or f.get("idade") or f.get("telefone"):
-                                Filho.objects.create(inscricao=insc1, nome=f.get("nome",""), idade=f.get("idade") or 0, telefone=f.get("telefone",""))
-                                Filho.objects.create(inscricao=insc2, nome=f.get("nome",""), idade=f.get("idade") or 0, telefone=f.get("telefone",""))
-
+                                Filho.objects.create(inscricao=insc1,nome=f.get("nome", ""),idade=f.get("idade") or 0,telefone=f.get("telefone", ""),)
+                                Filho.objects.create(inscricao=insc2,nome=f.get("nome", ""),idade=f.get("idade") or 0,telefone=f.get("telefone", ""),)
                         c_nome = shared_contacts.get("contato_emergencia_nome")
                         c_tel  = shared_contacts.get("contato_emergencia_telefone")
                         c_grau = shared_contacts.get("contato_emergencia_grau_parentesco") or "outro"
@@ -4435,7 +4439,6 @@ def formulario_casais(request, evento_id):
     })
 
 
-
 # --- helper: resolve o tipo de formulário efetivo do evento ---
 def _tipo_formulario_evento(evento) -> str:
     """
@@ -4453,6 +4456,7 @@ def _tipo_formulario_evento(evento) -> str:
 
 def _eh_evento_servos(inscricao: Inscricao) -> bool:
     return (getattr(inscricao.evento, "tipo", "") or "").lower() == "servos"
+
 
 
 @login_required
