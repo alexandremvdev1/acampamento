@@ -295,21 +295,7 @@ class InscricaoServosForm(BaseInscricaoForm):
             "medicamento_controlado", "qual_medicamento_controlado"
         ]
 
-class InscricaoCasaisForm(BaseInscricaoForm):
-    class Meta(BaseInscricaoForm.Meta):
-        model = InscricaoCasais
-        fields = [
-            "data_nascimento", "batizado", "estado_civil", "tempo_casado_uniao", "casado_na_igreja", "nome_conjuge",
-            "conjuge_inscrito", "indicado_por", "tamanho_camisa", "paroquia",
-            "pastoral_movimento", "outra_pastoral_movimento", "dizimista", "crismado",
-            "altura", "peso", "problema_saude", "qual_problema_saude",
-            "medicamento_controlado", "qual_medicamento_controlado",
-            "protocolo_administracao", "mobilidade_reduzida", "qual_mobilidade_reduzida",
-            "alergia_alimento", "qual_alergia_alimento",
-            "alergia_medicamento", "qual_alergia_medicamento",
-            "tipo_sanguineo", "informacoes_extras",
-        ]
-
+# ---------- REMOVIDA a definição duplicada de InscricaoCasaisForm (sem foto) ----------
 
 class InscricaoEventoForm(BaseInscricaoForm):
     class Meta(BaseInscricaoForm.Meta):
@@ -1006,22 +992,42 @@ class InscricaoCasaisForm(BaseInscricaoForm):
     class Meta(BaseInscricaoForm.Meta):
         model = InscricaoCasais
         fields = [
-            # --- dados básicos ---
-            "data_nascimento", "batizado", "estado_civil", "tempo_casado_uniao",
-            "casado_na_igreja", "nome_conjuge", "conjuge_inscrito", "indicado_por",
-            "tamanho_camisa", "paroquia", "pastoral_movimento", "outra_pastoral_movimento",
-            "dizimista", "crismado", "altura", "peso",
+            # Dados básicos
+            "data_nascimento",
+            "altura",
+            "peso",
+            "batizado",
+            "estado_civil",
+            "casado_na_igreja",
+            "tempo_casado_uniao",
+            "paroquia",
+            "pastoral_movimento",
+            "outra_pastoral_movimento",
+            "dizimista",
+            "crismado",
+            "tamanho_camisa",
 
-            # --- saúde ---
-            "problema_saude", "qual_problema_saude",
-            "medicamento_controlado", "qual_medicamento_controlado", "protocolo_administracao",
-            "mobilidade_reduzida", "qual_mobilidade_reduzida",
-            "alergia_alimento", "qual_alergia_alimento",
-            "alergia_medicamento", "qual_alergia_medicamento",
-            "diabetes", "pressao_alta",
-            "tipo_sanguineo", "informacoes_extras",
+            # ---------------- SAÚDE ----------------
+            "problema_saude",
+            "qual_problema_saude",
+            "medicamento_controlado",
+            "qual_medicamento_controlado",
+            "protocolo_administracao",
+            "mobilidade_reduzida",
+            "qual_mobilidade_reduzida",
+            "alergia_alimento",
+            "qual_alergia_alimento",
+            "alergia_medicamento",
+            "qual_alergia_medicamento",
+            "diabetes",        # 🔹 novo
+            "pressao_alta",    # 🔹 novo
+            # ----------------------------------------
 
-            # --- upload da foto (entrada do usuário) ---
+            "tipo_sanguineo",
+            "indicado_por",
+            "informacoes_extras",
+
+            # Casais
             "foto_casal",
         ]
         widgets = {
@@ -1029,30 +1035,53 @@ class InscricaoCasaisForm(BaseInscricaoForm):
             "altura": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
             "peso": forms.NumberInput(attrs={"step": "0.1", "min": "0"}),
             "informacoes_extras": forms.Textarea(attrs={"rows": 3}),
+            "foto_casal": forms.ClearableFileInput(),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Aparência padrão bootstrap
+        # Aplica CSS Bootstrap em todos os campos
         for name, field in self.fields.items():
-            w = field.widget
-            if isinstance(w, (forms.Textarea, forms.FileInput, forms.DateInput,
-                              forms.NumberInput, forms.TextInput, forms.EmailInput, forms.URLInput)):
-                css = "form-control"
-            elif isinstance(w, forms.Select):
-                css = "form-select"
-            else:
-                css = "form-control"
-            w.attrs.update({"class": css})
+            widget = field.widget
 
-        # limita estado civil
+            if isinstance(widget, forms.FileInput):
+                css_class = "form-control"
+            elif isinstance(widget, forms.Textarea):
+                css_class = "form-control"
+            elif isinstance(widget, (forms.DateInput, forms.NumberInput, forms.TextInput, forms.EmailInput, forms.URLInput)):
+                css_class = "form-control"
+            elif isinstance(widget, forms.Select):
+                css_class = "form-select"
+            else:
+                css_class = "form-control"
+
+            widget.attrs.update({"class": css_class})
+
+        # 🔹 Restringe opções de estado civil → apenas Casado / União Estável
         self.fields["estado_civil"].choices = [
             ("casado", "Casado"),
             ("uniao_estavel", "União Estável"),
         ]
-        self.fields["tempo_casado_uniao"].label = "Tempo de união (anos/meses)"
 
+        # 🔹 Ajuste de labels mais claros (opcional, mas melhora UX)
+        self.fields["tempo_casado_uniao"].label = "Tempo de união (anos/meses)"
+        self.fields["foto_casal"].label = "Foto do casal"
+
+    # (opcional) validação de tipo/tamanho
+    def clean_foto_casal(self):
+        f = self.cleaned_data.get("foto_casal")
+        if not f:
+            return f
+        # tipo de conteúdo (se disponível)
+        ct = getattr(f, "content_type", None)
+        if ct and not ct.startswith("image/"):
+            raise ValidationError("Envie uma imagem válida.")
+        # tamanho (ex.: 10 MB)
+        max_bytes = 10 * 1024 * 1024
+        if getattr(f, "size", 0) > max_bytes:
+            raise ValidationError("A imagem deve ter no máximo 10 MB.")
+        return f
 
 from django.core.exceptions import ValidationError
 
