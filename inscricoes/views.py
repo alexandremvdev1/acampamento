@@ -4032,7 +4032,6 @@ def _digits(s: str | None) -> str:
     return re.sub(r"\D", "", s or "")
 
 import re
-import logging
 from uuid import uuid4, UUID
 from decimal import Decimal
 from datetime import date, datetime
@@ -4042,9 +4041,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils.dateparse import parse_date, parse_datetime
-from django.db.models.fields.files import FileField, ImageField
-
-log = logging.getLogger(__name__)
 
 # from .forms import ParticipanteInicialForm, InscricaoCasaisForm
 # from .models import (
@@ -4071,7 +4067,7 @@ def _extract_address_from_request(request):
             if name in request.POST and request.POST.get(name):
                 out[canonical] = request.POST.get(name).strip()
                 break
-    for k in ["cep", "endereco", "numero", "bairro", "cidade", "estado"]:
+    for k in ["cep","endereco","numero","bairro","cidade","estado"]:
         if k not in out:
             v = request.POST.get(f"addr_{k}") or request.POST.get(f"end_{k}")
             if not v:
@@ -4212,8 +4208,8 @@ def _parse_filhos_from_post(post):
     for i in range(1, qtd + 1):
         nome = (post.get(f"filho_{i}_nome") or "").strip()
         idade_raw = (post.get(f"filho_{i}_idade") or "").strip()
-        tel = (post.get(f"filho_{i}_telefone") or "").strip()
-        if not (nome or idade_raw or tel):
+        tel  = (post.get(f"filho_{i}_telefone") or "").strip()
+        if not (nome or idade_raw or tel):   # ✅ nada de "ou" em Python
             continue
         try:
             idade = int(idade_raw) if idade_raw else 0
@@ -4222,59 +4218,26 @@ def _parse_filhos_from_post(post):
         filhos.append({"nome": nome, "idade": idade, "telefone": tel})
     return filhos
 
-def _first_filefield_name(instance):
-    """
-    Tenta detectar automaticamente o primeiro FileField/ImageField do model.
-    """
-    for f in instance._meta.get_fields():
-        if not hasattr(f, "attname"):
-            continue
-        # tente a partir do atributo de instância
-        inst_attr = getattr(instance, f.name, None)
-        field_obj = getattr(inst_attr, "field", None)
-        if isinstance(field_obj, (FileField, ImageField)):
-            return f.name
-    return None
-
 def _save_binary_to_filefield(instance, candidate_field_names, filename, data) -> str | None:
-    """
-    Salva `data` (bytes) no primeiro campo de arquivo disponível:
-      1) Prioriza nomes candidatos existentes;
-      2) Se nenhum existir, tenta auto-detectar o primeiro FileField/ImageField.
-    Estratégias:
-      - Se o atributo atual tiver `.save`, usa `.save(...)`;
-      - Senão, atribuição direta + `instance.save(update_fields=[...])` (CloudinaryField, etc).
-    Seguro para uso dentro de `transaction.on_commit`.
-    """
-    # nomes reais existentes no model
-    model_fields = {f.name for f in instance._meta.get_fields() if hasattr(f, "attname")}
-    candidates = [n for n in candidate_field_names if n in model_fields]
-
-    if not candidates:
-        fallback = _first_filefield_name(instance)
-        if fallback:
-            candidates = [fallback]
-
-    for name in candidates:
+    field_names = {f.name for f in instance._meta.get_fields() if hasattr(f, "attname")}
+    for name in candidate_field_names:
+        if name not in field_names:
+            continue
+        sid = transaction.savepoint()
         try:
             current = getattr(instance, name, None)
-
-            # Estratégia 1: FieldFile -> .save(...)
             if hasattr(current, "save"):
                 current.save(filename, ContentFile(data), save=True)
+                transaction.savepoint_commit(sid)
                 return name
-
-            # Estratégia 2: atribuição direta + save(update_fields)
             cf = ContentFile(data, name=filename)
             setattr(instance, name, cf)
             instance.save(update_fields=[name])
+            transaction.savepoint_commit(sid)
             return name
-
-        except Exception as e:
-            log.warning("Falha ao salvar arquivo em %s.%s: %s", instance.__class__.__name__, name, e)
+        except Exception:
+            transaction.savepoint_rollback(sid)
             continue
-
-    log.warning("Nenhum campo de arquivo válido encontrado em %s para salvar %s", instance.__class__.__name__, filename)
     return None
 
 def formulario_casais(request, evento_id):
@@ -4383,7 +4346,7 @@ def formulario_casais(request, evento_id):
                         tema_acamp = (shared_contacts.get("tema_acampamento") or "").strip() or None
 
                         insc1 = Inscricao.objects.create(
-                            participante=participante1,
+                            participante=participante1,   # ✅ sem espaço
                             evento=evento,
                             paroquia=getattr(evento, "paroquia", None),
                             cpf_conjuge=participante2.cpf,
@@ -4419,7 +4382,6 @@ def formulario_casais(request, evento_id):
                             if tmp_path and default_storage.exists(tmp_path):
                                 with default_storage.open(tmp_path, "rb") as fh:
                                     data = fh.read()
-
                                 def _delete_tmp():
                                     try:
                                         default_storage.delete(tmp_path)
@@ -4428,31 +4390,21 @@ def formulario_casais(request, evento_id):
                                 transaction.on_commit(_delete_tmp)
 
                         if data:
-                            log.info("foto_casal recebida: %s (%d bytes) — etapa 2", base_name, len(data))
-
                             def _save_all_images():
-                                saved_ic1 = _save_binary_to_filefield(ic1, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
-                                saved_ic2 = _save_binary_to_filefield(ic2, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
-                                saved_p1 = _save_binary_to_filefield(participante1, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
-                                saved_p2 = _save_binary_to_filefield(participante2, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
-                                log.info("Campos salvos — ic1=%s ic2=%s p1=%s p2=%s", saved_ic1, saved_ic2, saved_p1, saved_p2)
-
+                                _save_binary_to_filefield(ic1, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
+                                _save_binary_to_filefield(ic2, ["foto_casal", "foto", "imagem", "image", "photo"], base_name, data)
+                                _save_binary_to_filefield(participante1, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
+                                _save_binary_to_filefield(participante2, ["foto", "foto_participante", "imagem", "image", "avatar", "photo"], base_name, data)
                             transaction.on_commit(_save_all_images)
-                        else:
-                            log.warning("Sem bytes de foto_casal na etapa 2. FILES=%s", list(request.FILES.keys()))
 
                         filhos = ((c1.get("shared") or {}).get("filhos")) or []
                         for f in filhos:
                             if f.get("nome") or f.get("idade") or f.get("telefone"):
-                                Filho.objects.create(
-                                    inscricao=insc1, nome=f.get("nome", ""), idade=f.get("idade") or 0, telefone=f.get("telefone", "")
-                                )
-                                Filho.objects.create(
-                                    inscricao=insc2, nome=f.get("nome", ""), idade=f.get("idade") or 0, telefone=f.get("telefone", "")
-                                )
+                                Filho.objects.create(inscricao=insc1, nome=f.get("nome",""), idade=f.get("idade") or 0, telefone=f.get("telefone",""))
+                                Filho.objects.create(inscricao=insc2, nome=f.get("nome",""), idade=f.get("idade") or 0, telefone=f.get("telefone",""))
 
                         c_nome = shared_contacts.get("contato_emergencia_nome")
-                        c_tel = shared_contacts.get("contato_emergencia_telefone")
+                        c_tel  = shared_contacts.get("contato_emergencia_telefone")
                         c_grau = shared_contacts.get("contato_emergencia_grau_parentesco") or "outro"
                         if c_nome or c_tel:
                             for insc in (insc1, insc2):
@@ -4470,7 +4422,8 @@ def formulario_casais(request, evento_id):
                         return redirect("inscricoes:ver_inscricao", pk=insc1.id)
 
         except Exception:
-            # Deixe o Django expor a stacktrace em DEBUG e evite "transação quebrada"
+            # Se algo falhar, deixe o Django mostrar a stacktrace em DEBUG
+            # (e evita “transação quebrada” continuando a fazer queries)
             raise
 
     return render(request, "inscricoes/formulario_casais.html", {
@@ -4480,6 +4433,7 @@ def formulario_casais(request, evento_id):
         "form_insc": form_inscricao,
         "etapa": etapa,
     })
+
 
 
 # --- helper: resolve o tipo de formulário efetivo do evento ---

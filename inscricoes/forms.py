@@ -993,46 +993,35 @@ from django import forms
 from .models import InscricaoCasais
 
 
-class InscricaoCasaisForm(forms.ModelForm):
-    class Meta:
+# forms.py
+
+class InscricaoCasaisForm(BaseInscricaoForm):
+    # deixa a foto opcional aqui; a view define required=True na etapa 2
+    foto_casal = forms.ImageField(
+        label="Foto do casal",
+        required=False,
+        widget=forms.ClearableFileInput(attrs={"accept": "image/*"})
+    )
+
+    class Meta(BaseInscricaoForm.Meta):
         model = InscricaoCasais
         fields = [
-            # Dados básicos
-            "data_nascimento",
-            "altura",
-            "peso",
-            "batizado",
-            "estado_civil",
-            "casado_na_igreja",
-            "tempo_casado_uniao",
-            "paroquia",
-            "pastoral_movimento",
-            "outra_pastoral_movimento",
-            "dizimista",
-            "crismado",
-            "tamanho_camisa",
+            # --- dados básicos ---
+            "data_nascimento", "batizado", "estado_civil", "tempo_casado_uniao",
+            "casado_na_igreja", "nome_conjuge", "conjuge_inscrito", "indicado_por",
+            "tamanho_camisa", "paroquia", "pastoral_movimento", "outra_pastoral_movimento",
+            "dizimista", "crismado", "altura", "peso",
 
-            # ---------------- SAÚDE ----------------
-            "problema_saude",
-            "qual_problema_saude",
-            "medicamento_controlado",
-            "qual_medicamento_controlado",
-            "protocolo_administracao",
-            "mobilidade_reduzida",
-            "qual_mobilidade_reduzida",
-            "alergia_alimento",
-            "qual_alergia_alimento",
-            "alergia_medicamento",
-            "qual_alergia_medicamento",
-            "diabetes",        # 🔹 novo
-            "pressao_alta",    # 🔹 novo
-            # ----------------------------------------
+            # --- saúde ---
+            "problema_saude", "qual_problema_saude",
+            "medicamento_controlado", "qual_medicamento_controlado", "protocolo_administracao",
+            "mobilidade_reduzida", "qual_mobilidade_reduzida",
+            "alergia_alimento", "qual_alergia_alimento",
+            "alergia_medicamento", "qual_alergia_medicamento",
+            "diabetes", "pressao_alta",
+            "tipo_sanguineo", "informacoes_extras",
 
-            "tipo_sanguineo",
-            "indicado_por",
-            "informacoes_extras",
-
-            # Casais
+            # --- upload da foto (entrada do usuário) ---
             "foto_casal",
         ]
         widgets = {
@@ -1040,38 +1029,30 @@ class InscricaoCasaisForm(forms.ModelForm):
             "altura": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
             "peso": forms.NumberInput(attrs={"step": "0.1", "min": "0"}),
             "informacoes_extras": forms.Textarea(attrs={"rows": 3}),
-            "foto_casal": forms.ClearableFileInput(),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Aplica CSS Bootstrap em todos os campos
+        # Aparência padrão bootstrap
         for name, field in self.fields.items():
-            widget = field.widget
-
-            if isinstance(widget, forms.FileInput):
-                css_class = "form-control"
-            elif isinstance(widget, forms.Textarea):
-                css_class = "form-control"
-            elif isinstance(widget, (forms.DateInput, forms.NumberInput, forms.TextInput, forms.EmailInput, forms.URLInput)):
-                css_class = "form-control"
-            elif isinstance(widget, forms.Select):
-                css_class = "form-select"
+            w = field.widget
+            if isinstance(w, (forms.Textarea, forms.FileInput, forms.DateInput,
+                              forms.NumberInput, forms.TextInput, forms.EmailInput, forms.URLInput)):
+                css = "form-control"
+            elif isinstance(w, forms.Select):
+                css = "form-select"
             else:
-                css_class = "form-control"
+                css = "form-control"
+            w.attrs.update({"class": css})
 
-            widget.attrs.update({"class": css_class})
-
-        # 🔹 Restringe opções de estado civil → apenas Casado / União Estável
+        # limita estado civil
         self.fields["estado_civil"].choices = [
             ("casado", "Casado"),
             ("uniao_estavel", "União Estável"),
         ]
-
-        # 🔹 Ajuste de labels mais claros (opcional, mas melhora UX)
         self.fields["tempo_casado_uniao"].label = "Tempo de união (anos/meses)"
-        self.fields["foto_casal"].label = "Foto do casal"
+
 
 from django.core.exceptions import ValidationError
 
