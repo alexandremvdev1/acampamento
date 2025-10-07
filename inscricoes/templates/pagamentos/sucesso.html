@@ -34,8 +34,8 @@
 
     body{
       margin:0; color:var(--text);
-      font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
-      min-height:100dvh; display:grid; place-items:center; padding:28px 14px;
+      font:15.5px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+      min-height:100dvh; display:grid; place-items:center; padding:22px 12px;
       background:
         radial-gradient(1200px 800px at 10% -10%, var(--glowA), transparent 45%),
         radial-gradient(1000px 800px at 110% 10%, var(--glowB), transparent 45%),
@@ -44,106 +44,127 @@
       position:relative;
     }
     .orb{ position:absolute; filter:blur(24px); opacity:.8; pointer-events:none; z-index:0; animation: float 12s ease-in-out infinite; }
-    .orb.one  { width:280px; height:280px; top:6%;  left:8%;  background:radial-gradient(circle, #60a5fa, transparent 60%); }
-    .orb.two  { width:260px; height:260px; bottom:8%; right:10%; background:radial-gradient(circle, #34d399, transparent 60%); animation-delay:2s }
-    .orb.thr  { width:220px; height:220px; top:16%; right:22%; background:radial-gradient(circle, #f472b6, transparent 60%); animation-delay:4s }
-    @keyframes float { 50% { transform:translateY(14px)} }
+    .orb.one  { width:240px; height:240px; top:6%;  left:8%;  background:radial-gradient(circle, #60a5fa, transparent 60%); }
+    .orb.two  { width:220px; height:220px; bottom:8%; right:10%; background:radial-gradient(circle, #34d399, transparent 60%); animation-delay:2s }
+    .orb.thr  { width:200px; height:200px; top:16%; right:22%; background:radial-gradient(circle, #f472b6, transparent 60%); animation-delay:4s }
+    @keyframes float { 50% { transform:translateY(10px)} }
 
-    .wrap{ width:100%; max-width:880px; margin-inline:auto; position:relative; z-index:1 }
+    .wrap{ width:100%; max-width:860px; margin-inline:auto; position:relative; z-index:1 }
     .card{
       background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.00)), var(--card);
-      border-radius:28px; overflow:hidden; box-shadow:var(--shadow); outline:1px solid var(--line);
+      border-radius:22px; overflow:hidden; box-shadow:var(--shadow); outline:1px solid var(--line);
+      animation: rise .42s ease-out both;
     }
+    @keyframes rise { from{ transform:translateY(8px); opacity:0 } to{ transform:translateY(0); opacity:1 } }
 
     .hero{
-      text-align:center; padding:28px 18px 20px; border-bottom:1px solid var(--line);
+      text-align:center; padding:20px 16px 14px; border-bottom:1px solid var(--line);
       position:relative; isolation:isolate;
     }
     .hero::after{
-      content:""; position:absolute; inset:0; z-index:-1; opacity:.25;
+      content:""; position:absolute; inset:0; z-index:-1; opacity:.22;
       background:conic-gradient(from 0deg, rgba(79,124,255,.35), rgba(16,185,129,.35), rgba(244,114,182,.30), rgba(79,124,255,.35));
       mask:linear-gradient(#000, transparent);
     }
     .badge{
-      width:70px; height:70px; margin:0 auto 10px; border-radius:22px;
+      width:64px; height:64px; margin:0 auto 8px; border-radius:18px;
       display:grid; place-items:center;
       background:radial-gradient(circle at 30% 30%, var(--ok-2), var(--ok));
-      color:#fff; font-weight:900; font-size:30px;
+      color:#fff; font-weight:900; font-size:28px;
       box-shadow:0 10px 30px rgba(22,163,74,.35), inset 0 0 12px rgba(255,255,255,.15);
-      animation:pop .45s ease-out backwards;
+      animation:pop .45s ease-out backwards, pulse 1.8s ease-in-out 2 .45s;
     }
     @keyframes pop{ 0%{ transform:scale(.7); opacity:.5 } 100%{ transform:scale(1); opacity:1 } }
-    h1{ margin:10px 0 4px; font-size:clamp(22px, 3.5vw, 32px); letter-spacing:.3px }
-    .sub{ margin:0; color:var(--muted); font-size:clamp(.95rem, 1.2vw, 1rem) }
+    @keyframes pulse{ 50%{ box-shadow:0 0 0 8px rgba(34,197,94,.12), inset 0 0 14px rgba(255,255,255,.2) } }
+    h1{ margin:6px 0 2px; font-size:clamp(20px, 3.2vw, 30px); letter-spacing:.2px }
+    .sub{ margin:0; color:var(--muted); font-size:clamp(.93rem, 1.1vw, .98rem) }
 
-    .body{ padding:22px 18px 24px }
+    .body{ padding:16px 14px 18px }
 
+    /* imagem de boas-vindas mais compacta */
     .welcome{
-      display:grid; place-items:center; margin:10px auto 18px;
-      background:linear-gradient(135deg, rgba(79,124,255,.25), rgba(16,185,129,.18), rgba(244,114,182,.20));
-      padding:10px; border-radius:20px; outline:1px solid var(--line);
-    }
-    .welcome .frame{ border-radius:16px; overflow:hidden; outline:1px solid var(--line); box-shadow:0 12px 40px rgba(79,124,255,.22); max-height:520px; }
-    .welcome img{ width:100%; object-fit:cover }
-
-    .grid{
-      display:grid; gap:12px; margin-inline:auto; max-width:720px;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    }
-    .item{
-      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.00));
-      border-radius:14px; padding:12px; outline:1px solid var(--line);
-      text-align:center;
-    }
-    .item small{ display:block; color:var(--muted); margin-bottom:6px; font-size:.9rem }
-    .item b{ font-size:1.02rem }
-
-    .status{
-      margin:14px auto 0; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+      display:grid; place-items:center; margin:10px auto 14px;
+      background:linear-gradient(135deg, rgba(79,124,255,.22), rgba(16,185,129,.16), rgba(244,114,182,.18));
+      padding:8px; border-radius:16px; outline:1px solid var(--line);
       max-width:720px;
     }
+    .welcome .frame{ border-radius:12px; overflow:hidden; outline:1px solid var(--line); box-shadow:0 10px 30px rgba(79,124,255,.18); max-height:420px; }
+    .welcome img{ width:100%; object-fit:cover }
+
+    /* bloco compacto de informações */
+    .info{
+      display:grid; gap:8px; margin:0 auto; max-width:740px;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      align-items:stretch;
+    }
+    @media (max-width:680px){ .info{ grid-template-columns: 1fr } }
+
+    .item{
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.00));
+      border-radius:12px; padding:10px 12px; outline:1px solid var(--line);
+      display:flex; align-items:center; gap:8px; min-height:54px;
+    }
+    .dot{ width:8px; height:8px; border-radius:999px; background:var(--brand-2); opacity:.8; flex:0 0 8px }
+    .item small{ display:block; color:var(--muted); line-height:1.2; font-size:.85rem }
+    .item b{ display:block; font-size:.98rem; margin-top:2px; line-height:1.25 }
+
+    /* chips colados e quebrando linha */
+    .status{
+      margin:12px auto 0; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+      max-width:740px;
+    }
     .chip{
-      padding:8px 14px; border-radius:999px; background:var(--chip);
+      padding:7px 12px; border-radius:999px; background:var(--chip);
       outline:1px solid var(--line);
-      font-weight:800; font-size:.88rem; letter-spacing:.2px;
+      font-weight:800; font-size:.86rem; letter-spacing:.2px; white-space:nowrap;
     }
     .chip.ok{ background:rgba(22,163,74,.18); outline:1px solid rgba(22,163,74,.35) }
 
-    .divider{ height:1px; background:var(--line); margin:18px auto; max-width:720px }
+    .divider{ height:1px; background:var(--line); margin:14px auto; max-width:740px }
 
-    /* >>> Centralização total do botão + infos <<< */
     .actions{
       display:flex; flex-direction:column; align-items:center; justify-content:center;
-      text-align:center; gap:10px; margin-top:6px;
+      text-align:center; gap:8px; margin-top:4px;
     }
     .btn{
       appearance:none; border:0; cursor:pointer; text-decoration:none;
       display:inline-flex; align-items:center; justify-content:center; gap:10px;
-      padding:14px 18px; border-radius:14px; font-weight:900; font-size:1rem; letter-spacing:.2px;
-      background:linear-gradient(135deg, var(--brand), var(--brand-2));
+      padding:12px 16px; border-radius:12px; font-weight:900; font-size:1rem; letter-spacing:.2px;
+      background:
+        linear-gradient(135deg, color-mix(in oklab, var(--brand), white 8%), color-mix(in oklab, var(--brand-2), white 8%));
       color:#fff;
-      box-shadow:0 16px 36px rgba(79,124,255,.35), 0 0 0 1px rgba(255,255,255,.08) inset;
+      box-shadow:0 14px 30px rgba(79,124,255,.30), 0 0 0 1px rgba(255,255,255,.08) inset;
       transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
       text-align:center;
     }
-    .btn:hover{ transform:translateY(-1px); filter:saturate(1.1) }
+    .btn:hover{ transform:translateY(-1px); filter:saturate(1.05) }
     .btn:active{ transform:translateY(0) }
 
     .video-info{
-      color:var(--muted); font-size:.95rem; line-height:1.35; text-wrap:balance;
-      max-width:660px;
+      color:var(--muted); font-size:.93rem; line-height:1.35; text-wrap:balance;
+      max-width:640px;
     }
 
-    .note{ margin:14px auto 0; color:var(--muted); max-width:720px; text-align:center }
+    .note{ margin:10px auto 0; color:var(--muted); max-width:720px; text-align:center }
 
+    /* confete: explosão a partir do selo */
     .confetti { position: fixed; inset:0; pointer-events:none; z-index:999; overflow:hidden }
-    .confetti i{ position:absolute; top:-10px; width:8px; height:14px; opacity:.9; animation:fall linear forwards; transform:rotate(15deg) }
-    @keyframes fall{ to { transform:translateY(110vh) rotate(360deg); opacity:1 } }
+    .spark{ position:absolute; width:8px; height:8px; border-radius:2px; opacity:0; transform:translate(-50%,-50%);
+      animation:burst linear forwards; }
+    @keyframes burst{
+      0%{ opacity:1; transform:translate(var(--x0), var(--y0)) scale(1) rotate(0deg) }
+      100%{ opacity:0; transform:translate(var(--x1), var(--y1)) scale(.9) rotate(360deg) }
+    }
 
     @media (max-width: 520px){
-      body{ padding:18px 10px }
+      body{ padding:16px 10px }
       .btn{ width:100%; }
-      .video-info{ padding:0 8px }
+      .video-info{ padding:0 6px }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{ animation:none!important; transition:none!important }
+      .orb, .confetti{ display:none!important }
     }
 
     @media print{
@@ -165,7 +186,7 @@
   <div class="wrap">
     <div class="card" role="status" aria-live="polite">
       <div class="hero">
-        <div class="badge">✓</div>
+        <div class="badge" id="badge">✓</div>
         <h1>Pagamento confirmado!</h1>
         <p class="sub">Sua inscrição para <b>{{ inscricao.evento.nome }}</b> foi concluída com sucesso.</p>
       </div>
@@ -179,24 +200,45 @@
           </div>
         {% endif %}
 
-        <div class="grid" aria-label="Resumo da inscrição">
+        {% with par=inscricao.par %}
+        <div class="info" aria-label="Resumo da inscrição">
           <div class="item">
-            <small>Participante</small>
-            <b>{{ inscricao.participante.nome }}</b>
+            <span class="dot" aria-hidden="true"></span>
+            <div>
+              <small>{% if par %}Participantes{% else %}Participante{% endif %}</small>
+              {% if par %}
+                <b>{{ inscricao.participante.nome }} – {{ par.participante.nome }}</b>
+              {% else %}
+                <b>{{ inscricao.participante.nome }}</b>
+              {% endif %}
+            </div>
           </div>
+
           <div class="item">
-            <small>Evento</small>
-            <b>{{ inscricao.evento.nome }}</b>
+            <span class="dot" aria-hidden="true" style="background:var(--brand)"></span>
+            <div>
+              <small>Evento</small>
+              <b>{{ inscricao.evento.nome }}</b>
+            </div>
           </div>
+
           <div class="item">
-            <small>Paróquia</small>
-            <b>{{ inscricao.paroquia.nome }}</b>
+            <span class="dot" aria-hidden="true" style="background:#10b981"></span>
+            <div>
+              <small>Paróquia</small>
+              <b>{{ inscricao.paroquia.nome }}</b>
+            </div>
           </div>
+
           <div class="item">
-            <small>Status</small>
-            <b>Confirmado</b>
+            <span class="dot" aria-hidden="true" style="background:#f59e0b"></span>
+            <div>
+              <small>Status</small>
+              <b>Confirmado</b>
+            </div>
           </div>
         </div>
+        {% endwith %}
 
         <div class="status">
           <span class="chip ok">Inscrição #{{ inscricao.id }}</span>
@@ -210,11 +252,13 @@
               <span class="chip">Valor: R$ {{ inscricao.evento.valor_inscricao|floatformat:2 }}</span>
             {% endif %}
           {% endwith %}
+          {% if inscricao.par %}
+            <span class="chip">Inscrição pareada</span>
+          {% endif %}
         </div>
 
         <div class="divider" aria-hidden="true"></div>
 
-        <!-- Botão + informações 100% centralizados -->
         <div class="actions">
           <a class="btn" href="{% url 'inscricoes:pagina_video_evento' slug=inscricao.evento.slug %}">
             Assistir vídeo de boas-vindas
@@ -232,25 +276,67 @@
 
   <div class="confetti" aria-hidden="true" id="confetti"></div>
   <script>
-    (function confetti(){
-      const root = document.getElementById('confetti');
+    // Confete "explosão" a partir do selo (mais clean/bonito e rápido)
+    (function burst(){
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const badge = document.getElementById('badge');
+      const root  = document.getElementById('confetti');
+      if (!badge || !root) return;
+
+      const rect = badge.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top  + rect.height/2;
+
       const colors = ['#22c55e','#4f7cff','#f59e0b','#ef4444','#10b981','#a78bfa','#f472b6'];
-      const isNarrow = window.matchMedia('(max-width:520px)').matches;
-      const COUNT = isNarrow ? 48 : 72;
+      const COUNT = Math.min(120, Math.max(70, Math.floor(window.innerWidth/8)));
+
       for (let i=0;i<COUNT;i++){
-        const p = document.createElement('i');
-        const size = 6 + Math.random()*9;
-        p.style.left = (Math.random()*100)+'vw';
-        p.style.background = colors[(Math.random()*colors.length)|0];
-        p.style.width = size+'px';
-        p.style.height = (size*1.3)+'px';
-        p.style.animationDuration = (5 + Math.random()*3)+'s';
-        p.style.animationDelay = (Math.random()*0.8)+'s';
-        p.style.opacity = .9;
-        root.appendChild(p);
-        setTimeout(()=> p.remove(), 9000);
+        const el = document.createElement('i');
+        el.className = 'spark';
+        const ang = (Math.random()*360) * (Math.PI/180);
+        const dist = 60 + Math.random()*220; // raio de explosão
+        const x1 = cx + Math.cos(ang)*dist;
+        const y1 = cy + Math.sin(ang)*dist;
+
+        // posições CSS (origem no centro do selo)
+        el.style.setProperty('--x0', cx + 'px');
+        el.style.setProperty('--y0', cy + 'px');
+        el.style.setProperty('--x1', x1 + 'px');
+        el.style.setProperty('--y1', y1 + 'px');
+
+        const size = 6 + Math.random()*7;
+        el.style.width = size+'px';
+        el.style.height = size+'px';
+        el.style.background = colors[(Math.random()*colors.length)|0];
+        el.style.left = cx + 'px';
+        el.style.top  = cy + 'px';
+        el.style.animationDuration = (.9 + Math.random()*0.6) + 's';
+        root.appendChild(el);
+        setTimeout(()=> el.remove(), 1300);
       }
-      setTimeout(()=> root.remove(), 9500);
+      // fallback: pequenas “chuvas” breves depois da explosão
+      setTimeout(()=> rain(), 500);
+      function rain(){
+        const n = 24;
+        for (let i=0;i<n;i++){
+          const p = document.createElement('i');
+          p.className = 'spark';
+          const x = Math.random()*window.innerWidth;
+          p.style.setProperty('--x0', x+'px');
+          p.style.setProperty('--y0', '-10px');
+          p.style.setProperty('--x1', x+'px');
+          p.style.setProperty('--y1', (window.innerHeight + 40) + 'px');
+          p.style.left = x+'px';
+          p.style.top = '-10px';
+          p.style.background = colors[(Math.random()*colors.length)|0];
+          p.style.width='6px'; p.style.height='10px';
+          p.style.borderRadius='3px';
+          p.style.animationDuration = (1.2 + Math.random()*0.6) + 's';
+          root.appendChild(p);
+          setTimeout(()=> p.remove(), 2000);
+        }
+        setTimeout(()=> root.remove(), 2200);
+      }
     })();
   </script>
 </body>
