@@ -9,7 +9,7 @@ from .views import (
     LoginComImagemView,
     mp_config,
     buscar_participante_ajax,
-    iniciar_pagamento,
+    iniciar_pagamento, relatorio_conferencia_pagamento
 )
 
 # ========= Conversor que aceita int OU UUID =========
@@ -203,6 +203,19 @@ urlpatterns = [
         "ajax/inscricoes/<int:inscricao_id>/alterar-status/",
         views.alterar_status_inscricao,
         name="alterar_status_inscricao",
+    ),
+
+    path(
+    "evento/<uuid:evento_id>/relatorios/conferencia-pagamento/",
+    views.relatorio_conferencia_pagamento,
+    name="relatorio_conferencia_pagamento",
+    ),
+
+# Conferência de Pagamento — por SLUG
+    path(
+    "relatorios/<slug:slug>/conferencia-pagamento/",
+    views.relatorio_conferencia_pagamento,
+    name="relatorio_conferencia_pagamento",   # <-- mesmo name
     ),
 ]
 

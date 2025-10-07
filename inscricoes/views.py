@@ -5918,3 +5918,141 @@ def alterar_status_inscricao(request, inscricao_id: int):
         "paired_updated": bool(par),
     })
 
+# inscricoes/views.py
+import csv
+import uuid
+from typing import Optional
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse, Http404
+from django.shortcuts import get_object_or_404, render
+from django.utils.text import slugify
+
+from .models import EventoAcampamento, Inscricao
+
+
+def _status_display(ins) -> str:
+    return "Pago" if getattr(ins, "pagamento_confirmado", False) else "Pendente"
+
+
+def _cidade_uf(ins) -> str:
+    p = ins.participante
+    cid = (getattr(p, "cidade", "") or "").strip()
+    uf  = (getattr(p, "estado", "") or "").strip()
+    return f"{cid}/{uf}" if cid and uf else (cid or uf or "")
+
+
+@login_required
+def relatorio_conferencia_pagamento(
+    request,
+    evento_id: Optional[uuid.UUID] = None,
+    slug: Optional[str] = None,
+):
+    """
+    - Aceita slug OU evento_id
+    - Lista apenas inscrições selecionadas (foi_selecionado=True)
+    - Mostra casal na MESMA LINHA: "Fulano - Sicrana"
+    - Status (Cônjuge 1) e (Cônjuge 2) = Pago/Pendente
+    - Filtro por cidade (?cidade=)
+    - Exporta CSV (?csv=1) respeitando filtro
+    """
+    # 1) Resolver evento
+    if evento_id:
+        evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+    elif slug:
+        evento = get_object_or_404(EventoAcampamento, slug=slug)
+    else:
+        return HttpResponse("Evento não informado.", status=400)
+
+    # 2) Base: somente selecionados
+    qs = (
+        Inscricao.objects
+        .filter(evento=evento, foi_selecionado=True)
+        .select_related("participante", "paroquia")
+        .order_by("participante__nome")
+    )
+
+    # 3) Filtro por cidade
+    cidade = (request.GET.get("cidade") or "").strip()
+    if cidade:
+        qs = qs.filter(participante__cidade__iexact=cidade)
+
+    # 4) Montagem das linhas (evita duplicar pares)
+    def status_pag(ins) -> str:
+        if getattr(ins, "pagamento_confirmado", False):
+            return "Pago"
+        if getattr(ins, "foi_selecionado", False):
+            return "Pendente"
+        return ""
+
+    linhas = []
+    vistos = set()
+
+    for ins in qs:
+        if ins.pk in vistos:
+            continue
+
+        par = getattr(ins, "par", None)  # property do seu model
+        if par:
+            vistos.update({ins.pk, par.pk})
+
+            n1 = (ins.participante.nome or "").strip()
+            n2 = (par.participante.nome or "").strip()
+            if n2.lower() < n1.lower():
+                ins, par = par, ins
+                n1, n2 = n2, n1
+
+            nome_dupla = f"{n1} - {n2}"
+            status1 = status_pag(ins)
+            status2 = status_pag(par)
+            cidade_uf = _cidade_uf(ins)
+            telefone = (ins.participante.telefone or par.participante.telefone or "").strip()
+        else:
+            vistos.add(ins.pk)
+            nome_dupla = (ins.participante.nome or "").strip()
+            status1 = status_pag(ins)
+            status2 = ""
+            cidade_uf = _cidade_uf(ins)
+            telefone = (ins.participante.telefone or "").strip()
+
+        linhas.append({
+            "nome_dupla": nome_dupla,
+            "cidade": cidade_uf,
+            "telefone": telefone,
+            "status1": status1,
+            "status2": status2,
+        })
+
+    # 5) Ordena pela dupla
+    linhas.sort(key=lambda r: r["nome_dupla"].upper())
+
+    # 6) Opções de cidades (do universo de selecionados)
+    cidades = list(
+        Inscricao.objects
+        .filter(evento=evento, foi_selecionado=True)
+        .exclude(participante__cidade__isnull=True)
+        .exclude(participante__cidade__exact="")
+        .values_list("participante__cidade", flat=True)
+        .distinct()
+        .order_by("participante__cidade")
+    )
+
+    # 7) CSV
+    if request.GET.get("csv") == "1":
+        resp = HttpResponse(content_type="text/csv; charset=utf-8-sig")
+        nome_arq = f"conferencia-pagamento-{slugify(evento.nome)}.csv"
+        resp["Content-Disposition"] = f'attachment; filename="{nome_arq}"'
+        w = csv.writer(resp, delimiter=";")
+        w.writerow(["Nome (dupla)", "Cidade/UF", "Telefone", "Status (Cônjuge 1)", "Status (Cônjuge 2)"])
+        for r in linhas:
+            w.writerow([r["nome_dupla"], r["cidade"], r["telefone"], r["status1"], r["status2"]])
+        return resp
+
+    # 8) Render
+    ctx = {
+        "evento": evento,
+        "linhas": linhas,
+        "total": len(linhas),
+        "cidades": cidades,
+        "cidade_atual": cidade,
+    }
+    return render(request, "inscricoes/relatorio_conferencia_pagamento.html", ctx)

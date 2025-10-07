@@ -1084,25 +1084,79 @@ class InscricaoCasaisForm(BaseInscricaoForm):
         return f
 
 from django.core.exceptions import ValidationError
+from django import forms
+from django.core.exceptions import ValidationError
+import re
+
+UF_CHOICES = [
+    ('', '—'), ('AC','AC'),('AL','AL'),('AP','AP'),('AM','AM'),('BA','BA'),
+    ('CE','CE'),('DF','DF'),('ES','ES'),('GO','GO'),('MA','MA'),('MT','MT'),
+    ('MS','MS'),('MG','MG'),('PA','PA'),('PB','PB'),('PR','PR'),('PE','PE'),
+    ('PI','PI'),('RJ','RJ'),('RN','RN'),('RS','RS'),('RO','RO'),('RR','RR'),
+    ('SC','SC'),('SP','SP'),('SE','SE'),('TO','TO'),
+]
+
+def _digits(s: str) -> str:
+    return re.sub(r'\D', '', s or '')
+
+def _fmt_cep(d: str) -> str:
+    # 8 dígitos → 99999-999
+    return f"{d[:5]}-{d[5:]}" if len(d) == 8 else d
+
+def _valida_cpf_basico(d: str) -> bool:
+    # validação simples: exatamente 11 dígitos (sem algoritmo)
+    return len(d) == 11
 
 class FormBasicoPagamentoPublico(forms.Form):
     # Participante 1
-    nome = forms.CharField(label="Nome completo (1º participante)", max_length=150)
-    cpf = forms.CharField(label="CPF do 1º participante", max_length=18)  # aceita máscara
+    nome = forms.CharField(
+        label="Nome completo (1º participante)",
+        max_length=150,
+        widget=forms.TextInput(attrs={"autocomplete": "name"})
+    )
+    cpf = forms.CharField(
+        label="CPF do 1º participante",
+        max_length=18,  # aceita máscara
+        widget=forms.TextInput(attrs={"placeholder": "000.000.000-00", "inputmode": "numeric"})
+    )
+
     # Participante 2 (opcional, mas se informar CPF precisa ter nome, e vice-versa)
     nome_segundo = forms.CharField(
         label="Nome completo (2º participante - opcional)",
         max_length=150,
-        required=False
+        required=False,
+        widget=forms.TextInput(attrs={"autocomplete": "name"})
     )
     cpf_segundo = forms.CharField(
         label="CPF do 2º participante (opcional)",
         max_length=18,
-        required=False
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "000.000.000-00", "inputmode": "numeric"})
     )
-    # Comum
-    cidade = forms.CharField(label="Cidade", max_length=120, required=False)
 
+    # Endereço mínimo (CEP → preenche cidade/UF no front com ViaCEP)
+    CEP = forms.CharField(
+        label="CEP",
+        max_length=9,
+        required=False,
+        widget=forms.TextInput(attrs={"placeholder": "00000-000", "inputmode": "numeric"})
+    )
+    cidade = forms.CharField(
+        label="Cidade",
+        max_length=120,
+        required=False,
+        widget=forms.TextInput(attrs={"id": "id_cidade"})
+    )
+    estado = forms.ChoiceField(
+        label="Estado (UF)",
+        choices=UF_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"id": "id_estado"})
+    )
+
+    # -------------------------
+    # Normalizações de campos
+    # -------------------------
     def clean_nome(self):
         return (self.cleaned_data.get("nome") or "").strip()
 
@@ -1112,18 +1166,59 @@ class FormBasicoPagamentoPublico(forms.Form):
     def clean_cidade(self):
         return (self.cleaned_data.get("cidade") or "").strip()
 
+    def clean_estado(self):
+        # normaliza para sigla em maiúsculo
+        uf = (self.cleaned_data.get("estado") or "").strip().upper()
+        return uf
+
+    def clean_CEP(self):
+        cep_raw = (self.cleaned_data.get("CEP") or "").strip()
+        d = _digits(cep_raw)
+        if d and len(d) != 8:
+            raise ValidationError("CEP inválido. Use 8 dígitos (ex.: 77000-000).")
+        return _fmt_cep(d) if d else ""
+
+    def clean_cpf(self):
+        cpf_raw = (self.cleaned_data.get("cpf") or "").strip()
+        d = _digits(cpf_raw)
+        if not _valida_cpf_basico(d):
+            raise ValidationError("CPF inválido. Informe 11 dígitos.")
+        # opcional: retornar com máscara padronizada
+        return f"{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}"  # 000.000.000-00
+
+    def clean_cpf_segundo(self):
+        cpf2_raw = (self.cleaned_data.get("cpf_segundo") or "").strip()
+        if not cpf2_raw:
+            return ""  # opcional, então pode ficar vazio
+        d = _digits(cpf2_raw)
+        if not _valida_cpf_basico(d):
+            raise ValidationError("CPF do 2º participante inválido. Informe 11 dígitos.")
+        return f"{d[:3]}.{d[3:6]}.{d[6:9]}-{d[9:]}"
+
+    # -------------------------
+    # Regras cruzadas
+    # -------------------------
     def clean(self):
         data = super().clean()
-        nome2 = (data.get("nome_segundo") or "").strip()
-        cpf2 = (data.get("cpf_segundo") or "").strip()
 
-        # Se informou CPF2, exige nome2; se informou nome2, exige CPF2
+        # Participante 2: se informou CPF2 exige nome2; se informou nome2 exige CPF2
+        nome2 = (data.get("nome_segundo") or "").strip()
+        cpf2  = (data.get("cpf_segundo") or "").strip()
         if cpf2 and not nome2:
-            raise ValidationError("Informe o nome do 2º participante.")
+            self.add_error("nome_segundo", "Informe o nome do 2º participante.")
         if nome2 and not cpf2:
-            raise ValidationError("Informe o CPF do 2º participante.")
+            self.add_error("cpf_segundo", "Informe o CPF do 2º participante.")
+
+        # Se informou CEP, exigimos cidade e UF (ViaCEP preenche no front, mas garantimos no back)
+        cep = (data.get("CEP") or "").strip()
+        if cep:
+            if not (data.get("cidade") or "").strip():
+                self.add_error("cidade", "Informe a cidade (preenchida automaticamente pelo CEP).")
+            if not (data.get("estado") or "").strip():
+                self.add_error("estado", "Selecione a UF (preenchida automaticamente pelo CEP).")
 
         return data
+
     
 class MinisterioForm(forms.ModelForm):
     class Meta:

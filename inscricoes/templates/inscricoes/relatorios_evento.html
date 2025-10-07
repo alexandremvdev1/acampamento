@@ -36,7 +36,7 @@
     .nav-list a:hover{ background:#eef2f7; }
     .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
 
-    /* KPIs (se quiser mostrar algo rápido no futuro) */
+    /* KPIs */
     .kpi{ background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem; }
     .kpi .small{ color:var(--muted); font-size:.8rem; }
     .kpi .fs-4{ font-size:1.15rem !important; }
@@ -49,7 +49,7 @@
       border:1px solid #e5e7eb; border-radius:.9rem;
     }
 
-    /* Cards limpos clicáveis */
+    /* Cards */
     .card-clean{
       border:1px solid #e5e7eb; border-radius:.9rem; background:#fff;
       box-shadow:0 10px 24px rgba(17,24,39,.08);
@@ -89,7 +89,7 @@
 <main class="container py-3 py-lg-4">
   <div class="row g-3">
 
-    <!-- SIDEBAR (apenas coisas do evento) -->
+    <!-- SIDEBAR -->
     <aside class="col-lg-3">
       <div class="sidebar-card p-2">
         <div class="nav-title">Evento</div>
@@ -101,7 +101,6 @@
           <li class="nav-item"><a href="{% url 'inscricoes:video_evento_form' slug=evento.slug %}">🎬 <span>Vídeo do evento</span></a></li>
         </ul>
 
-        <!-- (Opcional) KPIs rápidos -->
         <div class="nav-title">Resumo</div>
         <div class="row g-2 m-0">
           <div class="col-6">
@@ -219,6 +218,20 @@
               <div class="flex-grow-1">
                 <p class="ttl">Ficha Farmácia</p>
                 <p class="sub">Medicamentos e protocolos</p>
+              </div>
+              <i class="fa-solid fa-arrow-up-right-from-square text-muted-2"></i>
+            </a>
+          </div>
+
+          {# --- NOVO: Conferência de Pagamento (mesmo tamanho dos demais) --- #}
+          <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <a class="card-clean p-3 h-100 d-flex align-items-start gap-3"
+               href="{% url 'inscricoes:relatorio_conferencia_pagamento' slug=evento.slug %}"
+               target="_blank" rel="noopener">
+              <div class="list-ico"><i class="fa-solid fa-receipt"></i></div>
+              <div class="flex-grow-1">
+                <p class="ttl">Conferência de Pagamento</p>
+                <p class="sub">Selecionados — nome, cidade, telefone e par</p>
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square text-muted-2"></i>
             </a>
