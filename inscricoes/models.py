@@ -970,13 +970,12 @@ class InscricaoCasais(BaseInscricao):
     Inscrição específica para eventos de casais.
     Herda todos os campos de BaseInscricao e adiciona informações extras.
     """
-    # trocado de ImageField -> CloudinaryField
-    foto_casal = CloudinaryField(
+    foto_casal = models.ImageField(
+        upload_to="casais/fotos/",
         null=True,
         blank=True,
         verbose_name="Foto do casal"
     )
-
     tempo_casado_uniao = models.CharField(
         max_length=100,
         null=True,
@@ -1077,6 +1076,12 @@ class PoliticaPrivacidade(models.Model):
         verbose_name="Imagem da Ajuda (botão flutuante)",
         null=True, blank=True
     )
+    
+    imagem_pagto = CloudinaryField(
+        verbose_name="Imagem do Pagamento (PIX / instruções)",
+        null=True, blank=True
+    )
+
 
     # Dados do dono do sistema...
     cpf_cnpj = models.CharField("CPF/CNPJ", max_length=18, blank=True, null=True)

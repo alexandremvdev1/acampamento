@@ -5,120 +5,195 @@
   <title>Inscrição Concluída - {{ evento.nome }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* Reset simples */
+    /* ===== Reset simples ===== */
     * { box-sizing: border-box; }
 
     body{
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Open Sans","Helvetica Neue",sans-serif;
-      max-width:480px;margin:20px auto;padding:15px;background-color:#dadada;color:#333;
+      max-width:720px;margin:20px auto;padding:18px;background:
+        radial-gradient(900px 900px at -10% -10%, rgba(79,124,255,.18), transparent 40%),
+        radial-gradient(900px 900px at 110% 10%, rgba(34,197,94,.16), transparent 40%),
+        #e9eef7;
+      color:#122033;
     }
 
-    header{text-align:center;margin-bottom:20px;}
-    header img{max-width:100%;height:auto;border-radius:8px;margin-bottom:12px;box-shadow:0 4px 6px rgba(0,0,0,.1);}
+    header{text-align:center;margin-bottom:18px;}
+    header img{max-width:100%;height:auto;border-radius:14px;margin-bottom:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);}
 
-    .mensagem{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,.1);margin-bottom:25px;text-align:center;}
-    .mensagem p{font-size:1.1rem;margin:12px 0;color:#444;line-height:1.4;}
+    .mensagem{
+      background:#ffffff;
+      padding:22px 20px;
+      border-radius:16px;
+      box-shadow:0 8px 22px rgba(20,50,120,.10);
+      margin-bottom:22px;
+      text-align:center;
+      border:1px solid #eef2f7;
+    }
+    .mensagem h1{
+      margin:0 0 6px;
+      font-size:clamp(1.2rem, 3.4vw, 1.6rem);
+      color:#0f172a;
+      letter-spacing:.2px;
+    }
+    .mensagem p{font-size:1.05rem;margin:10px 0;color:#28324a;line-height:1.5;}
 
-    .imagem-personalizada{width:100%;max-height:1300px;object-fit:contain;margin:15px 0;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);}
+    .nome-duplo{
+      display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;
+      font-weight:800; color:#0b5d3b;
+    }
+    .nome-duplo .sep{opacity:.45}
 
-    .btn-pagar{flex:1 1 45%;min-width:140px;text-align:center;padding:12px 10px;border-radius:6px;text-decoration:none;font-weight:700;color:#fff;transition:opacity .2s;}
-    .btn-pagar:hover{opacity:.9}
-    .btn-pagar-pix{background:#009443}
-    .btn-pagar-cartao{background:#007bff}
+    .imagem-personalizada{
+      width:100%; max-height:1300px; object-fit:contain;
+      margin:16px 0 4px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.08);
+      background:#f9fbff; border:1px solid #eef2f7;
+    }
 
-    .pagamento-opcoes{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+    /* ===== PAGAMENTO: em coluna, título grande + subtítulo menor ===== */
+    .pagamento-bloco{
+      text-align:center; margin-bottom:18px;
+      background:#ffffff; border:1px solid #eef2f7; border-radius:16px; padding:16px 16px 18px;
+      box-shadow:0 8px 22px rgba(20,50,120,.08);
+    }
+    .pagamento-bloco p{margin:6px 0 0 0}
+    .pagamento-bloco .valor{font-weight:800; color:#0b3c91;}
 
-    .info-valor{font-size:.9rem;color:#555;margin-bottom:25px;background:#fff;padding:15px 20px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.08);}
-    /* deixa maior apenas a 1ª linha da caixa de valor */
-.info-valor p:first-child{
-  font-size: 1rem;      /* ajuste como quiser */
-  font-weight: 700;
-  line-height: 1.5;
-  text-align: center;   /* centraliza o texto */
-  margin: 0 auto;       /* opcional */
-}
+    .pagamento-opcoes{
+      display:flex; flex-direction:column; gap:12px;
+      justify-content:center; align-items:stretch;
+      margin-top:14px; max-width:520px; margin-inline:auto;
+    }
+    .btn-pagar{
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+      width:100%;
+      text-align:center;
+      padding:16px 16px;
+      border-radius:14px;
+      text-decoration:none;
+      color:#fff;
+      box-shadow:0 14px 32px rgba(0,0,0,.16);
+      transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      position:relative; isolation:isolate; border:1px solid rgba(255,255,255,.18);
+    }
+    .btn-pagar::after{
+      content:""; position:absolute; inset:-2px;
+      border-radius:16px; z-index:-1; filter:blur(12px); opacity:.55;
+    }
+    .btn-pagar:hover{ transform:translateY(-1px); filter:saturate(1.05) }
+    .btn-pagar:active{ transform:translateY(0) }
 
+    .btn-title{
+      display:block;
+      font-size:clamp(1.15rem, 2.6vw, 1.45rem);
+      font-weight:900;
+      letter-spacing:.2px;
+      line-height:1.15;
+    }
+    .btn-subtitle{
+      display:block;
+      font-size:.92rem;
+      font-weight:600;
+      line-height:1.25;
+      opacity:.98;
+    }
 
-    /* Link que abre o modal */
+    .btn-pagar-pix{
+      background:linear-gradient(135deg,#00c26d,#009443);
+      box-shadow:0 18px 40px rgba(0,148,67,.35);
+    }
+    .btn-pagar-pix::after{
+      background:radial-gradient(40% 60% at 50% 50%, rgba(0,255,170,.35), transparent 60%);
+    }
+    .btn-pagar-cartao{
+      background:linear-gradient(135deg,#4f7cff,#1d4ed8);
+      box-shadow:0 18px 40px rgba(29,78,216,.35);
+    }
+    .btn-pagar-cartao::after{
+      background:radial-gradient(40% 60% at 50% 50%, rgba(79,124,255,.35), transparent 60%);
+    }
+
+    /* ===== Info valor & política ===== */
+    .info-valor{
+      font-size:.98rem;color:#233047;margin-bottom:24px;background:#ffffff;
+      padding:16px 18px;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.08);
+      border:1px solid #eef2f7;
+    }
+    .info-valor p{margin:8px 0}
+    .info-valor p:first-child{
+      font-size:1rem; font-weight:800; line-height:1.5; text-align:center; margin:0 auto;
+    }
     .link-modal{
-      color:#0d6efd;text-decoration:underline;cursor:pointer;font-weight:600;
+      color:#1d4ed8;text-decoration:underline;cursor:pointer;font-weight:700;
     }
     .link-modal:hover{opacity:.85}
 
-    /* Modal genérico */
+    /* ===== Modal genérico ===== */
     .modal{
       display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;
-      background:rgba(0,0,0,.5);
+      background:rgba(0,0,0,.55);
     }
     .modal-content{
-      background:#fff;border-radius:12px;max-width:620px;margin:8% auto;padding:18px 18px 22px;position:relative;
-      box-shadow:0 10px 30px rgba(0,0,0,.2);
+      background:#fff;border-radius:16px;max-width:720px;margin:6% auto;padding:20px 18px 24px;position:relative;
+      box-shadow:0 18px 50px rgba(0,0,0,.25);
+      border:1px solid #eef2f7;
     }
     .modal-close{
-      position:absolute;right:10px;top:6px;font-size:26px;line-height:1;color:#999;cursor:pointer;border:0;background:transparent;
+      position:absolute;right:12px;top:8px;font-size:28px;line-height:1;color:#7a8799;cursor:pointer;border:0;background:transparent;
     }
-    .modal-close:hover{color:#000}
-    .modal-content h3{margin:0 0 10px;text-align:center;color:#222}
-    .modal-content .muted{color:#64748b;font-size:.9rem}
+    .modal-close:hover{color:#0b1320}
+    .modal-content h3{margin:0 0 10px;text-align:center;color:#0f172a}
+    .modal-content .muted{color:#64748b;font-size:.95rem}
     .modal-content .pill{
-      display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:4px 10px;font-size:.8rem;font-weight:700
+      display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:4px 10px;font-size:.82rem;font-weight:800
     }
-
-    /* Área rolável do texto da política: só vertical e texto justificado */
     .refund-viewport{
-      border:1px solid #eef2f7;border-radius:10px;padding:16px;background:#fff;
-      max-height:60vh;overflow-y:auto;overflow-x:hidden;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      touch-action: pan-y; /* permite apenas gesto vertical */
+      border:1px solid #eef2f7;border-radius:14px;padding:16px;background:#fff;
+      max-height:60vh;overflow-y:auto;overflow-x:hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y;
     }
-    .refund-text{
-      text-align:justify; /* texto justificado */
-      white-space:pre-wrap;
-      line-height:1.6;
-    }
-
+    .refund-text{ text-align:justify; white-space:pre-wrap; line-height:1.65; }
     .modal-actions{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}
     .btn-outline{
-      display:inline-block;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;text-decoration:none;color:#111827;font-weight:600
+      display:inline-block;border:1px solid #d1d5db;border-radius:10px;padding:10px 14px;text-decoration:none;color:#111827;font-weight:700;
+      background:#fff;
     }
     .btn-outline:hover{background:#f9fafb}
 
-    /* --------- Linha do tempo --------- */
-    .linha-do-tempo{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin-bottom:30px;}
-    .linha-do-tempo h2{margin-bottom:18px;font-size:1.3rem;color:#222;text-align:center;}
-    .timeline-step{display:flex;align-items:center;margin-bottom:15px;font-size:1rem;color:#666;}
+    /* ===== Linha do tempo ===== */
+    .linha-do-tempo{
+      background:#ffffff;padding:18px;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.08);margin-bottom:26px;border:1px solid #eef2f7;
+    }
+    .linha-do-tempo h2{margin-bottom:12px;font-size:1.15rem;color:#0f172a;text-align:center;}
+    .timeline-step{display:flex;align-items:center;margin-bottom:12px;font-size:1rem;color:#49566f;}
     .timeline-step:last-child{margin-bottom:0;}
-
-    /* bolinha vazada por padrão */
     .timeline-step::before{
       content:'';display:inline-flex;justify-content:center;align-items:center;
-      width:28px;height:28px;margin-right:15px;border-radius:50%;
-      border:2px solid #999;color:#999;font-weight:700;background:transparent;
+      width:28px;height:28px;margin-right:12px;border-radius:50%;
+      border:2px solid #9aa4b2;color:#9aa4b2;font-weight:800;background:transparent;
     }
-
-    /* passo concluído: vira check preenchido */
-    .timeline-step.active{color:#2e7d32;font-weight:700;}
+    .timeline-step.active{color:#15643e;font-weight:800;}
     .timeline-step.active::before{
-      content:"✓";
-      border-color:#2e7d32;background:#2e7d32;color:#fff;
+      content:"✓"; border-color:#16a34a;background:#16a34a;color:#fff;
     }
 
-    .btn-ajuda{display:block;width:100%;max-width:320px;margin:0 auto 12px;color:#fff;padding:14px;font-size:1.1rem;font-weight:700;border:0;border-radius:8px;text-align:center;text-decoration:none;}
-    .btn-organizacao{background:#25D366}
-    .btn-organizacao:hover{background:#128C7E}
-
-    .btn-pequeno{display:inline-block;width:48%;margin:0 auto 12px;color:#fff;padding:8px;font-size:.6rem;font-weight:700;border:0;border-radius:8px;text-align:center;text-decoration:none;}
+    /* ===== Contatos ===== */
+    .contatos{text-align:center;margin-top:14px;}
+    .btn-ajuda{
+      display:block;width:100%;max-width:340px;margin:0 auto 12px;color:#fff;padding:14px 16px;font-size:1.05rem;font-weight:900;border:0;border-radius:12px;text-align:center;text-decoration:none;
+      background:#25D366; box-shadow:0 10px 24px rgba(12,165,92,.25);
+    }
+    .btn-ajuda:hover{filter:saturate(1.05)}
+    .btn-pequeno{
+      display:inline-block;width:48%;margin:0 auto 12px;color:#fff;padding:10px 12px;font-size:.82rem;font-weight:800;border:0;border-radius:10px;text-align:center;text-decoration:none;
+    }
     .btn-suporte-whatsapp{background:#128C7E}
-    .btn-suporte-whatsapp:hover{background:#075E54}
+    .btn-suporte-whatsapp:hover{filter:saturate(1.05)}
     .btn-suporte-email{background:#007bff}
-    .btn-suporte-email:hover{background:#0056b3}
+    .btn-suporte-email:hover{filter:saturate(1.05)}
 
-    .contatos{text-align:center;margin-top:20px;}
-
-    @media (max-width:480px){
-      .btn-pagar{flex:1 1 calc(50% - 10px);font-size:.9rem;padding:10px;}
-      .modal-content{margin:14% 12px;}
+    @media (max-width:520px){
+      body{padding:14px}
+      .modal-content{margin:12% 10px;}
+      .btn-pequeno{width:49%}
     }
   </style>
 </head>
@@ -133,63 +208,129 @@
   <section class="mensagem" role="main" aria-labelledby="titulo-principal">
     <h1 id="titulo-principal">Parabéns! Sua inscrição foi enviada.</h1>
 
-    <!-- TEXTO AJUSTADO COM TERMOS POR TIPO -->
-    <p>
-      <strong>{{ inscricao.participante.nome }}</strong>,
-      você já é quase
-      {% if evento.tipo == 'senior' %}
-        <strong>campista sênior</strong>
-      {% elif evento.tipo == 'juvenil' %}
-        <strong>campista juvenil</strong>
-      {% elif evento.tipo == 'mirim' %}
-        <strong>campista mirim</strong>
-      {% elif evento.tipo == 'servos' %}
-        <strong>servo(a)</strong>
-      {% elif evento.tipo == 'casais' %}
-        <strong>encontrista</strong>
-      {% elif evento.tipo == 'retiro' %}
-        <strong>retirante</strong>
-      {% elif evento.tipo == 'evento' %}
-        <strong>participante</strong>
+    {# --- NOMES (casais / servos vinculados a casais) --- #}
+    {% with tipo=evento.tipo|lower %}
+      {% if tipo == 'casais' %}
+        {% if inscricao.conjuge and inscricao.conjuge.nome %}
+          <p class="nome-duplo">
+            <span>{{ inscricao.participante.nome }}</span>
+            <span class="sep">•</span>
+            <span>{{ inscricao.conjuge.nome }}</span>
+          </p>
+        {% elif inscricao.inscricao_pareada and inscricao.inscricao_pareada.participante %}
+          <p class="nome-duplo">
+            <span>{{ inscricao.participante.nome }}</span>
+            <span class="sep">•</span>
+            <span>{{ inscricao.inscricao_pareada.participante.nome }}</span>
+          </p>
+        {% elif inscricao.pareada_por and inscricao.pareada_por.participante %}
+          <p class="nome-duplo">
+            <span>{{ inscricao.participante.nome }}</span>
+            <span class="sep">•</span>
+            <span>{{ inscricao.pareada_por.participante.nome }}</span>
+          </p>
+        {% else %}
+          <p><strong>{{ inscricao.participante.nome }}</strong></p>
+        {% endif %}
+
+      {% elif tipo == 'servos' and evento.evento_relacionado and evento.evento_relacionado.tipo|lower == 'casais' %}
+        {% if inscricao.conjuge and inscricao.conjuge.nome %}
+          <p class="nome-duplo">
+            <span>{{ inscricao.participante.nome }}</span>
+            <span class="sep">•</span>
+            <span>{{ inscricao.conjuge.nome }}</span>
+          </p>
+        {% elif inscricao.inscricao_pareada and inscricao.inscricao_pareada.participante %}
+          <p class="nome-duplo">
+            <span>{{ inscricao.participante.nome }}</span>
+            <span class="sep">•</span>
+            <span>{{ inscricao.inscricao_pareada.participante.nome }}</span>
+          </p>
+        {% elif inscricao.pareada_por and inscricao.pareada_por.participante %}
+          <p class="nome-duplo">
+            <span>{{ inscricao.participante.nome }}</span>
+            <span class="sep">•</span>
+            <span>{{ inscricao.pareada_por.participante.nome }}</span>
+          </p>
+        {% else %}
+          <p><strong>{{ inscricao.participante.nome }}</strong></p>
+        {% endif %}
       {% else %}
-        <strong>participante</strong>
+        <p><strong>{{ inscricao.participante.nome }}</strong></p>
       {% endif %}
-      !
-    </p>
+    {% endwith %}
 
-    <p>Você já concluiu a primeira parte, aguarde e fique em oração pelo seu chamado!</p>
+    <!-- TEXTO AJUSTADO COM TERMOS POR TIPO + PLURALIZAÇÃO -->
+    {% with tipo=evento.tipo|lower %}
+      {% if tipo == 'casais' or tipo == 'servos' and evento.evento_relacionado and evento.evento_relacionado.tipo|lower == 'casais' %}
+        <p>
+          Vocês já são quase
+          {% if tipo == 'senior' %}<strong>campistas seniores</strong>
+          {% elif tipo == 'juvenil' %}<strong>campistas juvenis</strong>
+          {% elif tipo == 'mirim' %}<strong>campistas mirins</strong>
+          {% elif tipo == 'servos' %}<strong>servos(as)</strong>
+          {% elif tipo == 'casais' %}<strong>encontristas</strong>
+          {% elif tipo == 'retiro' %}<strong>retirantes</strong>
+          {% elif tipo == 'evento' %}<strong>participantes</strong>
+          {% else %}<strong>participantes</strong>
+          {% endif %}!
+        </p>
+        <p>Vocês já concluíram a primeira parte. Aguardem e fiquem em oração pelo chamado de vocês!</p>
+      {% else %}
+        <p>
+          Você já é quase
+          {% if tipo == 'senior' %}<strong>campista sênior</strong>
+          {% elif tipo == 'juvenil' %}<strong>campista juvenil</strong>
+          {% elif tipo == 'mirim' %}<strong>campista mirim</strong>
+          {% elif tipo == 'servos' %}<strong>servo(a)</strong>
+          {% elif tipo == 'casais' %}<strong>encontrista</strong>
+          {% elif tipo == 'retiro' %}<strong>retirante</strong>
+          {% elif tipo == 'evento' %}<strong>participante</strong>
+          {% else %}<strong>participante</strong>
+          {% endif %}!
+        </p>
+        <p>Você já concluiu a primeira parte. Aguarde e fique em oração pelo seu chamado!</p>
+      {% endif %}
+    {% endwith %}
 
-    {% if politica.imagem_1 %}
+    {% if politica and politica.imagem_1 %}
       <img src="{{ politica.imagem_1.url }}" alt="Imagem representativa" class="imagem-personalizada" loading="lazy" />
     {% endif %}
   </section>
 
   {% if inscricao.foi_selecionado and not inscricao.pagamento_confirmado %}
-    <div style="text-align:center; margin-bottom:15px;">
-      <p>🎉 Você foi selecionado(a)! Para garantir sua vaga, escolha uma forma de pagamento:</p>
-      <p><strong>Valor: R$ {{ evento.valor_inscricao|floatformat:2 }}</strong></p>
+    <section class="pagamento-bloco" aria-label="Opções de pagamento">
+      {% with tipo=evento.tipo|lower %}
+        {% if tipo == 'casais' or tipo == 'servos' and evento.evento_relacionado and evento.evento_relacionado.tipo|lower == 'casais' %}
+          <p>🎉 Vocês foram selecionados! Para garantirem suas vagas, escolham uma forma de pagamento:</p>
+        {% else %}
+          <p>🎉 Você foi selecionado(a)! Para garantir sua vaga, escolha uma forma de pagamento:</p>
+        {% endif %}
+      {% endwith %}
+
+      <p class="valor">Valor: R$ {{ evento.valor_inscricao|floatformat:2 }}</p>
 
       <div class="pagamento-opcoes">
         <a href="{% url 'inscricoes:iniciar_pagamento_pix' inscricao.id %}"
            class="btn-pagar btn-pagar-pix"
-           aria-label="Pagar com PIX (recomendado)">
-          Pagar com PIX
+           aria-label="Pagar com PIX">
+          <span class="btn-title">💸 Pagar com PIX</span>
+          <span class="btn-subtitle">Confirmação rápida • Vaga garantida em minutos</span>
         </a>
 
         <a href="{% url 'inscricoes:aguardando_pagamento' inscricao.id %}"
            class="btn-pagar btn-pagar-cartao"
-           aria-label="Pagar com Cartão (Mercado Pago)">
-          Pagar com Cartão
+           aria-label="Pagar com Cartão">
+          <span class="btn-title">💳 Pagar com Cartão</span>
+          <span class="btn-subtitle">Crédito/Débito • Processado pelo Mercado Pago</span>
         </a>
       </div>
-    </div>
+    </section>
   {% endif %}
 
   <!-- Info valor + link para Política de Reembolso -->
   <section class="info-valor" aria-label="Informações sobre pagamento e reembolso">
-    <p>
-      <strong>Importante:</strong> O valor da inscrição é de R$ {{ evento.valor_inscricao|floatformat:2 }}.
-    </p>
+    <p><strong>Importante:</strong> O valor da inscrição é de R$ {{ evento.valor_inscricao|floatformat:2 }}.</p>
     <p>
       Em caso de desistência, consulte a
       <span class="link-modal" id="abrirPoliticaReembolso">Política de Reembolso</span>
@@ -274,13 +415,15 @@
 
   <!-- Contatos -->
   <section class="contatos" aria-label="Contatos">
-    <a href="https://wa.me/{{ inscricao.paroquia.telefone|cut:'+' }}"
-       class="btn-ajuda btn-organizacao" target="_blank" rel="noopener"
-       aria-label="Abrir WhatsApp para contato com a paróquia">
-       Fale com a Organização
-    </a>
+    {% if inscricao.paroquia.telefone %}
+      <a href="https://wa.me/{{ inscricao.paroquia.telefone|cut:'+' }}"
+         class="btn-ajuda" target="_blank" rel="noopener"
+         aria-label="Abrir WhatsApp para contato com a organização">
+         Fale com a Organização
+      </a>
+    {% endif %}
 
-    <div style="display:flex;justify-content:space-between;width:100%;max-width:320px;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;width:100%;max-width:360px;margin:0 auto;">
       <a href="https://wa.me/5563920013103" class="btn-pequeno btn-suporte-whatsapp" target="_blank" rel="noopener" aria-label="Abrir WhatsApp para suporte">
         WhatsApp do Suporte
       </a>
@@ -291,15 +434,13 @@
   </section>
 
   <script>
-    // Abrir/fechar modal (sem rotação)
+    // Abrir/fechar modal
     (function(){
       const openBtn = document.getElementById('abrirPoliticaReembolso');
       const modal   = document.getElementById('modalReembolso');
       const close   = modal ? modal.querySelector('.modal-close') : null;
-
       function openModal(){ if(modal){ modal.style.display='block'; document.body.style.overflow='hidden'; } }
       function closeModal(){ if(modal){ modal.style.display='none'; document.body.style.overflow=''; } }
-
       if(openBtn){ openBtn.addEventListener('click', function(e){ e.preventDefault(); openModal(); }); }
       if(close){ close.addEventListener('click', closeModal); }
       window.addEventListener('click', function(e){ if(e.target === modal){ closeModal(); } });

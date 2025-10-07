@@ -9,159 +9,156 @@
   <style>
     :root{
       --ok:#16a34a; --ok-2:#22c55e;
-      --brand:#4f7cff; --bg:#0b1020; --card:#11162a;
-      --text:#f4f6fb; --muted:#c1c7d3; --line:rgba(255,255,255,.08);
-      --shadow:0 18px 50px rgba(0,0,0,.35);
+      --brand:#4f7cff; --brand-2:#8b5cf6;
+      --bg:#0b1020; --card:#0f1428;
+      --text:#f5f7ff; --muted:#c9cfdb; --line:rgba(255,255,255,.10);
       --chip:rgba(255,255,255,.06);
+      --glowA: rgba(79,124,255,.35);
+      --glowB: rgba(16,185,129,.35);
+      --glowC: rgba(244,114,182,.28);
+      --shadow:0 18px 60px rgba(8,15,40,.45);
     }
     @media (prefers-color-scheme: light){
       :root{
-        --bg:#f3f5f9; --card:#ffffff; --text:#0e1320; --muted:#5b6473;
-        --line:#eef2f7; --shadow:0 16px 36px rgba(10,36,99,.10);
-        --chip:#f5f7fb;
+        --bg:#eef3ff; --card:#ffffff; --text:#0f172a; --muted:#5b6473; --line:#e7ecf5;
+        --chip:#f5f7fb; --shadow:0 18px 50px rgba(56,96,255,.10);
+        --glowA: rgba(79,124,255,.18);
+        --glowB: rgba(16,185,129,.18);
+        --glowC: rgba(244,114,182,.16);
       }
     }
 
-    /* ===== Reset e contenção para evitar scroll lateral ===== */
     *{ box-sizing:border-box; min-width:0 }
     html, body{ width:100%; overflow-x:hidden }
-    img, svg, video, canvas{ max-width:100%; height:auto }
+    img{ max-width:100%; height:auto; display:block }
 
     body{
-      margin:0;
+      margin:0; color:var(--text);
+      font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+      min-height:100dvh; display:grid; place-items:center; padding:28px 14px;
       background:
-        radial-gradient(1200px 1200px at 10% -10%, rgba(79,124,255,.16), transparent 40%),
-        radial-gradient(1200px 1200px at 110% 10%, rgba(34,197,94,.16), transparent 40%),
-        var(--bg);
-      color:var(--text);
-      font:15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; /* -1px para compactar */
-      min-height:100dvh; display:grid; place-items:center; padding:20px 12px; /* padding menor */
+        radial-gradient(1200px 800px at 10% -10%, var(--glowA), transparent 45%),
+        radial-gradient(1000px 800px at 110% 10%, var(--glowB), transparent 45%),
+        radial-gradient(1200px 900px at 50% 120%, var(--glowC), transparent 45%),
+        linear-gradient(180deg, #0b1020 0%, #0d1326 100%);
+      position:relative;
     }
+    .orb{ position:absolute; filter:blur(24px); opacity:.8; pointer-events:none; z-index:0; animation: float 12s ease-in-out infinite; }
+    .orb.one  { width:280px; height:280px; top:6%;  left:8%;  background:radial-gradient(circle, #60a5fa, transparent 60%); }
+    .orb.two  { width:260px; height:260px; bottom:8%; right:10%; background:radial-gradient(circle, #34d399, transparent 60%); animation-delay:2s }
+    .orb.thr  { width:220px; height:220px; top:16%; right:22%; background:radial-gradient(circle, #f472b6, transparent 60%); animation-delay:4s }
+    @keyframes float { 50% { transform:translateY(14px)} }
 
-    .wrap{
-      width:100%;
-      max-width:720px; /* mais estreito e central */
-      margin-inline:auto;
-    }
-
+    .wrap{ width:100%; max-width:880px; margin-inline:auto; position:relative; z-index:1 }
     .card{
-      background:var(--card); border-radius:20px; overflow:hidden;
-      box-shadow:var(--shadow); outline:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.00)), var(--card);
+      border-radius:28px; overflow:hidden; box-shadow:var(--shadow); outline:1px solid var(--line);
     }
 
     .hero{
-      display:flex; gap:12px; align-items:center; padding:18px 16px; border-bottom:1px solid var(--line);
+      text-align:center; padding:28px 18px 20px; border-bottom:1px solid var(--line);
       position:relative; isolation:isolate;
     }
     .hero::after{
-      content:""; position:absolute; inset:0; z-index:-1; opacity:.20;
-      background:linear-gradient(90deg, rgba(34,197,94,.25), rgba(79,124,255,.25));
+      content:""; position:absolute; inset:0; z-index:-1; opacity:.25;
+      background:conic-gradient(from 0deg, rgba(79,124,255,.35), rgba(16,185,129,.35), rgba(244,114,182,.30), rgba(79,124,255,.35));
+      mask:linear-gradient(#000, transparent);
     }
     .badge{
-      width:48px; height:48px; border-radius:50%;
+      width:70px; height:70px; margin:0 auto 10px; border-radius:22px;
       display:grid; place-items:center;
       background:radial-gradient(circle at 30% 30%, var(--ok-2), var(--ok));
-      box-shadow:0 0 0 5px rgba(34,197,94,.18);
-      color:#fff; font-size:24px; font-weight:900;
-      animation:pop .38s ease-out both;
-      flex:0 0 auto;
+      color:#fff; font-weight:900; font-size:30px;
+      box-shadow:0 10px 30px rgba(22,163,74,.35), inset 0 0 12px rgba(255,255,255,.15);
+      animation:pop .45s ease-out backwards;
     }
-    @keyframes pop{ 0%{ transform:scale(.75); opacity:.5 } 100%{ transform:scale(1); opacity:1 } }
+    @keyframes pop{ 0%{ transform:scale(.7); opacity:.5 } 100%{ transform:scale(1); opacity:1 } }
+    h1{ margin:10px 0 4px; font-size:clamp(22px, 3.5vw, 32px); letter-spacing:.3px }
+    .sub{ margin:0; color:var(--muted); font-size:clamp(.95rem, 1.2vw, 1rem) }
 
-    h1{ margin:0 0 2px; font-size:clamp(18px, 2.6vw, 22px); letter-spacing:.2px }
-    .sub{ margin:0; color:var(--muted); font-size:.93rem; line-height:1.4 }
+    .body{ padding:22px 18px 24px }
 
-    .body{ padding:16px } /* corpo mais compacto */
+    .welcome{
+      display:grid; place-items:center; margin:10px auto 18px;
+      background:linear-gradient(135deg, rgba(79,124,255,.25), rgba(16,185,129,.18), rgba(244,114,182,.20));
+      padding:10px; border-radius:20px; outline:1px solid var(--line);
+    }
+    .welcome .frame{ border-radius:16px; overflow:hidden; outline:1px solid var(--line); box-shadow:0 12px 40px rgba(79,124,255,.22); max-height:520px; }
+    .welcome img{ width:100%; object-fit:cover }
 
-    /* ===== Grid fluida sem quebrar a tela ===== */
     .grid{
-      display:grid; gap:10px;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* auto-fit compacto */
-      align-items:stretch;
+      display:grid; gap:12px; margin-inline:auto; max-width:720px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
-
     .item{
-      background:var(--chip); border-radius:12px; padding:10px;
-      outline:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.00));
+      border-radius:14px; padding:12px; outline:1px solid var(--line);
+      text-align:center;
     }
-    .item small{ display:block; color:var(--muted); margin-bottom:4px; font-size:.83rem }
-    .item b{
-      color:var(--text); font-size:.96rem; line-height:1.3;
-      word-break:break-word; overflow-wrap:anywhere; /* evita overflow de nomes enormes */
-    }
+    .item small{ display:block; color:var(--muted); margin-bottom:6px; font-size:.9rem }
+    .item b{ font-size:1.02rem }
 
-    .status-row{
-      margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;
+    .status{
+      margin:14px auto 0; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+      max-width:720px;
     }
     .chip{
-      padding:6px 10px; border-radius:999px; background:var(--chip);
+      padding:8px 14px; border-radius:999px; background:var(--chip);
       outline:1px solid var(--line);
-      font-weight:700; font-size:.82rem; letter-spacing:.2px; color:var(--text);
-      max-width:100%; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;
+      font-weight:800; font-size:.88rem; letter-spacing:.2px;
     }
-    .chip.ok{ background:rgba(22,163,74,.14); outline:1px solid rgba(22,163,74,.28) }
+    .chip.ok{ background:rgba(22,163,74,.18); outline:1px solid rgba(22,163,74,.35) }
 
-    .divider{ height:1px; background:var(--line); margin:14px 0 }
+    .divider{ height:1px; background:var(--line); margin:18px auto; max-width:720px }
 
-    /* ===== Botões mais compactos e responsivos ===== */
-    .actions{ display:flex; flex-wrap:wrap; gap:10px }
+    /* >>> Centralização total do botão + infos <<< */
+    .actions{
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; gap:10px; margin-top:6px;
+    }
     .btn{
       appearance:none; border:0; cursor:pointer; text-decoration:none;
-      display:inline-flex; align-items:center; gap:8px;
-      padding:10px 12px; border-radius:10px; font-weight:800;
-      transition:transform .12s ease, box-shadow .12s ease;
-      font-size:.92rem; line-height:1.1;
+      display:inline-flex; align-items:center; justify-content:center; gap:10px;
+      padding:14px 18px; border-radius:14px; font-weight:900; font-size:1rem; letter-spacing:.2px;
+      background:linear-gradient(135deg, var(--brand), var(--brand-2));
+      color:#fff;
+      box-shadow:0 16px 36px rgba(79,124,255,.35), 0 0 0 1px rgba(255,255,255,.08) inset;
+      transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      text-align:center;
     }
-    .btn-primary{
-      background:linear-gradient(135deg, var(--ok-2), var(--ok));
-      color:#fff; box-shadow:0 10px 20px rgba(34,197,94,.25);
-    }
-    .btn-primary:hover{ transform:translateY(-1px) }
-    .btn-outline{
-      background:linear-gradient(135deg, #2f384a, #202535); color:#e7ebf6; box-shadow:none;
-    }
-    @media (prefers-color-scheme: light){
-      .btn-outline{ background:#fff; color:#111827; border:1px solid #e5e7eb }
+    .btn:hover{ transform:translateY(-1px); filter:saturate(1.1) }
+    .btn:active{ transform:translateY(0) }
+
+    .video-info{
+      color:var(--muted); font-size:.95rem; line-height:1.35; text-wrap:balance;
+      max-width:660px;
     }
 
-    /* empilhar botões no mobile e ocupar largura */
-    @media (max-width: 520px){
-      .actions .btn{ flex:1 1 100% }
-    }
+    .note{ margin:14px auto 0; color:var(--muted); max-width:720px; text-align:center }
 
-    .note{ margin-top:10px; color:var(--muted); font-size:.9rem }
-
-    /* ===== Confete: limites e menor quantidade em telas pequenas ===== */
     .confetti { position: fixed; inset:0; pointer-events:none; z-index:999; overflow:hidden }
-    .confetti i{
-      position:absolute; top:-10px; width:8px; height:14px; opacity:.9;
-      animation:fall linear forwards; transform:rotate(15deg);
-    }
-    @keyframes fall{
-      to { transform:translateY(110vh) rotate(360deg); opacity:1 }
+    .confetti i{ position:absolute; top:-10px; width:8px; height:14px; opacity:.9; animation:fall linear forwards; transform:rotate(15deg) }
+    @keyframes fall{ to { transform:translateY(110vh) rotate(360deg); opacity:1 } }
+
+    @media (max-width: 520px){
+      body{ padding:18px 10px }
+      .btn{ width:100%; }
+      .video-info{ padding:0 8px }
     }
 
-    /* ===== Melhorias extras de responsividade ===== */
-    @media (max-width: 860px){
-      .hero{ padding:16px }
-    }
-    @media (max-width: 380px){
-      .badge{ width:42px; height:42px; font-size:22px }
-      .sub{ font-size:.9rem }
-    }
-
-    /* ===== Modo impressão compacto, centralizado ===== */
     @media print{
       body{ background:#fff; padding:0 }
-      .wrap{ max-width:720px }
+      .wrap{ max-width:760px }
       .card{ box-shadow:none; outline:0; border:1px solid #e5e7eb }
-      .hero::after{ display:none }
-      .btn{ display:none !important }
-      .confetti{ display:none !important }
+      .orb, .confetti, .actions{ display:none !important }
     }
   </style>
 </head>
 <body>
+
+  <div class="orb one"></div>
+  <div class="orb two"></div>
+  <div class="orb thr"></div>
 
   {% include "partials/flash_messages.html" %}
 
@@ -169,13 +166,19 @@
     <div class="card" role="status" aria-live="polite">
       <div class="hero">
         <div class="badge">✓</div>
-        <div>
-          <h1>Pagamento confirmado!</h1>
-          <p class="sub">Sua inscrição para <b>{{ inscricao.evento.nome }}</b> foi concluída com sucesso.</p>
-        </div>
+        <h1>Pagamento confirmado!</h1>
+        <p class="sub">Sua inscrição para <b>{{ inscricao.evento.nome }}</b> foi concluída com sucesso.</p>
       </div>
 
       <div class="body">
+        {% if politica and politica.imagem_pagto %}
+          <div class="welcome" aria-label="Imagem de boas-vindas">
+            <div class="frame">
+              <img src="{{ politica.imagem_pagto.url }}" alt="Boas-vindas ao evento {{ inscricao.evento.nome }}">
+            </div>
+          </div>
+        {% endif %}
+
         <div class="grid" aria-label="Resumo da inscrição">
           <div class="item">
             <small>Participante</small>
@@ -195,7 +198,7 @@
           </div>
         </div>
 
-        <div class="status-row">
+        <div class="status">
           <span class="chip ok">Inscrição #{{ inscricao.id }}</span>
           {% with pagamento=inscricao.pagamento %}
             {% if pagamento and pagamento.transacao_id %}
@@ -211,17 +214,15 @@
 
         <div class="divider" aria-hidden="true"></div>
 
+        <!-- Botão + informações 100% centralizados -->
         <div class="actions">
-          <a class="btn btn-primary" href="{% url 'inscricoes:ver_inscricao' inscricao.id %}">📄 Ver detalhes da inscrição</a>
-
-          {% comment %}
-            Se você tiver a rota do vídeo de boas-vindas, mostramos um CTA:
-          {% endcomment %}
-          <a class="btn btn-outline" href="{% url 'inscricoes:pagina_video_evento' slug=inscricao.evento.slug %}">
-            ▶️ Assistir vídeo de boas-vindas
+          <a class="btn" href="{% url 'inscricoes:pagina_video_evento' slug=inscricao.evento.slug %}">
+            Assistir vídeo de boas-vindas
           </a>
-
-          <button class="btn btn-outline" onclick="window.print()">🖨️ Imprimir confirmação</button>
+          <div class="video-info">
+            Vídeo oficial do evento <b>{{ inscricao.evento.nome }}</b>.
+            Se não abrir, tente novamente ou verifique sua conexão.
+          </div>
         </div>
 
         <p class="note">Você receberá um e-mail com orientações finais. Guarde esta página como comprovante.</p>
@@ -229,24 +230,23 @@
     </div>
   </div>
 
-  <!-- confete festivo (leve, sem libs) -->
   <div class="confetti" aria-hidden="true" id="confetti"></div>
   <script>
     (function confetti(){
       const root = document.getElementById('confetti');
       const colors = ['#22c55e','#4f7cff','#f59e0b','#ef4444','#10b981','#a78bfa','#f472b6'];
       const isNarrow = window.matchMedia('(max-width:520px)').matches;
-      const COUNT = isNarrow ? 40 : 60; /* menos confetes em telas pequenas */
+      const COUNT = isNarrow ? 48 : 72;
       for (let i=0;i<COUNT;i++){
         const p = document.createElement('i');
-        const size = 6 + Math.random()*8;
+        const size = 6 + Math.random()*9;
         p.style.left = (Math.random()*100)+'vw';
         p.style.background = colors[(Math.random()*colors.length)|0];
         p.style.width = size+'px';
         p.style.height = (size*1.3)+'px';
         p.style.animationDuration = (5 + Math.random()*3)+'s';
-        p.style.animationDelay = (Math.random()*0.6)+'s';
-        p.style.opacity = .85;
+        p.style.animationDelay = (Math.random()*0.8)+'s';
+        p.style.opacity = .9;
         root.appendChild(p);
         setTimeout(()=> p.remove(), 9000);
       }

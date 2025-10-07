@@ -716,8 +716,11 @@ def inscricao_evento_publico(request, slug):
 from .models import PoliticaPrivacidade
 
 
+from .utils.eventos import tipo_efetivo_evento
+
 def ver_inscricao(request, pk):
     inscricao = get_object_or_404(Inscricao, pk=pk)
+
     passos = [
         'Inscrição enviada',
         'Seleção do participante',
@@ -734,15 +737,42 @@ def ver_inscricao(request, pk):
     else:
         inscricao_status = 1
 
-    politica = PoliticaPrivacidade.objects.first()  # ou use get() se só houver uma
+    politica = PoliticaPrivacidade.objects.first()
 
-    return render(request, 'inscricoes/ver_inscricao.html', {
+    # --- tipo efetivo cobre "servos vinculado a casais" ---
+    tipo_efetivo = tipo_efetivo_evento(inscricao.evento)
+
+    # --- Nome secundário (cônjuge ou inscrição pareada) ---
+    secundario_nome = None
+
+    # Caso "casais" (efeito: casais mesmo, ou servos→casais)
+    if tipo_efetivo == "casais":
+        # 1) Se houver objeto Conjuge ligado à inscrição, usa
+        try:
+            conj = getattr(inscricao, "conjuge", None)
+            if conj and (conj.nome or "").strip():
+                secundario_nome = conj.nome.strip()
+        except Exception:
+            pass
+
+        # 2) Se não houver, tenta inscrição pareada
+        if not secundario_nome:
+            pareada = getattr(inscricao, "inscricao_pareada", None) or getattr(inscricao, "pareada_por", None)
+            if pareada and getattr(pareada, "participante", None):
+                nome_pareado = getattr(pareada.participante, "nome", "") or ""
+                if nome_pareado.strip():
+                    secundario_nome = nome_pareado.strip()
+
+    context = {
         'inscricao': inscricao,
         'passos': passos,
         'inscricao_status': inscricao_status,
         'evento': inscricao.evento,
         'politica': politica,
-    })
+        'tipo_efetivo': tipo_efetivo,
+        'secundario_nome': secundario_nome,
+    }
+    return render(request, 'inscricoes/ver_inscricao.html', context)
 
 
 from .forms import InscricaoForm
@@ -2220,20 +2250,41 @@ def iniciar_pagamento(request, inscricao_id):
 
 @require_GET
 def mp_success(request, inscricao_id):
-    """Usuário voltou do Checkout com status success. Validamos no servidor e mostramos confirmação."""
+    """
+    Página de sucesso após retorno do checkout do MP.
+    - Valida/sincroniza o pagamento quando `payment_id` vier na querystring.
+    - Renderiza 'pagamentos/sucesso.html' com:
+        * inscricao
+        * evento
+        * politica (para exibir logo, imagens, inclusive `imagem_pagto`)
+        * video_url (botão 'Assistir vídeo de boas-vindas')
+    """
     inscricao = get_object_or_404(Inscricao, id=inscricao_id)
+    evento = inscricao.evento
     payment_id = request.GET.get("payment_id")
 
+    # Tenta sincronizar rapidamente se o MP mandou o payment_id no retorno
     if payment_id:
         try:
             mp = _mp_client_by_paroquia(inscricao.paroquia)
             _sincronizar_pagamento(mp, inscricao, payment_id)
         except Exception as e:
+            # Não bloqueia a UX — o webhook ainda pode confirmar depois.
             logging.exception("Erro ao validar sucesso MP: %s", e)
-            messages.warning(request, "Pagamento recebido. Aguardando confirmação final do provedor.")
-            # Cai para a página de sucesso mesmo assim (UX), mas status pode ficar pendente até o webhook.
 
-    return render(request, "pagamentos/sucesso.html", {"inscricao": inscricao})
+    # Carrega a política (onde você colocou logo/imagens, inclusive 'imagem_pagto')
+    politica = PoliticaPrivacidade.objects.order_by("-id").first()
+
+    # Monta a URL do vídeo de boas-vindas (o botão que permanece)
+    video_url = reverse("inscricoes:pagina_video_evento", kwargs={"slug": evento.slug})
+
+    context = {
+        "inscricao": inscricao,
+        "evento": evento,
+        "politica": politica,     # usar politica.imagem_pagto no template
+        "video_url": video_url,   # usar diretamente no href do botão
+    }
+    return render(request, "pagamentos/sucesso.html", context)
 
 
 @require_GET
