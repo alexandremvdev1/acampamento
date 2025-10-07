@@ -1,241 +1,340 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <title>Inscrição - {{ evento.nome }}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% load static %}
+  <!DOCTYPE html>
+  <html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Inscrição - {{ evento.nome }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  <!-- Extras (consistência com seu projeto) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Extras -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      max-width: 900px; margin: 20px auto; padding: 15px; background: #fff; color: #333; position: relative;
-    }
-    body::before {
-      content: ""; position: fixed; inset: 0;
-      background-image: url("{% if politica and politica.imagem_2 %}{{ politica.imagem_2.url }}{% else %}{% static 'img/bg-default.jpg' %}{% endif %}");
-      background-size: cover; background-position: center; filter: blur(5px); opacity: .2; z-index: -1;
-    }
-    header { text-align: center; margin-bottom: 20px; }
-    header img { max-width: 100%; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,.1); }
-    header h1 { font-size: 1.8rem; margin-bottom: 6px; color: #222; }
-    form { background: #fff; padding: 20px 18px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,.1); display: flex; flex-direction: column; gap: 15px; }
-    fieldset { border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 25px; }
-    legend { font-size: 1.3rem; font-weight: 700; color: #0d6efd; }
-    label { font-weight: 600; margin-top: 10px; display: block; }
-    input, select, textarea { padding: 10px; font-size: 1rem; border: 1.8px solid #ccc; border-radius: 6px; transition: border-color .3s ease; width: 100%; }
-    input:focus, select:focus, textarea:focus { border-color: #007bff; outline: none; box-shadow: 0 0 6px rgba(0,123,255,.3); }
-    button { background: #007bff; color: #fff; padding: 14px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: background-color .3s ease; }
-    button:hover { background: #0056b3; }
+    <style>
+      :root{
+        --ink:#0f172a;
+        --muted:#6b7280;
+        --line:#e5e7eb;
+        --head:#f8fafc;
+        --bg:#f6f8fb;
+        --primary:#0d6efd;
+      }
+      *{ box-sizing: border-box; }
+      body{
+        font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;
+        max-width: 960px; margin: 24px auto; padding: 16px;
+        color: var(--ink); background: var(--bg); position: relative;
+      }
+      body::before{
+        content: ""; position: fixed; inset: 0; z-index:-1;
+        background-image: url("{% if politica and politica.imagem_2 %}{{ politica.imagem_2.url }}{% else %}{% static 'img/bg-default.jpg' %}{% endif %}");
+        background-size: cover; background-position: center;
+        filter: blur(6px) saturate(0.8); opacity:.18;
+      }
 
-    /* Modais */
-    .modal-lite { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); justify-content: center; align-items: center; z-index: 2000; }
-    .modal-lite.show { display: flex; }
-    .modal-content-lite { background: #fff; border-radius: 10px; padding: 20px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; text-align: center; position: relative; }
-    .close-lite { position: absolute; right: 15px; top: 10px; font-size: 28px; cursor: pointer; }
+      /* Header */
+      header{ text-align:center; margin-bottom: 16px; }
+      header img{ max-width:100%; border-radius:12px; margin-bottom:10px; box-shadow:0 6px 18px rgba(2,6,23,.15); }
+      header h1{ font-size: clamp(1.25rem, 2.2vw, 1.6rem); margin:0 0 4px; color:#111827; }
+      header p{ color: var(--muted); margin:0; }
 
-    /* Botão flutuante WhatsApp */
-    #whatsapp-flutuante { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 2100; transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 4px 10px rgba(0,0,0,.25); }
-    #whatsapp-flutuante img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-    #whatsapp-flutuante:hover { transform: scale(1.06); box-shadow: 0 6px 16px rgba(0,0,0,.35); }
-    .btn-whatsapp { background-color: #25D366; color: white; border: none; border-radius: 8px; padding: 14px 24px; font-size: 18px; font-weight: 600; text-decoration: none; display: inline-block; transition: background-color .3s ease; }
-    .btn-whatsapp:hover { background-color: #128C4A; }
+      /* Card do formulário */
+      .form-card{
+        background:#fff; border:1px solid var(--line); border-radius:12px;
+        box-shadow: 0 10px 24px rgba(17,24,39,.08);
+        padding: 18px 16px;
+      }
 
-    .politica-link { text-align: center; margin-top: 20px; font-weight: 600; }
-    .politica-link a { color: #007bff; text-decoration: none; }
-    .politica-link a:hover { text-decoration: underline; }
+      /* Fieldset compacto */
+      fieldset{
+        border:1px solid var(--line);
+        background: #fff;
+        border-radius:10px; padding:14px 14px 10px; margin:0 0 16px;
+      }
+      legend{
+        font-size:.95rem; font-weight:800; margin:0 8px; padding:0 6px;
+        color:#0b1324; background: var(--head); border:1px solid var(--line); border-radius:8px;
+      }
 
-    footer { text-align: center; font-size: .75rem; color: rgba(0,0,0,.25); margin-top: 10px; }
-  </style>
-</head>
-<body>
-  <header>
-    {% if evento.banner %}
-      <img src="{{ evento.banner.url }}" alt="Banner {{ evento.nome }}">
+      /* Inputs compactos + borda visível */
+      .form-compact input[type="text"],
+      .form-compact input[type="tel"],
+      .form-compact input[type="email"],
+      .form-compact input[type="number"],
+      .form-compact input[type="date"],
+      .form-compact input[type="password"],
+      .form-compact input[type="search"],
+      .form-compact select,
+      .form-compact textarea{
+        /* caso o Django não injete classes, garantimos o visual */
+        display:block; width:100%;
+        font-size:.92rem; line-height:1.25;
+        padding:.45rem .6rem;
+        border:1px solid #cbd5e1; border-radius:.5rem;
+        background:#fff; color:#0f172a;
+        transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+      }
+      .form-compact textarea{ min-height: 90px; }
+      .form-compact input:focus,
+      .form-compact select:focus,
+      .form-compact textarea:focus{
+        outline: none; border-color: var(--primary);
+        box-shadow: 0 0 0 .18rem rgba(13,110,253,.15);
+        background: #fff;
+      }
+      .form-compact label{
+        font-size:.82rem; font-weight:700; color:#111827;
+        margin: 6px 0 4px; display:block;
+      }
+      .help-text{ font-size:.78rem; color: var(--muted); }
+
+      /* Grid com respiro menor */
+      .g-compact{ --bs-gutter-x: .6rem; --bs-gutter-y: .5rem; }
+
+      /* Linha divisória leve */
+      .divider{ border:0; border-top:1px dashed #e5e7eb; margin:.6rem 0 1rem; }
+
+      /* Botão principal pequeno */
+      .btn-primary-compact{
+        background: var(--primary); border:1px solid #0b5ed7;
+        color:#fff; font-weight:800; font-size:.95rem;
+        padding:.55rem .9rem; border-radius:.6rem;
+        transition: transform .05s ease, box-shadow .15s ease, background .15s ease;
+      }
+      .btn-primary-compact:hover{ background:#0b5ed7; box-shadow:0 6px 14px rgba(13,110,253,.25); }
+      .btn-primary-compact:active{ transform: translateY(1px); }
+
+      /* Alertas mais discretos */
+      .alert{ padding:.55rem .7rem; border-radius:.6rem; }
+
+      /* WhatsApp */
+      #whatsapp-flutuante{
+        position:fixed; bottom:18px; right:18px; width:58px; height:58px; border-radius:50%;
+        cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2100;
+        transition: transform .15s ease, box-shadow .15s ease; box-shadow:0 6px 18px rgba(0,0,0,.2);
+        overflow:hidden; background:#25D366;
+      }
+      #whatsapp-flutuante img{ width:100%; height:100%; object-fit:cover; }
+      #whatsapp-flutuante:hover{ transform: scale(1.05); box-shadow:0 10px 24px rgba(0,0,0,.28); }
+
+      /* Modal leve */
+      .modal-lite{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+        justify-content:center; align-items:center; z-index:2200; padding:12px; }
+      .modal-lite.show{ display:flex; }
+      .modal-content-lite{
+        background:#fff; border-radius:12px; padding:18px; max-width:640px; width:100%;
+        max-height:90vh; overflow:auto; position:relative; border:1px solid var(--line);
+        box-shadow:0 14px 34px rgba(2,6,23,.25);
+      }
+      .close-lite{ position:absolute; right:10px; top:6px; font-size:26px; line-height:1; cursor:pointer; color:#9ca3af; }
+      .close-lite:hover{ color:#111827; }
+      .btn-whatsapp{
+        background:#25D366; color:#fff; border:none; border-radius:.6rem;
+        padding:.6rem 1rem; font-size:1rem; font-weight:800; text-decoration:none; display:inline-block;
+      }
+
+      .politica-link{ text-align:center; margin:10px 0 0; font-weight:700; }
+      .politica-link a{ color:var(--primary); text-decoration:none; }
+      .politica-link a:hover{ text-decoration:underline; }
+
+      footer{ text-align:center; font-size:.75rem; color:#9aa3b2; margin-top:10px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      {% if evento.banner %}
+        <img src="{{ evento.banner.url }}" alt="Banner {{ evento.nome }}">
+      {% endif %}
+      <h1>{{ evento.nome }}</h1>
+      {% if evento.data_inicio and evento.data_fim %}
+        <p><strong>Data:</strong> {{ evento.data_inicio|date:"d/m/Y" }} - {{ evento.data_fim|date:"d/m/Y" }}</p>
+      {% endif %}
+    </header>
+
+    {% if messages %}
+      <div class="mb-2">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags|default:'info' }} mb-2">{{ message }}</div>
+        {% endfor %}
+      </div>
     {% endif %}
-    <h1>{{ evento.nome }}</h1>
-    {% if evento.data_inicio and evento.data_fim %}
-      <p><strong>Data:</strong> {{ evento.data_inicio|date:"d/m/Y" }} - {{ evento.data_fim|date:"d/m/Y" }}</p>
-    {% endif %}
-  </header>
 
-  {% if messages %}
-    <div class="mb-2">
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }} mb-2">{{ message }}</div>
-      {% endfor %}
+    <div class="form-card">
+      <form class="form-compact" method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <fieldset>
+          <legend>Dados do(s) Participante(s)</legend>
+
+          <!-- Participante 1 -->
+          <div class="row g-compact">
+            <div class="col-md-8">
+              <label for="id_nome">Nome completo (Cônjuge 1)</label>
+              {{ form.nome }}
+              <div class="text-danger small">{{ form.nome.errors }}</div>
+            </div>
+            <div class="col-md-4">
+              <label for="id_cpf">CPF (Cônjuge 1)</label>
+              {{ form.cpf }}
+              <div class="text-danger small">{{ form.cpf.errors }}</div>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <!-- Participante 2 (opcional) -->
+          <div class="row g-compact">
+            <div class="col-md-8">
+              <label for="id_nome_segundo">Nome completo (Cônjuge 2)</label>
+              {{ form.nome_segundo }}
+              <div class="text-danger small">{{ form.nome_segundo.errors }}</div>
+            </div>
+            <div class="col-md-4">
+              <label for="id_cpf_segundo">CPF (Cônjuge 2)</label>
+              {{ form.cpf_segundo }}
+              <div class="text-danger small">{{ form.cpf_segundo.errors }}</div>
+            </div>
+          </div>
+
+          <!-- CEP + Cidade + UF -->
+          <div class="row g-compact mt-2">
+            <div class="col-md-4">
+              <label for="id_CEP">CEP</label>
+              {{ form.CEP }}
+              <div class="text-danger small">{{ form.CEP.errors }}</div>
+            </div>
+            <div class="col-md-5">
+              <label for="id_cidade">Cidade</label>
+              {{ form.cidade }}
+              <div class="text-danger small">{{ form.cidade.errors }}</div>
+            </div>
+            <div class="col-md-3">
+              <label for="id_estado">Estado (UF)</label>
+              {{ form.estado }}
+              <div class="text-danger small">{{ form.estado.errors }}</div>
+            </div>
+          </div>
+        </fieldset>
+
+        <div class="d-flex justify-content-center">
+          <button type="submit" class="btn-primary-compact">
+            <i class="fa-solid fa-circle-check me-1"></i> Criar e Realizar Pagamento
+          </button>
+        </div>
+      </form>
     </div>
-  {% endif %}
 
-  <form method="post" novalidate>
-    {% csrf_token %}
+    <p class="politica-link">
+      <a href="#" onclick="openModal('modalPolitica')">Política de Privacidade</a>
+    </p>
 
-    {% if form.non_field_errors %}
-      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-    {% endif %}
+    <footer>eismeaqui.app - Desenvolvido por Alexandre Martins Vieira 2025 ©</footer>
 
-    <fieldset>
-      <legend>Dados do(s) Participante(s)</legend>
-
-      <!-- Participante 1 -->
-      <div class="row">
-        <div class="col-md-8">
-          <label for="id_nome">Nome completo ( Conjuge 1 )</label>
-          {{ form.nome }}
-          <div class="text-danger">{{ form.nome.errors }}</div>
-        </div>
-        <div class="col-md-4">
-          <label for="id_cpf">CPF ( Conjuge 1 )</label>
-          {{ form.cpf }}
-          <div class="text-danger">{{ form.cpf.errors }}</div>
-        </div>
+    <!-- Modal Política -->
+    <div id="modalPolitica" class="modal-lite" aria-hidden="true">
+      <div class="modal-content-lite">
+        <span class="close-lite" onclick="closeModal('modalPolitica')">&times;</span>
+        <h3 class="mb-2">Política de Privacidade</h3>
+        {% if politica and politica.texto %}
+          <div class="text-start">{{ politica.texto|linebreaks }}</div>
+        {% else %}
+          <p>Política de privacidade indisponível.</p>
+        {% endif %}
       </div>
+    </div>
 
-      <hr class="my-3">
-
-      <!-- Participante 2 (opcional) -->
-      <div class="row">
-        <div class="col-md-8">
-          <label for="id_nome_segundo">Nome completo ( Conjuge 2 )</label>
-          {{ form.nome_segundo }}
-          <div class="text-danger">{{ form.nome_segundo.errors }}</div>
-        </div>
-        <div class="col-md-4">
-          <label for="id_cpf_segundo">CPF ( Conjuge 2 )</label>
-          {{ form.cpf_segundo }}
-          <div class="text-danger">{{ form.cpf_segundo.errors }}</div>
-        </div>
-      </div>
-
-      <!-- CEP + Cidade + UF (auto ViaCEP) -->
-      <div class="row mt-3">
-        <div class="col-md-4">
-          <label for="id_CEP">CEP</label>
-          {{ form.CEP }}
-          <div class="text-danger">{{ form.CEP.errors }}</div>
-        </div>
-        <div class="col-md-5">
-          <label for="id_cidade">Cidade</label>
-          {{ form.cidade }}
-          <div class="text-danger">{{ form.cidade.errors }}</div>
-        </div>
-        <div class="col-md-3">
-          <label for="id_estado">Estado (UF)</label>
-          {{ form.estado }}
-          <div class="text-danger">{{ form.estado.errors }}</div>
-        </div>
-      </div>
-    </fieldset>
-
-    <button type="submit">Criar e Realizar Pagamento</button>
-  </form>
-
-  <p class="politica-link">
-    <a href="#" onclick="openModal('modalPolitica')">Política de Privacidade</a>
-  </p>
-
-  <footer>eismeaqui.app - Desenvolvido por Alexandre Martins Vieira 2025 ©</footer>
-
-  <!-- Modal Política -->
-  <div id="modalPolitica" class="modal-lite" aria-hidden="true">
-    <div class="modal-content-lite">
-      <span class="close-lite" onclick="closeModal('modalPolitica')">&times;</span>
-      <h3>Política de Privacidade</h3>
-      {% if politica and politica.texto %}
-        {{ politica.texto|linebreaks }}
+    <!-- Botão flutuante WhatsApp -->
+    <div id="whatsapp-flutuante" onclick="openModal('modalWhatsApp')" role="button" aria-label="Ajuda via WhatsApp">
+      {% if politica and politica.imagem_ajuda %}
+        <img src="{{ politica.imagem_ajuda.url }}" alt="Ajuda">
       {% else %}
-        <p>Política de privacidade indisponível.</p>
+        <img src="{% static 'img/ajuda/porquinho.png' %}" alt="Ajuda">
       {% endif %}
     </div>
-  </div>
 
-  <!-- Botão flutuante WhatsApp -->
-  <div id="whatsapp-flutuante" onclick="openModal('modalWhatsApp')" role="button" aria-label="Ajuda via WhatsApp">
-    {% if politica and politica.imagem_ajuda %}
-      <img src="{{ politica.imagem_ajuda.url }}" alt="Ajuda">
-    {% else %}
-      <img src="{% static 'img/ajuda/porquinho.png' %}" alt="Ajuda">
-    {% endif %}
-  </div>
-
-  <!-- Modal WhatsApp -->
-  <div id="modalWhatsApp" class="modal-lite" aria-hidden="true">
-    <div class="modal-content-lite">
-      <span class="close-lite" onclick="closeModal('modalWhatsApp')">&times;</span>
-      <h3>Fale conosco pelo WhatsApp</h3>
-      <p>Estamos prontos para ajudar você!</p>
-      <a href="https://wa.me/5511999999999" target="_blank" class="btn-whatsapp">Abrir WhatsApp</a>
+    <!-- Modal WhatsApp -->
+    <div id="modalWhatsApp" class="modal-lite" aria-hidden="true">
+      <div class="modal-content-lite text-center">
+        <span class="close-lite" onclick="closeModal('modalWhatsApp')">&times;</span>
+        <h3>Fale conosco pelo WhatsApp</h3>
+        <p class="mb-3">Estamos prontos para ajudar você!</p>
+        <a href="https://wa.me/5511999999999" target="_blank" class="btn-whatsapp">
+          <i class="fa-brands fa-whatsapp me-1"></i> Abrir WhatsApp
+        </a>
+      </div>
     </div>
-  </div>
 
-  <!-- Scripts -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.9/dist/inputmask.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.9/dist/inputmask.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script>
-    // ===== Modais (versão lite sem Bootstrap modal) =====
-    function openModal(id){ document.getElementById(id)?.classList.add('show'); }
-    function closeModal(id){ document.getElementById(id)?.classList.remove('show'); }
-    window.addEventListener('click', function(e){
-      if (e.target.classList.contains('modal-lite')) closeModal(e.target.id);
-    });
-    window.addEventListener('keydown', function(e){
-      if (e.key === 'Escape') document.querySelectorAll('.modal-lite.show').forEach(m => m.classList.remove('show'));
-    });
-
-    // ===== Máscaras de CPF/CEP =====
-    document.addEventListener('DOMContentLoaded', function () {
-      if (window.Inputmask) {
-        if (document.getElementById('id_cpf'))         Inputmask("999.999.999-99").mask("#id_cpf");
-        if (document.getElementById('id_cpf_segundo')) Inputmask("999.999.999-99").mask("#id_cpf_segundo");
-        if (document.getElementById('id_CEP'))         Inputmask("99999-999").mask("#id_CEP");
-      }
-    });
-
-    // ===== ViaCEP: auto-preencher Cidade/UF =====
-    function onlyDigits(s){ return (s||"").replace(/\D/g,''); }
-
-    async function preencherPorCEP(raw){
-      const cep = onlyDigits(raw);
-      const cidadeEl = document.getElementById('id_cidade');
-      const ufEl     = document.getElementById('id_estado');
-      if(!cidadeEl || !ufEl) return;
-
-      if(cep.length !== 8) return; // precisa ter 8 dígitos
-
-      try{
-        const resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        if(!resp.ok) return;
-        const data = await resp.json();
-        if(data && !data.erro){
-          cidadeEl.value = data.localidade || '';
-          ufEl.value     = data.uf || '';
-          // dispara eventos para validações/reactividade
-          cidadeEl.dispatchEvent(new Event('input', { bubbles:true }));
-          ufEl.dispatchEvent(new Event('change', { bubbles:true }));
-        }
-      }catch(e){ /* ignora erros de rede */ }
-    }
-
-    document.addEventListener('DOMContentLoaded', function(){
-      const cepEl = document.getElementById('id_CEP');
-      if(cepEl){
-        cepEl.addEventListener('blur', () => preencherPorCEP(cepEl.value));
-        cepEl.addEventListener('input', () => {
-          const d = (cepEl.value||'').replace(/\D/g,'');
-          if(d.length === 8) preencherPorCEP(cepEl.value);
+    <script>
+      // Força classes Bootstrap nos widgets renderizados pelo Django
+      document.addEventListener('DOMContentLoaded', function () {
+        const sel = 'input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea';
+        document.querySelectorAll(sel).forEach(el => {
+          el.classList.add('form-control','form-control-sm');
         });
+      });
+
+      // ===== Modais (lite) =====
+      function openModal(id){ document.getElementById(id)?.classList.add('show'); }
+      function closeModal(id){ document.getElementById(id)?.classList.remove('show'); }
+      window.addEventListener('click', e => {
+        if (e.target.classList?.contains('modal-lite')) closeModal(e.target.id);
+      });
+      window.addEventListener('keydown', e => {
+        if (e.key === 'Escape') document.querySelectorAll('.modal-lite.show').forEach(m => m.classList.remove('show'));
+      });
+
+      // ===== Máscaras de CPF/CEP =====
+      document.addEventListener('DOMContentLoaded', function () {
+        if (window.Inputmask) {
+          if (document.getElementById('id_cpf'))         Inputmask("999.999.999-99").mask("#id_cpf");
+          if (document.getElementById('id_cpf_segundo')) Inputmask("999.999.999-99").mask("#id_cpf_segundo");
+          if (document.getElementById('id_CEP'))         Inputmask("99999-999").mask("#id_CEP");
+        }
+      });
+
+      // ===== ViaCEP: auto-preencher Cidade/UF =====
+      function onlyDigits(s){ return (s||"").replace(/\D/g,''); }
+      async function preencherPorCEP(raw){
+        const cep = onlyDigits(raw);
+        const cidadeEl = document.getElementById('id_cidade');
+        const ufEl     = document.getElementById('id_estado');
+        if(!cidadeEl || !ufEl) return;
+        if(cep.length !== 8) return;
+
+        try{
+          const resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+          if(!resp.ok) return;
+          const data = await resp.json();
+          if(data && !data.erro){
+            cidadeEl.value = data.localidade || '';
+            ufEl.value     = data.uf || '';
+            cidadeEl.dispatchEvent(new Event('input', { bubbles:true }));
+            ufEl.dispatchEvent(new Event('change', { bubbles:true }));
+          }
+        }catch(e){ /* silencioso */ }
       }
-    });
-  </script>
-</body>
-</html>
+      document.addEventListener('DOMContentLoaded', function(){
+        const cepEl = document.getElementById('id_CEP');
+        if(cepEl){
+          cepEl.addEventListener('blur', () => preencherPorCEP(cepEl.value));
+          cepEl.addEventListener('input', () => {
+            const d = (cepEl.value||'').replace(/\D/g,'');
+            if(d.length === 8) preencherPorCEP(cepEl.value);
+          });
+        }
+      });
+    </script>
+  </body>
+  </html>
