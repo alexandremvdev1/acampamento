@@ -15,53 +15,107 @@
 
   <style>
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 900px; margin: 20px auto; padding: 15px; background-color: #fff; color: #333; position: relative; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      max-width: 900px; margin: 20px auto; padding: 15px; background-color: #fff; color: #333; position: relative;
+    }
     {% if politica and politica.imagem_2 %}
-    body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url("{{ politica.imagem_2.url }}"); background-size: cover; background-position: center; filter: blur(5px); opacity: 0.2; z-index: -1; }
+    body::before {
+      content: ""; position: fixed; inset: 0;
+      background-image: url("{{ politica.imagem_2.url }}"); background-size: cover; background-position: center;
+      filter: blur(5px); opacity: 0.2; z-index: -1;
+    }
     {% endif %}
-    header { text-align: center; margin-bottom: 20px; }
-    header img { max-width: 100%; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    header h1 { font-size: 1.8rem; margin-bottom: 6px; color: #222; }
 
-    form { background: white; padding: 20px 18px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; gap: 15px; }
-    fieldset { border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 25px; }
-    legend { font-size: 1.3rem; font-weight: 700; color: #0d6efd; }
-    label { font-weight: 600; margin-top: 10px; display: block; }
+    header { text-align: center; margin-bottom: 20px; }
+    header img { max-width: 100%; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    header h1 { font-size: 1.6rem; margin-bottom: 6px; color: #222; }
+
+    /* ====== Inputs menores e arredondados (sem mexer no Django) ====== */
+    :root{
+      --radius: .7rem;
+      --inp-pad-y: .45rem;
+      --inp-pad-x: .6rem;
+      --inp-fs: .95rem;
+    }
+    form { background: white; padding: 18px 16px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 14px; }
+    fieldset { border: 1px solid #e5e7eb; padding: 16px; border-radius: 12px; margin-bottom: 18px; }
+    legend { font-size: 1.05rem; font-weight: 800; color: #0d6efd; padding: 0 .4rem; }
+
+    label { font-weight: 600; margin-top: 8px; display: block; font-size: .92rem; }
 
     input[type="text"], input[type="email"], input[type="number"], input[type="date"], select, textarea {
-      padding: 10px; font-size: 1rem; border: 1.8px solid #ccc; border-radius: 6px; transition: border-color 0.3s ease; width: 100%;
+      padding: var(--inp-pad-y) var(--inp-pad-x);
+      font-size: var(--inp-fs);
+      border: 1.6px solid #d1d5db;
+      border-radius: var(--radius);
+      transition: border-color .15s ease, box-shadow .15s ease;
+      width: 100%;
     }
-    input:focus, select:focus, textarea:focus { border-color: #007bff; outline: none; box-shadow: 0 0 6px rgba(0, 123, 255, 0.3); }
+    input:focus, select:focus, textarea:focus {
+      border-color: #93c5fd;
+      outline: none;
+      box-shadow: 0 0 0 .2rem rgba(59,130,246,.15);
+    }
 
-    button { background: #007bff; color: white; padding: 14px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: background-color 0.3s ease; }
-    button:hover { background: #0056b3; }
+    /* Forçar “sm” visual em tudo que for form-control/form-select Bootstrap */
+    .form-control, .form-select {
+      padding: var(--inp-pad-y) var(--inp-pad-x);
+      font-size: var(--inp-fs);
+      border-radius: var(--radius);
+    }
 
-    .helptext, .text-danger { font-size: .85rem; }
-    .campo-filho { margin-top: 15px; padding: 10px; border: 1px dashed #ccc; border-radius: 6px; }
+    /* Input group compacto e arredondado */
+    .input-group-sm > .form-control, .input-group-sm > .form-select, .input-group-sm > .input-group-text {
+      padding: var(--inp-pad-y) var(--inp-pad-x);
+      font-size: var(--inp-fs);
+      border-radius: var(--radius);
+    }
+    .input-group-text{ background:#f8fafc; border:1.6px solid #d1d5db; }
 
-    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 2000; }
+    button {
+      background: #0d6efd; color: white;
+      padding: .7rem 1rem; border: none; border-radius: .9rem;
+      font-size: 1rem; font-weight: 800; cursor: pointer; transition: background-color .2s ease, transform .05s ease;
+    }
+    button:hover { background:#0b5ed7; }
+    button:active { transform: translateY(1px); }
+
+    .helptext, .text-danger { font-size: .83rem; }
+    .campo-filho { margin-top: 12px; padding: 10px; border: 1px dashed #d1d5db; border-radius: .9rem; background:#fafafa; }
+
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); justify-content: center; align-items: center; z-index: 2000; }
     .modal.show { display: flex; }
-    .modal-content { background: #fff; border-radius: 10px; padding: 20px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; text-align: center; position: relative; }
-    .close { position: absolute; right: 15px; top: 10px; font-size: 28px; cursor: pointer; }
+    .modal-content { background: #fff; border-radius: 12px; padding: 18px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; text-align: center; position: relative; }
+    .close { position: absolute; right: 14px; top: 8px; font-size: 26px; cursor: pointer; }
 
-    #whatsapp-flutuante { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 2100; transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 4px 10px rgba(0,0,0,.25); }
-    #whatsapp-flutuante img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    #whatsapp-flutuante {
+      position: fixed; bottom: 20px; right: 20px;
+      width: 58px; height: 58px; border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; z-index: 2100;
+      transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 4px 10px rgba(0,0,0,.25);
+      overflow: hidden;
+    }
+    #whatsapp-flutuante img { width: 100%; height: 100%; object-fit: cover; }
     #whatsapp-flutuante:hover { transform: scale(1.06); box-shadow: 0 6px 16px rgba(0,0,0,.35); }
 
-    .btn-whatsapp { background-color: #25D366; color: white; border: none; border-radius: 8px; padding: 14px 24px; font-size: 18px; font-weight: 600; text-decoration: none; display: inline-block; transition: background-color 0.3s ease; }
+    .btn-whatsapp { background-color: #25D366; color: white; border: none; border-radius: .9rem; padding: .7rem 1rem; font-size: 1rem; font-weight: 700; text-decoration: none; display: inline-block; transition: background-color .2s ease; }
     .btn-whatsapp:hover { background-color: #128C4A; }
 
-    .politica-link { text-align: center; margin-top: 20px; font-weight: 600; }
-    .politica-link a { color: #007bff; text-decoration: none; }
+    .politica-link { text-align: center; margin-top: 14px; font-weight: 600; }
+    .politica-link a { color: #0d6efd; text-decoration: none; }
     .politica-link a:hover { text-decoration: underline; }
 
-    footer { text-align: center; font-size: 0.75rem; color: rgba(0,0,0,0.25); margin-top: 10px; }
+    footer { text-align: center; font-size: 0.75rem; color: rgba(0,0,0,0.35); margin-top: 8px; }
 
     /* preview da foto do casal */
     #preview-foto-casal{
-      width: 96px; height: 96px; object-fit: cover; border-radius: 12px;
+      width: 90px; height: 90px; object-fit: cover; border-radius: 12px;
       border: 1px solid #e5e7eb; background: #f8fafc; display: none;
     }
+
+    /* Ícones dentro do input group mais “respirados” */
+    .input-group-text i{ opacity:.8; }
   </style>
 </head>
 <body>
@@ -87,7 +141,7 @@
     <fieldset>
       <legend>Cônjuge {{ etapa }}</legend>
 
-      <div class="row">
+      <div class="row g-3">
         <div class="col-md-6">
           <label for="{{ form.nome.id_for_label }}">Nome completo</label>
           {{ form.nome }} <div class="text-danger">{{ form.nome.errors }}</div>
@@ -98,13 +152,14 @@
         </div>
       </div>
 
-      <div class="row">
+      <div class="row g-3">
         <div class="col-md-6">
           <label for="{{ form.email.id_for_label }}">E-mail</label>
           {{ form.email }} <div class="text-danger">{{ form.email.errors }}</div>
         </div>
         <div class="col-md-6">
           <label for="{{ form.telefone.id_for_label }}">Telefone</label>
+          <!-- O campo é decorado via JS para ganhar ícone e input-group -->
           {{ form.telefone }} <div class="text-danger">{{ form.telefone.errors }}</div>
         </div>
       </div>
@@ -116,7 +171,10 @@
         <div class="row g-3">
           <div class="col-md-3">
             <label class="form-label" for="id_cep">CEP</label>
-            <input type="text" id="id_cep" name="cep" class="form-control" placeholder="00000-000" required>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text"><i class="fa-solid fa-mailbox"></i></span>
+              <input type="text" id="id_cep" name="cep" class="form-control" placeholder="00000-000" required>
+            </div>
           </div>
           <div class="col-md-8">
             <label class="form-label" for="id_endereco">Logradouro</label>
@@ -146,7 +204,7 @@
       {% endif %}
 
       <!-- Campo fixo: Qual tema do acampamento que participou? -->
-      <div class="mb-3">
+      <div class="mb-2">
         <label for="id_tema_acampamento">Qual tema do acampamento que participou?</label>
         <input
           type="text"
@@ -160,7 +218,7 @@
       </div>
 
       {% if etapa == 1 %}
-      <div class="mb-3">
+      <div class="mb-2">
         <label for="id_qtd_filhos">Quantidade de filhos</label>
         <select id="id_qtd_filhos" name="qtd_filhos" class="form-select">
           <option value="0">Nenhum</option>
@@ -178,6 +236,7 @@
         <label>Nome</label>
         <input type="text" name="contato_emergencia_nome" class="form-control">
         <label>Telefone</label>
+        <!-- Ganha ícone via JS -->
         <input type="text" name="contato_emergencia_telefone" class="form-control">
       </fieldset>
 
@@ -186,6 +245,7 @@
         <label>Nome</label>
         <input type="text" name="responsavel_2_nome" class="form-control">
         <label>Telefone</label>
+        <!-- Ganha ícone via JS -->
         <input type="text" name="responsavel_2_telefone" class="form-control">
       </fieldset>
       {% endif %}
@@ -193,7 +253,7 @@
       <!-- ===== Demais campos do form de casais (exceto foto_casal) ===== -->
       {% for field in form_insc %}
         {% if field.name != "foto_casal" %}
-          <div class="mb-3">
+          <div class="mb-2">
             {{ field.label_tag }}
             {{ field }}
             {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
@@ -204,7 +264,7 @@
 
       {% if etapa == 2 %}
       <!-- ============== FOTO DO CASAL — SOMENTE NA ETAPA 2 (no fim) ============== -->
-      <div id="foto-casal-final" class="mb-4">
+      <div id="foto-casal-final" class="mb-3">
         <label for="{{ form_insc.foto_casal.id_for_label }}">Foto do casal</label>
         <div class="d-flex align-items-center gap-3">
           <img id="preview-foto-casal" alt="Pré-visualização">
@@ -269,6 +329,10 @@
       $btn.prop("disabled", true).text("Enviando...");
     });
 
+    // ======= Tornar todos inputs/selects menores (+ classe) sem mudar widgets =======
+    $('input, select, textarea').addClass('form-control form-control-sm rounded-3');
+    $('select').removeClass('form-control').addClass('form-select');
+
     // ================= Máscaras principais =================
     if (window.Inputmask) {
       if ($("#id_cpf").length)       Inputmask("999.999.999-99").mask("#id_cpf");
@@ -294,6 +358,37 @@
     $(window).on('keydown', function(e) {
       if (e.key === 'Escape') $('.modal.show').each(function(){ closeModal(this.id); });
     });
+
+    // ======== Helper: colocar ícone ao lado do telefone (sem alterar widget) ========
+    function decorateWithIcon($input, iconClass){
+      if(!$input.length || $input.closest('.input-group').length) return;
+      const id = $input.attr('id');
+      const name = $input.attr('name');
+      const placeholder = $input.attr('placeholder') || '';
+      const $wrap = $(`
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="${iconClass}"></i></span>
+        </div>
+      `);
+      $input.addClass('form-control').attr('placeholder', placeholder || '(00) 00000-0000');
+      $input.after($wrap);
+      $wrap.append($input);
+    }
+
+    // Telefones principais
+    decorateWithIcon($('#id_telefone'), 'fa-solid fa-phone');
+
+    // Telefones de contato (emergência e adicional)
+    decorateWithIcon($("input[name='contato_emergencia_telefone']"), 'fa-solid fa-phone-volume');
+    decorateWithIcon($("input[name='responsavel_2_telefone']"), 'fa-solid fa-user-plus');
+
+    // Reaplicar máscara nos contatos
+    function maskTelefone($els){
+      if (window.Inputmask) {
+        Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true }).mask($els);
+      }
+    }
+    maskTelefone($("input[name='contato_emergencia_telefone'], input[name='responsavel_2_telefone']"));
 
     // ================= Condicionais de saúde =================
     function toggleCondicionais() {
@@ -321,23 +416,33 @@
       container.empty();
 
       for (let i = 1; i <= qtd; i++) {
-        container.append(`
+        const bloco = $(`
           <div class="campo-filho">
-            <h6>Filho ${i}</h6>
-            <label>Nome</label>
-            <input type="text" name="filho_${i}_nome" class="form-control">
-            <label>Idade</label>
-            <input type="number" name="filho_${i}_idade" class="form-control">
-            <label>Telefone</label>
-            <input type="text" name="filho_${i}_telefone" class="form-control telefone-filho">
+            <h6 class="mb-2">Filho ${i}</h6>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label>Nome</label>
+                <input type="text" name="filho_${i}_nome" class="form-control">
+              </div>
+              <div class="col-md-3">
+                <label>Idade</label>
+                <input type="number" name="filho_${i}_idade" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label>Telefone</label>
+                <input type="text" name="filho_${i}_telefone" class="form-control telefone-filho">
+              </div>
+            </div>
           </div>
         `);
+        container.append(bloco);
       }
 
-      if (window.Inputmask) {
-        Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true })
-          .mask($("#filhos_campos .telefone-filho"));
-      }
+      // Ícone + máscara nos telefones dos filhos
+      $(".telefone-filho").each(function(){
+        decorateWithIcon($(this), 'fa-solid fa-phone');
+      });
+      maskTelefone($("#filhos_campos .telefone-filho"));
     });
 
     // ====== FOTO DO CASAL (somente etapa 2) — sem duplicar o campo ======
@@ -376,10 +481,7 @@
     if (window.Inputmask && $("#id_cep").length) Inputmask("99999-999").mask("#id_cep");
 
     function limpaEndereco() {
-      if ($("#id_endereco").length) $("#id_endereco").val("");
-      if ($("#id_bairro").length)   $("#id_bairro").val("");
-      if ($("#id_cidade").length)   $("#id_cidade").val("");
-      if ($("#id_estado").length)   $("#id_estado").val("");
+      $("#id_endereco, #id_bairro, #id_cidade, #id_estado").val("");
     }
 
     async function preencherEnderecoPorCEP(cep) {
@@ -391,10 +493,10 @@
         const data = await resp.json();
         if (data.erro) { limpaEndereco(); return; }
 
-        if ($("#id_endereco").length) $("#id_endereco").val(data.logradouro || "");
-        if ($("#id_bairro").length)   $("#id_bairro").val(data.bairro || "");
-        if ($("#id_cidade").length)   $("#id_cidade").val(data.localidade || "");
-        if ($("#id_estado").length)   $("#id_estado").val((data.uf || "").toUpperCase());
+        $("#id_endereco").val(data.logradouro || "");
+        $("#id_bairro").val(data.bairro || "");
+        $("#id_cidade").val(data.localidade || "");
+        $("#id_estado").val((data.uf || "").toUpperCase());
       } catch (e) {
         limpaEndereco();
       }

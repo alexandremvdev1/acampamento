@@ -77,6 +77,18 @@
       justify-content:center;
       border-radius:.6rem;
     }
+
+    /* Nome do evento como link (mesma rota do “ver”) */
+    .link-event{
+      color: inherit;
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(100,116,139,.45);
+    }
+    .link-event:hover{
+      color:#1d4ed8;
+      border-bottom-color:#93c5fd;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
@@ -232,7 +244,11 @@
                       {% if e.tipo|lower == 'servos' and e.evento_relacionado %}
                         <span class="pill info me-1" title="Evento principal">{{ e.evento_relacionado.nome }}</span>
                       {% endif %}
-                      {{ e.nome }}
+
+                      <!-- NOME DO EVENTO CLICÁVEL (mesma rota do "ver participantes") -->
+                      <a class="link-event" href="{% url 'inscricoes:evento_participantes' e.id %}">
+                        {{ e.nome }}
+                      </a>
                     </div>
                     <div class="small text-muted-2">{{ e.slug }}</div>
 
