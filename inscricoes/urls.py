@@ -3,6 +3,8 @@ from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
+from . import views as v
+
 
 from . import views
 from .views import (
@@ -35,6 +37,7 @@ urlpatterns = [
     path("login/", LoginComImagemView.as_view(), name="login"),
     path("entrar/", LoginComImagemView.as_view(), name="entrar"),  # atalho opcional
     path("logout/", auth_views.LogoutView.as_view(next_page="inscricoes:login"), name="logout"),
+    
 
     # AGORA o / vai pro redirect (painel p/ admins ou login)
     path("", views.home_redirect, name="home_redirect"),
@@ -216,6 +219,17 @@ urlpatterns = [
     "relatorios/<slug:slug>/conferencia-pagamento/",
     views.relatorio_conferencia_pagamento,
     name="relatorio_conferencia_pagamento",   # <-- mesmo name
+    ),
+
+    path(
+        "relatorios/ministerios/<slug:slug_evento>/",
+        v.relatorios_ministerios_overview,
+        name="relatorios_ministerios_overview",
+    ),
+    path(
+        "relatorios/ministerios/<slug:slug_evento>/<int:ministerio_id>/",
+        v.relatorios_ministerio_detail,
+        name="relatorios_ministerio_detail",
     ),
 ]
 

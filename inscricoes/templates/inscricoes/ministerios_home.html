@@ -86,7 +86,6 @@
           <!-- Aqui o botão de Ministérios fica sempre visível -->
           <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">⛪ <span>Ministérios</span></a></li>
 
-
         </ul>
       </div>
     </aside>
@@ -118,7 +117,7 @@
                   <tr>
                     <th>Evento</th>
                     <th>Período</th>
-                    <th class="text-end" style="width:260px;">Ações</th>
+                    <th class="text-end" style="width:360px;">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,6 +139,11 @@
                           <a href="{% url 'inscricoes:ministerio_create' ev.id %}"
                              class="btn btn-primary btn-sm">
                             <i class="fa-solid fa-plus"></i> Cadastrar
+                          </a>
+                          <!-- RELATÓRIOS (usa SLUG do evento) -->
+                          <a href="{% url 'inscricoes:relatorios_ministerios_overview' ev.slug %}"
+                             class="btn btn-outline-dark btn-sm">
+                            <i class="fa-solid fa-print"></i> Relatórios
                           </a>
                         </div>
                       </td>

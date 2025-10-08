@@ -6056,3 +6056,58 @@ def relatorio_conferencia_pagamento(
         "cidade_atual": cidade,
     }
     return render(request, "inscricoes/relatorio_conferencia_pagamento.html", ctx)
+
+# inscricoes/views.py
+from django.shortcuts import render, get_object_or_404
+from django.db.models import Prefetch
+from .models import EventoAcampamento, Ministerio, AlocacaoMinisterio
+
+def relatorios_ministerios_overview(request, slug_evento):
+    evento = get_object_or_404(EventoAcampamento, slug=slug_evento)
+    # todos os ministérios que têm pelo menos uma alocação nesse evento
+    ministerios = (
+        Ministerio.objects
+        .filter(alocacoes__evento=evento)
+        .distinct()
+        .order_by("nome")
+        .prefetch_related(
+            Prefetch(
+                "alocacoes",
+                queryset=(
+                    AlocacaoMinisterio.objects
+                    .filter(evento=evento)
+                    .select_related(
+                        "inscricao",
+                        "inscricao__participante",
+                        "ministerio"
+                    )
+                    .order_by("-is_coordenador", "inscricao__participante__nome")
+                ),
+                to_attr="alocacoes_no_evento",
+            )
+        )
+    )
+    ctx = {
+        "evento": evento,
+        "ministerios": ministerios,
+        "paroquia": evento.paroquia,
+    }
+    return render(request, "inscricoes/ministerios_overview.html", ctx)
+
+
+def relatorios_ministerio_detail(request, slug_evento, ministerio_id):
+    evento = get_object_or_404(EventoAcampamento, slug=slug_evento)
+    ministerio = get_object_or_404(Ministerio, pk=ministerio_id)
+    alocacoes = (
+        AlocacaoMinisterio.objects
+        .filter(evento=evento, ministerio=ministerio)
+        .select_related("inscricao", "inscricao__participante", "ministerio")
+        .order_by("-is_coordenador", "inscricao__participante__nome")
+    )
+    ctx = {
+        "evento": evento,
+        "ministerio": ministerio,
+        "alocacoes": alocacoes,
+        "paroquia": evento.paroquia,
+    }
+    return render(request, "inscricoes/ministerio_detail.html", ctx)
