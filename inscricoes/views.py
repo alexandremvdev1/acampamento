@@ -3,6 +3,7 @@ import os
 import csv
 import json
 import logging
+from collections import OrderedDict
 from uuid import UUID
 from uuid import uuid4, UUID
 from django.core.files.storage import default_storage
@@ -6111,3 +6112,471 @@ def relatorios_ministerio_detail(request, slug_evento, ministerio_id):
         "paroquia": evento.paroquia,
     }
     return render(request, "inscricoes/ministerio_detail.html", ctx)
+
+# inscricoes/views.py
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.contrib import messages
+from django.db.models import Count, Q
+from django.views.decorators.http import require_POST
+from django import forms
+
+from .models import (
+    EventoAcampamento, Grupo, AlocacaoGrupo, Inscricao
+)
+
+# -------------------- FORM --------------------
+class GrupoForm(forms.ModelForm):
+    class Meta:
+        model = Grupo
+        fields = ["nome", "cor_nome", "descricao"]
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nome do grupo/família"}),
+            "cor_nome": forms.Select(attrs={"class": "form-select"}),
+            "descricao": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Descrição (opcional)"}),
+        }
+
+
+# -------------------- LISTA (HOME) --------------------
+def grupos_evento_home(request, evento_id):
+    """Página principal: lista os grupos e mostra contagem de membros no evento."""
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+    grupos = (
+        Grupo.objects.all()
+        .annotate(qtd=Count("alocacoes", filter=Q(alocacoes__evento_id=evento.id)))
+        .order_by("nome")
+    )
+
+    # para montar links bonitinhos com mesmo visual do sistema
+    # você provavelmente já tem 'paroquia' nesse contexto – ajustei para usar evento.paroquia
+    paroquia = getattr(evento, "paroquia", None)
+
+    return render(
+        request,
+        "inscricoes/grupos_evento_home.html",
+        {
+            "evento": evento,
+            "grupos": grupos,
+            "paroquia": paroquia,
+        },
+    )
+
+
+# -------------------- CRIAR GRUPO --------------------
+def grupo_create(request):
+    next_url = request.GET.get("next") or request.POST.get("next")
+
+    if request.method == "POST":
+        form = GrupoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Grupo/Família criado com sucesso.")
+            # Volta para a página que chamou (se houver), senão para o painel
+            return redirect(next_url or "inscricoes:admin_paroquia_painel")
+    else:
+        form = GrupoForm()
+
+    return render(
+        request,
+        "inscricoes/grupo_form_modal.html",
+        {"form": form, "next": next_url},   # <- nada de 'evento' aqui
+    )
+
+
+# -------------------- DETALHE (EDITAR + MEMBROS) --------------------
+def grupo_detail(request, grupo_id, evento_id):
+    grupo = get_object_or_404(Grupo, pk=grupo_id)
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+
+    if request.method == "POST":
+        form = GrupoForm(request.POST, instance=grupo)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Dados do grupo/família salvos.")
+            return redirect("inscricoes:grupo_detail", grupo_id=grupo.id, evento_id=evento.id)
+    else:
+        form = GrupoForm(instance=grupo)
+
+    # membros atuais do grupo neste evento
+    membros = (
+        AlocacaoGrupo.objects.select_related("inscricao__participante")
+        .filter(evento=evento, grupo=grupo)
+        .order_by("inscricao__participante__nome")
+    )
+
+    # outros grupos para 'mover'
+    outros_grupos = Grupo.objects.exclude(pk=grupo.pk).order_by("nome")
+
+    contexto = {
+        "evento": evento,
+        "grupo": grupo,
+        "form": form,
+        "membros": membros,
+        "outros_grupos": outros_grupos,
+        "paroquia": getattr(evento, "paroquia", None),
+    }
+    return render(request, "inscricoes/grupo_detail.html", contexto)
+
+
+# -------------------- AJAX: BUSCAR INSCRITOS DO EVENTO --------------------
+def buscar_inscritos_evento(request, evento_id):
+    """
+    Retorna inscritos do evento, filtrando por nome/CPF/email.
+    Útil para popular a lista 'Adicionar pessoas' com toggle.
+    """
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+    q = (request.GET.get("q") or "").strip()
+
+    qs = (
+        Inscricao.objects.select_related("participante")
+        .filter(evento=evento)
+        .order_by("participante__nome")
+    )
+    if q:
+        qs = qs.filter(
+            Q(participante__nome__icontains=q)
+            | Q(participante__email__icontains=q)
+            | Q(participante__cpf__icontains=q)
+        )
+
+    # status rápido: em qual grupo está (se estiver)
+    aloc_map = {
+        a.inscricao_id: a.grupo_id
+        for a in AlocacaoGrupo.objects.filter(evento=evento, inscricao_id__in=qs.values_list("id", flat=True))
+    }
+
+    data = []
+    for ins in qs[:50]:  # limite básico
+        p = ins.participante
+        data.append(
+            {
+                "inscricao_id": ins.id,
+                "nome": p.nome,
+                "email": p.email,
+                "cpf": p.cpf,
+                "grupo_id": aloc_map.get(ins.id),
+            }
+        )
+    return JsonResponse({"results": data})
+
+
+# -------------------- AJAX: TOGGLE MEMBRO (ADD/REMOVE) --------------------
+@require_POST
+def grupo_toggle_membro(request, grupo_id, evento_id):
+    grupo = get_object_or_404(Grupo, pk=grupo_id)
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+
+    inscricao_id = request.POST.get("inscricao_id")
+    if not inscricao_id:
+        return HttpResponseBadRequest("inscricao_id é obrigatório")
+
+    try:
+        ins = Inscricao.objects.get(pk=inscricao_id, evento=evento)
+    except Inscricao.DoesNotExist:
+        return HttpResponseBadRequest("Inscrição não encontrada para este evento.")
+
+    # verifica se já tem alocação
+    aloc = AlocacaoGrupo.objects.filter(evento=evento, inscricao=ins).first()
+
+    if aloc and aloc.grupo_id == grupo.id:
+        # remover do grupo
+        aloc.delete()
+        return JsonResponse({"ok": True, "action": "removed"})
+    else:
+        # se estava em outro grupo, atualiza; se não, cria
+        if aloc:
+            aloc.grupo = grupo
+            aloc.save(update_fields=["grupo"])
+        else:
+            AlocacaoGrupo.objects.create(inscricao=ins, evento=evento, grupo=grupo)
+        return JsonResponse({"ok": True, "action": "added"})
+
+
+# -------------------- AJAX: MOVER MEMBRO PARA OUTRO GRUPO --------------------
+@require_POST
+def grupo_mover_membro(request):
+    """
+    Espera: inscricao_id, evento_id, target_grupo_id
+    """
+    inscricao_id = request.POST.get("inscricao_id")
+    evento_id = request.POST.get("evento_id")
+    target_grupo_id = request.POST.get("target_grupo_id")
+    if not all([inscricao_id, evento_id, target_grupo_id]):
+        return HttpResponseBadRequest("Parâmetros obrigatórios ausentes.")
+
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+    target = get_object_or_404(Grupo, pk=target_grupo_id)
+
+    try:
+        ins = Inscricao.objects.get(pk=inscricao_id, evento=evento)
+    except Inscricao.DoesNotExist:
+        return HttpResponseBadRequest("Inscrição não encontrada.")
+
+    aloc, _ = AlocacaoGrupo.objects.get_or_create(inscricao=ins, evento=evento)
+    aloc.grupo = target
+    aloc.save(update_fields=["grupo"])
+
+    return JsonResponse({"ok": True})
+
+def _build_grupos_relatorio_queryset(evento, grupos_ids=None, somente_sem_grupo=False, busca=None, ordenar="grupo"):
+    """
+    Retorna (grupos, participantes_por_grupo, total_sem_grupo, total_geral)
+    participantes_por_grupo: dict {Grupo|None: [Inscricao, ...]}
+    """
+    # base: inscrições do evento (todas; ajuste se quiser só confirmados etc.)
+    base_qs = (
+        Inscricao.objects
+        .filter(evento=evento)
+        .select_related("participante")
+        .only("id", "status", "participante__nome", "participante__cidade", "participante__estado")
+    )
+
+    if busca:
+        base_qs = base_qs.filter(
+            Q(participante__nome__icontains=busca) |
+            Q(participante__cidade__icontains=busca)
+        )
+
+    # Alocação → para saber o grupo (pode ser nulo)
+    aloc_prefetch = Prefetch(
+        "alocacao_grupo",
+        queryset=AlocacaoGrupo.objects.select_related("grupo").only("id", "grupo_id"),
+        to_attr="pref_aloc_grupo"
+    )
+    base_qs = base_qs.prefetch_related(aloc_prefetch)
+
+    # carrega todas as inscrições (após filtros)
+    inscricoes = list(base_qs)
+
+    # organiza por grupo (None = sem grupo)
+    participantes_por_grupo = {}
+    for ins in inscricoes:
+        aloc = ins.pref_aloc_grupo[0] if getattr(ins, "pref_aloc_grupo", None) else None
+        g = aloc.grupo if aloc and aloc.grupo_id else None
+        participantes_por_grupo.setdefault(g, []).append(ins)
+
+    # aplica filtros de grupos e sem-grupo
+    grupos_filtrados = set()
+    if grupos_ids:
+        grupos_ids = {int(gid) for gid in grupos_ids if str(gid).isdigit()}
+        grupos_filtrados = {g for g in participantes_por_grupo.keys() if (g and g.id in grupos_ids)}
+    if somente_sem_grupo:
+        grupos_filtrados = grupos_filtrados.union({None})
+
+    if grupos_ids or somente_sem_grupo:
+        # mantém apenas as chaves filtradas
+        participantes_por_grupo = {
+            g: lst for g, lst in participantes_por_grupo.items()
+            if (g in grupos_filtrados)
+        }
+
+    # ordenação
+    if ordenar == "nome":
+        for g, lst in participantes_por_grupo.items():
+            lst.sort(key=lambda i: (i.participante.nome or "").lower())
+    else:  # padrão: por grupo, e dentro por nome
+        # reordena dicionário por nome do grupo (None no fim)
+        def gkey(g):
+            return ("zzz" if g is None else (g.nome or "zzz")).lower()
+        participantes_por_grupo = dict(sorted(participantes_por_grupo.items(), key=lambda kv: gkey(kv[0])))
+        for lst in participantes_por_grupo.values():
+            lst.sort(key=lambda i: (i.participante.nome or "").lower())
+
+    # contagens auxiliares
+    total_sem_grupo = len(participantes_por_grupo.get(None, []))
+    total_geral = sum(len(v) for v in participantes_por_grupo.values())
+
+    # lista de grupos do evento com contagem (para o filtro lateral/top)
+    grupos_qs = (
+        Grupo.objects
+        .annotate(qtd=Count("alocacoes", filter=Q(alocacoes__evento=evento)))
+        .order_by("nome")
+    )
+
+    return grupos_qs, participantes_por_grupo, total_sem_grupo, total_geral
+
+
+def grupos_evento_relatorio(request, evento_id):
+    evento = get_object_or_404(EventoAcampamento, id=evento_id)
+
+    # filtros
+    grupos_ids = request.GET.getlist("grupos")  # multi-select
+    somente_sem_grupo = request.GET.get("sem_grupo") == "1"
+    busca = (request.GET.get("q") or "").strip()
+    ordenar = request.GET.get("ord", "grupo")  # "grupo" | "nome"
+
+    grupos, participantes_por_grupo, total_sem_grupo, total_geral = _build_grupos_relatorio_queryset(
+        evento=evento,
+        grupos_ids=grupos_ids,
+        somente_sem_grupo=somente_sem_grupo,
+        busca=busca,
+        ordenar=ordenar,
+    )
+
+    context = {
+        "evento": evento,
+        "grupos": grupos,  # para filtros
+        "participantes_por_grupo": participantes_por_grupo,
+        "total_sem_grupo": total_sem_grupo,
+        "total_geral": total_geral,
+        "filtro": {
+            "grupos": [int(x) for x in grupos_ids if str(x).isdigit()],
+            "sem_grupo": somente_sem_grupo,
+            "q": busca,
+            "ord": ordenar,
+        }
+    }
+    return render(request, "inscricoes/grupos_evento_relatorio.html", context)
+
+
+def grupos_evento_relatorio_csv(request, evento_id):
+    """Exporta CSV respeitando os mesmos filtros da página HTML."""
+    evento = get_object_or_404(EventoAcampamento, id=evento_id)
+
+    grupos_ids = request.GET.getlist("grupos")
+    somente_sem_grupo = request.GET.get("sem_grupo") == "1"
+    busca = (request.GET.get("q") or "").strip()
+    ordenar = request.GET.get("ord", "grupo")
+
+    _, participantes_por_grupo, _, _ = _build_grupos_relatorio_queryset(
+        evento=evento,
+        grupos_ids=grupos_ids,
+        somente_sem_grupo=somente_sem_grupo,
+        busca=busca,
+        ordenar=ordenar,
+    )
+
+    import csv
+    from io import StringIO
+
+    buffer = StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(["Evento", evento.nome])
+    writer.writerow([])
+    writer.writerow(["Grupo", "Nome", "Cidade", "UF", "Status"])
+
+    def group_name(g):
+        return g.nome if g else "— Sem grupo"
+
+    for g, lst in participantes_por_grupo.items():
+        gname = group_name(g)
+        for ins in lst:
+            p = ins.participante
+            # pega o rótulo do status, se o método existir
+            if hasattr(ins, "get_status_display"):
+                status_label = ins.get_status_display()
+            else:
+                status_label = ins.status
+            writer.writerow([gname, p.nome, p.cidade or "", p.estado or "", status_label])
+
+    resp = HttpResponse(buffer.getvalue(), content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = f'attachment; filename="relatorio-grupos-{evento.slug}.csv"'
+    return resp
+
+def _build_grupos_relatorio_queryset(*, evento, grupos_ids, somente_sem_grupo, busca, ordenar):
+    """
+    Retorna:
+      - grupos: queryset para popular o filtro (com contagem no evento)
+      - participantes_por_grupo: OrderedDict {Grupo|None: [Inscricao, ...]}
+      - total_sem_grupo: int (no conjunto FILTRADO)
+      - total_geral: int (no conjunto FILTRADO)
+    """
+
+    # 1) Grupos (para o filtro) com contagem de pessoas no EVENTO
+    grupos = (
+        Grupo.objects
+        .annotate(qtd_evento=Count('alocacoes', filter=Q(alocacoes__evento=evento)))
+        .order_by('nome')
+    )
+
+    # 2) Base: inscrições do evento, com participante e (possível) alocação de grupo
+    base = (
+        Inscricao.objects
+        .filter(evento=evento)
+        .select_related('participante')
+        .select_related('alocacao_grupo__grupo')
+    )
+
+    # 3) Busca por nome (se houver)
+    if busca:
+        base = base.filter(participante__nome__icontains=busca)
+
+    # 4) Filtros de grupo
+    # - se "somente_sem_grupo" está marcado, ignora "grupos_ids"
+    if somente_sem_grupo:
+        base = base.filter(alocacao_grupo__isnull=True)
+    else:
+        ids_validos = [int(x) for x in grupos_ids if str(x).isdigit()]
+        if ids_validos:
+            base = base.filter(alocacao_grupo__grupo_id__in=ids_validos)
+
+    # 5) Ordenação
+    if ordenar == "nome":
+        base = base.order_by('participante__nome')
+    else:
+        # por grupo: primeiro com grupo pelo nome, depois “Sem grupo”
+        # Dica: ordenamos em Python quando vamos montar os buckets
+        pass
+
+    # 6) Monta buckets {grupo: [inscricoes]}
+    buckets = {}
+    for ins in base:
+        g = getattr(getattr(ins, 'alocacao_grupo', None), 'grupo', None)
+        buckets.setdefault(g, []).append(ins)
+
+    # Ordenação por grupo (além da ordem interna dos itens, caso pedir por nome já veio ordenado)
+    def _k_group(gr):
+        # grupos com nome vêm primeiro, "None" (sem grupo) por último
+        if gr is None:
+            return (1, "ZZZZZZ")  # joga para o fim
+        return (0, gr.nome or "")
+    participantes_por_grupo = OrderedDict(sorted(buckets.items(), key=lambda kv: _k_group(kv[0])))
+
+    # 7) Contagens (no conjunto FILTRADO)
+    total_geral = sum(len(lst) for lst in participantes_por_grupo.values())
+    total_sem_grupo = len(participantes_por_grupo.get(None, []))
+
+    return grupos, participantes_por_grupo, total_sem_grupo, total_geral
+
+# views.py
+
+def grupos_evento_relatorio_print(request, evento_id):
+    evento = get_object_or_404(EventoAcampamento, id=evento_id)
+
+    grupos_ids = request.GET.getlist("grupos")
+    try:
+        grupos_ids_int = [int(x) for x in grupos_ids if str(x).isdigit()]
+    except Exception:
+        grupos_ids_int = []
+
+    somente_sem_grupo = (request.GET.get("sem_grupo") == "1")
+    busca = (request.GET.get("q") or "").strip()
+    ordenar = request.GET.get("ord", "grupo").lower()
+    if ordenar not in {"grupo", "nome"}:
+        ordenar = "grupo"
+
+    # AQUI: pegue a lista de grupos também
+    grupos, participantes_por_grupo, total_sem_grupo, total_geral = _build_grupos_relatorio_queryset(
+        evento=evento,
+        grupos_ids=grupos_ids_int,
+        somente_sem_grupo=somente_sem_grupo,
+        busca=busca,
+        ordenar=ordenar,
+    )
+
+    context = {
+        "evento": evento,
+        "grupos": grupos,  # <- necessário para renderizar as caixinhas
+        "participantes_por_grupo": participantes_por_grupo,
+        "total_sem_grupo": total_sem_grupo,
+        "total_geral": total_geral,
+        "filtro": {
+            "q": busca,
+            "grupos": grupos_ids_int,
+            "sem_grupo": somente_sem_grupo,
+            "ord": ordenar,
+        },
+        "qs": request.GET.urlencode(),
+    }
+    return render(request, "inscricoes/grupos_evento_relatorio_print.html", context)
+

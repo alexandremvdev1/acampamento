@@ -74,75 +74,40 @@
     .table-wrap{
       border:1px solid #e5e7eb; border-radius:.8rem; overflow:hidden; background:#fff;
     }
-    .table-responsive{
-      /* sem scroll horizontal */
-      overflow-x: hidden !important;
-      /* altura controlada para caber na tela sem precisar encolher colunas demais */
-      max-height: 72vh;
-    }
+    .table-responsive{ overflow-x: hidden !important; max-height: 72vh; }
     .table-sticky thead th{
       position: sticky; top: 0; z-index: 5;
       background: #f8fafc !important;
       border-bottom: 1px solid #e5e7eb !important;
       text-transform:uppercase; letter-spacing:.04em; font-size:.78rem; color:#64748b;
     }
-    .table{
-      font-size:.875rem;
-      table-layout: fixed;          /* mantém a largura dentro do container */
-      width: 100%;
-    }
-    /* Larguras relativas (sem inline style) */
-    th.th-nome, td.col-nome         { width: 34%; }
-    th.th-idade, td.col-idade       { width: 8%;  }
-    th.th-status, td.col-status     { width: 18%; }
-    th.th-pag, td.col-pag           { width: 12%; }
-    th.th-sel, td.col-sel           { width: 12%; }
-    th.th-acoes, td.col-acoes       { width: 16%; }
+    .table{ font-size:.875rem; table-layout: fixed; width: 100%; }
+    th.th-nome, td.col-nome   { width: 34%; }
+    th.th-idade, td.col-idade { width: 8%;  }
+    th.th-status, td.col-status { width: 18%; }
+    th.th-pag, td.col-pag     { width: 12%; }
+    th.th-sel, td.col-sel     { width: 12%; }
+    th.th-acoes, td.col-acoes { width: 16%; }
+    .table td, .table th{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Quebra inteligente dentro das células */
-    .table td, .table th{
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    /* Botões compactos de ação */
     .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.3rem .5rem; }
     .btn-icon{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; }
 
-    /* Wrap nas ações para não gerar largura extra */
-    .actions-wrap{
-      display:flex; align-items:center; justify-content:center;
-      flex-wrap: wrap; gap: .4rem;
-    }
+    .actions-wrap{ display:flex; align-items:center; justify-content:center; flex-wrap: wrap; gap: .4rem; }
     .btn-group-tight .btn{ border-radius:.5rem; }
 
-    /* Checkbox/switch maiorzinho */
     .form-check-input{ transform: scale(1.1); cursor:pointer; }
 
-    /* Nome em uma única linha (com ellipsis) */
-    .nome-single-line{
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: inline-block;
-      max-width: 100%;
-      vertical-align: bottom;
-    }
+    .nome-single-line{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%; vertical-align: bottom; }
 
-    /* Link do nome com a mesma cor do texto */
     a.link-ink{ color:var(--ink); text-decoration:none; }
     a.link-ink:hover{ text-decoration:underline; }
 
-    /* Layout sem scroll horizontal geral */
-    main.container, body, html{
-      overflow-x: hidden;
-    }
+    main.container, body, html{ overflow-x: hidden; }
 
-    /* Ajuste de colunas: conteúdo mais largo */
     @media (min-width: 992px){
-      .col-lg-10-custom{ flex: 0 0 auto; width: 83.333333%; } /* 10 colunas */
-      .col-lg-2-custom{ flex: 0 0 auto; width: 16.666667%; }  /* 2 colunas */
+      .col-lg-10-custom{ flex: 0 0 auto; width: 83.333333%; }
+      .col-lg-2-custom{ flex: 0 0 auto; width: 16.666667%; }
     }
   </style>
 </head>
@@ -160,18 +125,23 @@
 </nav>
 
 <main class="container py-3 py-lg-4">
-  <!-- Área de alertas (sticky no topo do conteúdo) -->
   <div id="flashArea" class="position-sticky" style="top:10px; z-index:1050;"></div>
 
   <div class="row g-3">
 
-    <!-- SIDEBAR (agora mais estreita) -->
+    <!-- SIDEBAR -->
     <aside class="col-lg-2-custom">
       <div class="sidebar-card p-2">
         <div class="nav-title">Evento</div>
         <ul class="nav-list">
           <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_eventos' evento.paroquia.id %}">🗂️ <span>Lista de eventos</span></a></li>
           <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">👥 <span>Participantes</span></a></li>
+
+          <!-- 👇 AQUI: botão Grupos/Famílias (abaixo de Participantes) -->
+          <li class="nav-item">
+            <a href="{% url 'inscricoes:grupos_evento_home' evento.id %}">👨‍👩‍👧‍👦 <span>Grupos/Famílias</span></a>
+          </li>
+
           <li class="nav-item"><a href="{% url 'inscricoes:relatorios_evento' evento.id %}">📊 <span>Relatórios</span></a></li>
         </ul>
 
@@ -205,7 +175,7 @@
       </div>
     </aside>
 
-    <!-- CONTEÚDO (mais largo) -->
+    <!-- CONTEÚDO -->
     <section class="col-lg-10-custom">
 
       <!-- HEADER -->
@@ -219,7 +189,6 @@
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="chip"><i class="fa-solid fa-users"></i> {{ total_participantes|default:"0" }}</span>
 
-            <!-- Telão (Painel de Sorteio) -->
             <a id="btn-open-telao"
                href="{% url 'inscricoes:painel_sorteio' slug=evento.slug %}"
                class="btn btn-warning btn-sm" target="_blank" rel="noopener">
@@ -229,7 +198,6 @@
               <i class="fa-solid fa-clipboard"></i> Copiar link do Telão
             </button>
 
-            <!-- Alocar em massa -->
             <a class="btn btn-outline-primary btn-sm"
                href="{% url 'inscricoes:alocar_em_massa' evento.id %}">
               <i class="fa-solid fa-people-group"></i>
@@ -269,40 +237,34 @@
               <tbody id="tbodyRows">
                 {% for inscricao in participantes %}
                 <tr id="row_{{ inscricao.id }}">
- <td class="col-nome">
-  <a href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.id %}"
-     class="link-ink fw-semibold nome-single-line"
-     title="Abrir inscrição">
-    {{ inscricao.participante.nome }}
-    {# parceiro do evento de casais (modelo direto) #}
-    {% if inscricao.par_inscrito %}
-      — {{ inscricao.par_inscrito.participante.nome }}
+                  <td class="col-nome">
+                    <a href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.id %}"
+                       class="link-ink fw-semibold nome-single-line"
+                       title="Abrir inscrição">
+                      {{ inscricao.participante.nome }}
+                      {% if inscricao.par_inscrito %}
+                        — {{ inscricao.par_inscrito.participante.nome }}
+                      {% elif inscricao.inscricao_casal %}
+                        {% if inscricao.inscricao_casal.par_inscrito %}
+                          — {{ inscricao.inscricao_casal.par_inscrito.participante.nome }}
+                        {% else %}
+                          — {{ inscricao.inscricao_casal.participante.nome }}
+                        {% endif %}
+                      {% elif inscricao.casal_vinculado %}
+                        {% if inscricao.casal_vinculado.par_inscrito %}
+                          — {{ inscricao.casal_vinculado.par_inscrito.participante.nome }}
+                        {% else %}
+                          — {{ inscricao.casal_vinculado.participante.nome }}
+                        {% endif %}
+                      {% endif %}
+                    </a>
 
-    {# parceiro vindo de um vínculo a inscrição de casal #}
-    {% elif inscricao.inscricao_casal %}
-      {% if inscricao.inscricao_casal.par_inscrito %}
-        — {{ inscricao.inscricao_casal.par_inscrito.participante.nome }}
-      {% else %}
-        — {{ inscricao.inscricao_casal.participante.nome }}
-      {% endif %}
-
-    {# parceiro vindo de outro alias/relacionamento #}
-    {% elif inscricao.casal_vinculado %}
-      {% if inscricao.casal_vinculado.par_inscrito %}
-        — {{ inscricao.casal_vinculado.par_inscrito.participante.nome }}
-      {% else %}
-        — {{ inscricao.casal_vinculado.participante.nome }}
-      {% endif %}
-    {% endif %}
-  </a>
-
-  {% if inscricao.participante.cidade or inscricao.participante.estado %}
-    <div class="small text-muted-2">
-      {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
-    </div>
-  {% endif %}
-</td>
-
+                    {% if inscricao.participante.cidade or inscricao.participante.estado %}
+                      <div class="small text-muted-2">
+                        {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
+                      </div>
+                    {% endif %}
+                  </td>
 
                   <td class="text-center col-idade">
                     {% if inscricao.idade is not None %}{{ inscricao.idade }}{% else %}-{% endif %}
@@ -543,10 +505,8 @@ function alterarStatus(inscricaoId, novoStatus, selectEl){
   });
 }
 
-/* ====== WHATSAPP: normalização e abertura ====== */
-function normalizePhone(phone){
-  return (phone || "").replace(/[^\d]/g, "");
-}
+/* ====== WHATSAPP ====== */
+function normalizePhone(phone){ return (phone || "").replace(/[^\d]/g, ""); }
 function toBrazilE164(phone){
   let n = normalizePhone(phone);
   if (!n) return "";
@@ -560,15 +520,10 @@ function openWhatsApp(el){
   const raw    = el.dataset.phone || "";
   const nome   = el.dataset.name  || "";
   const evento = el.dataset.event || "";
-
   const num = toBrazilE164(raw);
-  if (!num){
-    alert("Telefone do participante está vazio ou inválido.");
-    return;
-  }
+  if (!num){ alert("Telefone do participante está vazio ou inválido."); return; }
   const primeiroNome = nome.split(" ")[0] || "";
   const msg = `Olá ${primeiroNome}, tudo bem? Aqui é da paróquia sobre o evento "${evento}".`;
-
   const url = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
   window.open(url, "_blank", "noopener");
 }

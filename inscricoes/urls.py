@@ -231,6 +231,66 @@ urlpatterns = [
         v.relatorios_ministerio_detail,
         name="relatorios_ministerio_detail",
     ),
+
+    # GRUPOS / FAMÍLIAS
+    path(
+        "grupos/evento/<uuid:evento_id>/",
+        v.grupos_evento_home,
+        name="grupos_evento_home",
+    ),
+
+    path(
+        "grupos/evento/<uuid:evento_id>/relatorio/",
+        views.grupos_evento_relatorio,
+        name="grupos_evento_relatorio",   # <- singular, casa com sua view
+    ),
+    path(
+        "grupos/evento/<uuid:evento_id>/relatorio.csv",
+        views.grupos_evento_relatorio_csv,
+        name="grupos_evento_relatorio_csv",
+    ),
+    path(
+        "grupos/evento/<uuid:evento_id>/relatorio/print/",
+        views.grupos_evento_relatorio_print,
+        name="grupos_evento_relatorio_print",
+    ),
+
+    path(
+    "grupos/evento/<uuid:evento_id>/relatorios/",
+    views.grupos_evento_relatorio,   # mesma view
+    name="grupos_evento_relatorios", # nome plural que falta
+    ),
+
+    path("grupos/novo/", views.grupo_create, name="grupo_create"),
+
+    # detalhe de um grupo *no contexto de um evento* (edição + membros)
+    path(
+        "grupos/<int:grupo_id>/evento/<uuid:evento_id>/",
+        views.grupo_detail,
+        name="grupo_detail",
+    ),
+
+    # AJAX: buscar inscritos do evento (para adicionar)
+    path(
+        "grupos/evento/<uuid:evento_id>/buscar-inscritos/",
+        views.buscar_inscritos_evento,
+        name="grupos_buscar_inscritos",
+    ),
+
+    # AJAX: toggle (adiciona/remove) membro no grupo
+    path(
+        "grupos/<int:grupo_id>/evento/<uuid:evento_id>/toggle/",
+        views.grupo_toggle_membro,
+        name="grupo_toggle_membro",
+    ),
+
+    # AJAX: mover membro para outro grupo
+    path(
+        "grupos/mover/",
+        views.grupo_mover_membro,
+        name="grupo_mover_membro",
+    ),
+
 ]
 
 if settings.DEBUG:

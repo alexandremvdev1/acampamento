@@ -1,0 +1,155 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Grupos/Famílias — {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous"/>
+
+  <style>
+    :root{ --ink:#0f172a; --muted:#64748b; --g1:#0b1020; --g2:#111a3a; --base-font:14px; }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
+    .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+    .nav-list{ list-style:none; padding:6px; margin:0; }
+    .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none; }
+    .nav-list a:hover{ background:#eef2f7; }
+    .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
+
+    .card-clean{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.08); }
+    .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700; }
+    .table{ font-size:.875rem; }
+    .badge-soft{ background:#eef2f7; color:#334155; border:1px solid #e5e7eb; }
+    .sticky-topbar{ position:sticky; top:0; z-index:20; background:#ffffffd6; backdrop-filter:blur(6px); border:1px solid #e5e7eb; border-radius:.9rem; }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:admin_paroquia_eventos' evento.paroquia.id %}">← Eventos</a>
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+  <div class="row g-3">
+
+    <!-- SIDEBAR -->
+    <aside class="col-lg-3">
+      <div class="sidebar-card p-2">
+        <div class="nav-title">Navegação</div>
+        <ul class="nav-list">
+          <li class="nav-item">
+            <a href="{% url 'inscricoes:admin_paroquia_painel' %}">🏠 <span>Dashboard</span></a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'inscricoes:admin_paroquia_eventos' evento.paroquia.id %}">🗂️ <span>Eventos</span></a>
+          </li>
+          <li class="nav-item">
+            <a href="{% url 'inscricoes:ministerios_evento' evento.id %}">⛪ <span>Ministérios</span></a>
+          </li>
+          <li class="nav-item is-active">
+            <a href="{% url 'inscricoes:grupos_evento_home' evento.id %}" aria-current="page">👥 <span>Grupos/Famílias</span></a>
+          </li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- CONTEÚDO -->
+    <section class="col-lg-9">
+
+      <!-- HEADER -->
+      <div class="sticky-topbar p-3 mb-3 bg-white">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <h1 class="h6 m-0">Grupos/Famílias — {{ evento.nome }}</h1>
+            <div class="small text-muted">Gerencie os grupos para este evento (adicionar, remover e mover pessoas).</div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <!-- Relatórios (HTML com filtros) -->
+            <a class="btn btn-outline-dark btn-sm"
+               href="{% url 'inscricoes:grupos_evento_relatorio' evento.id %}">
+              <i class="fa-solid fa-print"></i> Relatórios
+            </a>
+
+            <!-- Criar Grupo/Família -->
+            <a class="btn btn-primary btn-sm"
+               href="{% url 'inscricoes:grupo_create' %}?next={{ request.path|urlencode }}&evento={{ evento.id }}">
+              <i class="fa-solid fa-plus"></i> Criar Grupo/Família
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- LISTA DE GRUPOS -->
+      <section class="mb-3">
+        <h2 class="sec-title"><i class="fa-solid fa-people-group me-1"></i> Grupos/Famílias</h2>
+        <div class="card-clean p-3">
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Grupo/Família</th>
+                  <th class="text-center" style="width:120px;">Pessoas</th>
+                  <th style="width:220px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for g in grupos %}
+                <tr>
+                  <td class="fw-semibold">
+                    <a href="{% url 'inscricoes:grupo_detail' g.id evento.id %}">
+                      {{ g.nome }}
+                    </a>
+                    <div class="small text-muted">{{ g.descricao|default:"—" }}</div>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge badge-soft rounded-pill">{{ g.qtd }}</span>
+                  </td>
+                  <td>
+                    <div class="d-flex gap-2 flex-wrap">
+                      <a class="btn btn-outline-secondary btn-sm"
+                         href="{% url 'inscricoes:grupo_detail' g.id evento.id %}">
+                        <i class="fa-solid fa-pen-to-square"></i> Abrir
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="3" class="text-muted">Nenhum grupo cadastrado ainda.</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <footer class="py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+          <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
+          <small class="text-muted">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+        </div>
+      </footer>
+
+    </section>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

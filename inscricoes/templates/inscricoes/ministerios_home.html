@@ -13,10 +13,8 @@
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <style>
-    :root{
-      --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
-      --g1:#0b1020; --g2:#111a3a; --base-font:14px;
-    }
+    :root{ --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
+           --g1:#0b1020; --g2:#111a3a; --base-font:14px; }
     html{ font-size: var(--base-font); }
     body{ background:#f6f8fb; color:var(--ink); }
 
@@ -83,9 +81,19 @@
           <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_painel' %}">🏠 <span>Dashboard</span></a></li>
           <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_eventos' paroquia.id %}">🗂️ <span>Eventos</span></a></li>
 
-          <!-- Aqui o botão de Ministérios fica sempre visível -->
+          <!-- Sempre visível -->
           <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">⛪ <span>Ministérios</span></a></li>
 
+          <!-- 👇 Grupos/Famílias logo abaixo de Ministérios, com fallback seguro -->
+          <li class="nav-item">
+            {% if evento %}
+              <a href="{% url 'inscricoes:grupos_evento_home' evento.id %}">👥 <span>Grupos/Famílias</span></a>
+            {% elif eventos_servos and eventos_servos|length %}
+              <a href="{% url 'inscricoes:grupos_evento_home' eventos_servos.0.id %}">👥 <span>Grupos/Famílias</span></a>
+            {% else %}
+              <a href="{% url 'inscricoes:admin_paroquia_eventos' paroquia.id %}">👥 <span>Grupos/Famílias</span></a>
+            {% endif %}
+          </li>
         </ul>
       </div>
     </aside>
@@ -130,19 +138,13 @@
                       </td>
                       <td class="text-end">
                         <div class="btn-group">
-                          <!-- VER LISTA DE MINISTÉRIOS DO EVENTO -->
-                          <a href="{% url 'inscricoes:ministerios_evento' ev.id %}"
-                             class="btn btn-outline-secondary btn-sm">
+                          <a href="{% url 'inscricoes:ministerios_evento' ev.id %}" class="btn btn-outline-secondary btn-sm">
                             <i class="fa-solid fa-list"></i> Ver ministérios
                           </a>
-                          <!-- CADASTRAR NOVO MINISTÉRIO NO EVENTO -->
-                          <a href="{% url 'inscricoes:ministerio_create' ev.id %}"
-                             class="btn btn-primary btn-sm">
+                          <a href="{% url 'inscricoes:ministerio_create' ev.id %}" class="btn btn-primary btn-sm">
                             <i class="fa-solid fa-plus"></i> Cadastrar
                           </a>
-                          <!-- RELATÓRIOS (usa SLUG do evento) -->
-                          <a href="{% url 'inscricoes:relatorios_ministerios_overview' ev.slug %}"
-                             class="btn btn-outline-dark btn-sm">
+                          <a href="{% url 'inscricoes:relatorios_ministerios_overview' ev.slug %}" class="btn btn-outline-dark btn-sm">
                             <i class="fa-solid fa-print"></i> Relatórios
                           </a>
                         </div>

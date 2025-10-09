@@ -1,0 +1,126 @@
+{# templates/inscricoes/grupo_form_modal.html #}
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Novo Grupo/Família</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap 5 + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous"/>
+
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#64748b; --g1:#0b1020; --g2:#111a3a;
+      --line:#e5e7eb; --head:#f8fafc; --base-font:14px;
+    }
+    html{ font-size: var(--base-font); }
+    body{ background:#f6f8fb; color:var(--ink); }
+
+    /* Navbar igual às outras páginas */
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
+    .navbar-brand{ font-size:1rem; }
+
+    /* Cartão padrão */
+    .page-card{
+      border:1px solid var(--line);
+      border-radius:.9rem;
+      background:#fff;
+      box-shadow:0 10px 24px rgba(17,24,39,.08);
+    }
+
+    .form-label.small{ font-size:.85rem; color:#334155; }
+    .helptext, .form-text{ color:var(--muted); }
+
+    /* Erros do Django */
+    .errorlist{ margin: 0 0 .5rem; padding-left: 1rem; color:#b91c1c; font-size:.875rem; }
+    .is-invalid + .invalid-feedback{ display:block; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar nav-pro navbar-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      {% if next %}
+        <a class="btn btn-sm btn-light" href="{{ next }}">← Voltar</a>
+      {% else %}
+        <a class="btn btn-sm btn-light" href="{% url 'inscricoes:admin_paroquia_painel' %}">← Voltar</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+<main class="container py-3 py-lg-4">
+  <div class="page-card p-3 p-md-4">
+
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <div>
+        <h1 class="h6 m-0">Criar Grupo/Família</h1>
+        <div class="text-muted">Cadastre um grupo/família (global) para usar em qualquer evento.</div>
+      </div>
+    </div>
+
+    {# Mensagens de feedback, caso use messages framework #}
+    {% if messages %}
+      <div class="mb-2">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} py-2 px-3 mb-2">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next|default:'' }}">
+
+      {# Render simples mantendo consistência visual #}
+      <div class="row g-3">
+        {# Se seu GrupoForm já tem campos: nome, descricao, cor etc. #}
+        {% for field in form %}
+          <div class="col-12">
+            <label class="form-label small" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}
+              <div class="form-text">{{ field.help_text }}</div>
+            {% endif %}
+            {% for error in field.errors %}
+              <div class="invalid-feedback d-block">{{ error }}</div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+
+      {# erros não-atrelados ao campo #}
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger my-3">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-primary" type="submit">
+          <i class="fa-solid fa-save me-1"></i> Salvar
+        </button>
+        {% if next %}
+          <a class="btn btn-outline-secondary" href="{{ next }}">
+            <i class="fa-solid fa-xmark me-1"></i> Cancelar
+          </a>
+        {% else %}
+          <a class="btn btn-outline-secondary" href="{% url 'inscricoes:admin_paroquia_painel' %}">
+            <i class="fa-solid fa-xmark me-1"></i> Cancelar
+          </a>
+        {% endif %}
+      </div>
+    </form>
+
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
