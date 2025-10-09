@@ -13,35 +13,94 @@
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <style>
-    /* ====== IMPRESSÃO (A4, 4 crachás por folha) ====== */
+    /* ===== IMPRESSÃO: A4 centralizado, 4 crachás + linhas de corte ===== */
     @page { size: A4 portrait; margin: 10mm; }
+
     @media print{
-      .no-print{ display:none !important; }
-      body{ margin:0; background:#fff; }
+      *{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body { margin:0; background:#fff; width:210mm; height:297mm; }
+
+      /* Esconde elementos de navegação */
+      .no-print, .navbar, .sticky-topbar, .card-clean { display:none !important; }
+
+      /* Zera efeitos do Bootstrap container que empurram o conteúdo */
+      .container, main.container{
+        width: auto !important;
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      /* Área útil: 190×277 mm (depois das margens) */
       .cracha-container{
-        display:flex; flex-wrap:wrap; gap:6mm !important; padding:0 !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, 90mm);
+        grid-auto-rows: 130mm;
+        column-gap: 10mm;       /* 190 - (90+90) = 10mm */
+        row-gap: 17mm;          /* 277 - (130+130) = 17mm */
+        width: 190mm;           /* centralização horizontal */
+        min-height: 277mm;      /* permite centralização vertical */
+        margin: 0 auto;         /* centro na página */
+        place-content: center;  /* centro H e V quando sobrar espaço */
+        padding: 0 !important;
+        box-sizing: border-box;
       }
+
       .cracha-wrapper{
-        width: calc(50% - 3mm);
-        height: 125mm;
-        border:1px dashed #000 !important;
-        border-radius:0 !important;
-        background:#fff;
-        position:relative;
-        box-sizing:border-box;
-        break-inside: avoid;
+        width: 90mm !important;
+        height: 130mm !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: #fff;
+        position: relative;
+        box-sizing: border-box;
+        break-inside: avoid-page;
         page-break-inside: avoid;
+        overflow: visible;      /* necessário para marcas fora do retângulo */
+
+        /* ===== MARCAS DE CORTE (fora do crachá) =====
+           Pseudo-elemento maior 3mm em cada lado; traço 0.3mm, 4mm de comprimento */
       }
-      .cracha{ position:absolute; inset:0; padding:0; border:0; }
-      .page-break{ page-break-after: always; }
-      .sticky-topbar, .navbar { display:none !important; }
+      .cracha-wrapper::before{
+        content:"";
+        position:absolute;
+        inset:-3mm;                  /* expande 3mm para fora em todos os lados */
+        pointer-events:none;
+        background-repeat:no-repeat;
+        background-image:
+          /* topo-esquerda */     linear-gradient(#000,#000), linear-gradient(#000,#000),
+          /* topo-direita */      linear-gradient(#000,#000), linear-gradient(#000,#000),
+          /* base-esquerda */     linear-gradient(#000,#000), linear-gradient(#000,#000),
+          /* base-direita */      linear-gradient(#000,#000), linear-gradient(#000,#000);
+        background-size:
+          4mm .3mm,  .3mm 4mm,   /* TL: horiz, vert */
+          4mm .3mm,  .3mm 4mm,   /* TR: horiz, vert */
+          4mm .3mm,  .3mm 4mm,   /* BL: horiz, vert */
+          4mm .3mm,  .3mm 4mm;   /* BR: horiz, vert */
+        /* Posiciona as linhas encostadas na borda externa do crachá */
+        background-position:
+          left 3mm  top 0,      left 0    top 3mm,     /* TL */
+          right 3mm top 0,      right 0   top 3mm,     /* TR */
+          left 3mm  bottom 0,   left 0    bottom 3mm,  /* BL */
+          right 3mm bottom 0,   right 0   bottom 3mm;  /* BR */
+        opacity:.95;
+      }
+
+      .cracha{ position:absolute; inset:0; padding:0; border:0; box-shadow:none !important; }
+
+      /* Quebra após cada 4 crachás */
+      .page-break{
+        grid-column: 1 / -1;
+        height: 0; margin: 0; border: 0; padding: 0;
+        break-after: page; page-break-after: always;
+      }
     }
 
-    /* ====== TELA ====== */
+    /* ===== TELA (visualização normal) ===== */
     :root{
       --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --panel:#fff;
       --shadow:0 10px 24px rgba(17,24,39,.08);
-      --brand1:#1e3a8a; /* fallback quando não tem grupo */
+      --brand1:#1e3a8a;
     }
     html{ font-size:14px; }
     body{ background:#f6f8fb; color:var(--ink); overflow-x:hidden; }
@@ -61,7 +120,7 @@
       margin:0 0 .75rem; font-weight:700; display:flex; align-items:center; gap:.5rem;
     }
 
-    /* GRID tela */
+    /* GRID tela (preview) */
     .cracha-container{ display:flex; flex-wrap:wrap; gap:12px; padding:12px; }
     .cracha-wrapper{
       width: calc(25% - 9px);
@@ -71,9 +130,10 @@
       background:#fff;
       position:relative;
       box-sizing:border-box;
+      overflow:hidden;
     }
 
-    /* CRAchá */
+    /* CRAchá (visual) */
     .cracha{
       --grp: var(--brand1);
       position:absolute; inset:0; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;
@@ -85,7 +145,6 @@
       border:1px solid color-mix(in srgb, var(--grp) 50%, #0000 50%);
     }
 
-    /* FAIXA “COORDENADOR” opcional */
     .ribbon{
       position:absolute; top:10px; right:-38px; z-index:5;
       background:linear-gradient(135deg, #f59e0b, #d97706);
@@ -96,7 +155,6 @@
       border:1px solid rgba(0,0,0,.15);
     }
 
-    /* Topo (banner) */
     .topo{
       height:120px; position:relative;
       display:flex; align-items:center; justify-content:center; overflow:hidden;
@@ -111,7 +169,6 @@
       background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.28));
     }
 
-    /* Conteúdo */
     .miolo{
       padding:54px 12px 0; display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; flex:1;
     }
@@ -124,15 +181,10 @@
       text-shadow: 0 1px 2px rgba(0,0,0,.35); word-break:break-word; max-width:92%;
     }
 
-    /* ====== NOVO: Grupo sem “quadro” (sem fundo) ====== */
     .linha-info{ display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:6px; }
-    .gline{
-      display:inline-flex; align-items:center; gap:8px;
-      font-weight:900; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35);
-    }
+    .gline{ display:inline-flex; align-items:center; gap:8px; font-weight:900; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
     .gdot{ width:10px; height:10px; border-radius:50%; display:inline-block; border:1px solid rgba(255,255,255,.6); }
 
-    /* Ministério (mantém “tag” com fundo) */
     .tag{
       display:inline-flex; align-items:center; gap:8px;
       padding:8px 12px; border-radius:999px; font-weight:900;
@@ -141,25 +193,16 @@
       border:1px solid rgba(255,255,255,.9);
       box-shadow: 0 2px 10px rgba(2,6,23,.18), inset 0 0 0 1px rgba(15,23,42,.05);
     }
-    .tag .coord{
-      display:inline-block; padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:900; color:#fff;
-      background:linear-gradient(135deg, #ef4444, #b91c1c);
-      border:1px solid rgba(255,255,255,.6);
-    }
+    .tag .coord{ padding:2px 8px; border-radius:999px; font-size:.72rem; font-weight:900; color:#fff;
+      background:linear-gradient(135deg, #ef4444, #b91c1c); border:1px solid rgba(255,255,255,.6); }
 
-    .cidade{
-      margin-top:2px; font-size:.86rem; font-weight:700; color:#e5e7eb; text-shadow:0 1px 1px rgba(0,0,0,.3);
-    }
+    .cidade{ margin-top:2px; font-size:.86rem; font-weight:700; color:#e5e7eb; text-shadow:0 1px 1px rgba(0,0,0,.3); }
 
-    /* Rodapé / QR reduzido */
     .rodape{ padding:12px 12px 14px; display:flex; justify-content:center; align-items:center; }
-    .qr-wrap{
-      background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:8px;
-      box-shadow: 0 4px 16px rgba(2,6,23,.12), inset 0 0 0 1px #f1f5f9;
-    }
+    .qr-wrap{ background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:8px;
+      box-shadow: 0 4px 16px rgba(2,6,23,.12), inset 0 0 0 1px #f1f5f9; }
     .qr{ width:88px; height:88px; display:block; }
 
-    /* Responsivo (tela) */
     @media (max-width: 1024px){ .cracha-wrapper{ width: calc(33.333% - 8px) } }
     @media (max-width: 768px){  .cracha-wrapper{ width: calc(50% - 8px) } }
     @media (max-width: 480px){  .cracha-wrapper{ width: 100% } }
@@ -248,7 +291,6 @@
             <div class="nome">{{ part.nome }}</div>
 
             <div class="linha-info">
-              {# Grupo Família — sem fundo/pílula #}
               {% if grp %}
                 <div class="gline" title="Grupo Família">
                   <span class="gdot" style="background: {{ grp.cor_hex }}"></span>
@@ -256,18 +298,14 @@
                 </div>
               {% endif %}
 
-              {# Ministério (apenas servos) #}
               {% if evento.tipo == 'servos' and min and min.ministerio %}
                 <div class="tag" title="Ministério">
                   <i class="fa-solid fa-hands-praying"></i>
                   {{ min.ministerio.nome }}
-                  {% if min.is_coordenador %}
-                    <span class="coord">Coord.</span>
-                  {% endif %}
+                  {% if min.is_coordenador %}<span class="coord">Coord.</span>{% endif %}
                 </div>
               {% endif %}
 
-              {# Cidade/UF #}
               {% if part.cidade %}
                 <div class="cidade">
                   <i class="fa-solid fa-location-dot"></i>
@@ -279,9 +317,7 @@
 
           <div class="rodape">
             <div class="qr-wrap">
-              <img class="qr"
-                   src="{% url 'inscricoes:qr_code_png' part.qr_token %}"
-                   alt="QR do participante {{ part.nome }}">
+              <img class="qr" src="{% url 'inscricoes:qr_code_png' part.qr_token %}" alt="QR do participante {{ part.nome }}">
             </div>
           </div>
 
