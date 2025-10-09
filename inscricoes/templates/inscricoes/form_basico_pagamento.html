@@ -1,340 +1,401 @@
-  {% load static %}
-  <!DOCTYPE html>
-  <html lang="pt-br">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Inscrição - {{ evento.nome }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Inscrição - {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- Extras -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Extras -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <style>
-      :root{
-        --ink:#0f172a;
-        --muted:#6b7280;
-        --line:#e5e7eb;
-        --head:#f8fafc;
-        --bg:#f6f8fb;
-        --primary:#0d6efd;
-      }
-      *{ box-sizing: border-box; }
-      body{
-        font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;
-        max-width: 960px; margin: 24px auto; padding: 16px;
-        color: var(--ink); background: var(--bg); position: relative;
-      }
-      body::before{
-        content: ""; position: fixed; inset: 0; z-index:-1;
-        background-image: url("{% if politica and politica.imagem_2 %}{{ politica.imagem_2.url }}{% else %}{% static 'img/bg-default.jpg' %}{% endif %}");
-        background-size: cover; background-position: center;
-        filter: blur(6px) saturate(0.8); opacity:.18;
-      }
+  <style>
+    :root{
+      --ink:#0f172a; --muted:#6b7280; --line:#e5e7eb; --head:#f8fafc;
+      --bg:#f6f8fb; --primary:#0d6efd;
+    }
+    *{ box-sizing: border-box; }
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;
+      max-width:960px; margin:24px auto; padding:16px;
+      color:var(--ink); background:var(--bg); position:relative;
+    }
+    body::before{
+      content:""; position:fixed; inset:0; z-index:-1;
+      background-image:url("{% if politica and politica.imagem_2 %}{{ politica.imagem_2.url }}{% else %}{% static 'img/bg-default.jpg' %}{% endif %}");
+      background-size:cover; background-position:center;
+      filter:blur(6px) saturate(0.8); opacity:.18;
+    }
 
-      /* Header */
-      header{ text-align:center; margin-bottom: 16px; }
-      header img{ max-width:100%; border-radius:12px; margin-bottom:10px; box-shadow:0 6px 18px rgba(2,6,23,.15); }
-      header h1{ font-size: clamp(1.25rem, 2.2vw, 1.6rem); margin:0 0 4px; color:#111827; }
-      header p{ color: var(--muted); margin:0; }
+    /* Header */
+    header{ text-align:center; margin-bottom:16px; }
+    header img{ max-width:100%; border-radius:12px; margin-bottom:10px; box-shadow:0 6px 18px rgba(2,6,23,.15); }
+    header h1{ font-size:clamp(1.25rem,2.2vw,1.6rem); margin:0 0 4px; color:#111827; }
+    header p{ color:var(--muted); margin:0; }
 
-      /* Card do formulário */
-      .form-card{
-        background:#fff; border:1px solid var(--line); border-radius:12px;
-        box-shadow: 0 10px 24px rgba(17,24,39,.08);
-        padding: 18px 16px;
-      }
+    /* Card */
+    .form-card{
+      background:#fff; border:1px solid var(--line); border-radius:12px;
+      box-shadow:0 10px 24px rgba(17,24,39,.08); padding:18px 16px;
+    }
 
-      /* Fieldset compacto */
-      fieldset{
-        border:1px solid var(--line);
-        background: #fff;
-        border-radius:10px; padding:14px 14px 10px; margin:0 0 16px;
-      }
-      legend{
-        font-size:.95rem; font-weight:800; margin:0 8px; padding:0 6px;
-        color:#0b1324; background: var(--head); border:1px solid var(--line); border-radius:8px;
-      }
+    /* Fieldset compacto */
+    fieldset{
+      border:1px solid var(--line); background:#fff; border-radius:10px;
+      padding:14px 14px 10px; margin:0 0 16px;
+    }
+    legend{
+      font-size:.95rem; font-weight:800; margin:0 8px; padding:0 6px;
+      color:#0b1324; background:var(--head); border:1px solid var(--line); border-radius:8px;
+    }
 
-      /* Inputs compactos + borda visível */
-      .form-compact input[type="text"],
-      .form-compact input[type="tel"],
-      .form-compact input[type="email"],
-      .form-compact input[type="number"],
-      .form-compact input[type="date"],
-      .form-compact input[type="password"],
-      .form-compact input[type="search"],
-      .form-compact select,
-      .form-compact textarea{
-        /* caso o Django não injete classes, garantimos o visual */
-        display:block; width:100%;
-        font-size:.92rem; line-height:1.25;
-        padding:.45rem .6rem;
-        border:1px solid #cbd5e1; border-radius:.5rem;
-        background:#fff; color:#0f172a;
-        transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
-      }
-      .form-compact textarea{ min-height: 90px; }
-      .form-compact input:focus,
-      .form-compact select:focus,
-      .form-compact textarea:focus{
-        outline: none; border-color: var(--primary);
-        box-shadow: 0 0 0 .18rem rgba(13,110,253,.15);
-        background: #fff;
-      }
-      .form-compact label{
-        font-size:.82rem; font-weight:700; color:#111827;
-        margin: 6px 0 4px; display:block;
-      }
-      .help-text{ font-size:.78rem; color: var(--muted); }
+    /* Inputs compactos */
+    .form-compact input[type="text"],
+    .form-compact input[type="tel"],
+    .form-compact input[type="email"],
+    .form-compact input[type="number"],
+    .form-compact input[type="date"],
+    .form-compact input[type="password"],
+    .form-compact input[type="search"],
+    .form-compact select,
+    .form-compact textarea{
+      display:block; width:100%;
+      font-size:.92rem; line-height:1.25;
+      padding:.45rem .6rem;
+      border:1px solid #cbd5e1; border-radius:.5rem;
+      background:#fff; color:#0f172a;
+      transition: box-shadow .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .form-compact textarea{ min-height:90px; }
+    .form-compact input:focus,
+    .form-compact select:focus,
+    .form-compact textarea:focus{
+      outline:none; border-color:var(--primary);
+      box-shadow:0 0 0 .18rem rgba(13,110,253,.15);
+      background:#fff;
+    }
+    .form-compact label{
+      font-size:.82rem; font-weight:700; color:#111827;
+      margin:6px 0 4px; display:block;
+    }
+    .help-text{ font-size:.78rem; color:var(--muted); }
 
-      /* Grid com respiro menor */
-      .g-compact{ --bs-gutter-x: .6rem; --bs-gutter-y: .5rem; }
+    .g-compact{ --bs-gutter-x:.6rem; --bs-gutter-y:.5rem; }
+    .divider{ border:0; border-top:1px dashed #e5e7eb; margin:.6rem 0 1rem; }
 
-      /* Linha divisória leve */
-      .divider{ border:0; border-top:1px dashed #e5e7eb; margin:.6rem 0 1rem; }
+    .btn-primary-compact{
+      background:var(--primary); border:1px solid #0b5ed7; color:#fff;
+      font-weight:800; font-size:.95rem; padding:.55rem .9rem; border-radius:.6rem;
+      transition: transform .05s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .btn-primary-compact:hover{ background:#0b5ed7; box-shadow:0 6px 14px rgba(13,110,253,.25); }
+    .btn-primary-compact:active{ transform:translateY(1px); }
 
-      /* Botão principal pequeno */
-      .btn-primary-compact{
-        background: var(--primary); border:1px solid #0b5ed7;
-        color:#fff; font-weight:800; font-size:.95rem;
-        padding:.55rem .9rem; border-radius:.6rem;
-        transition: transform .05s ease, box-shadow .15s ease, background .15s ease;
-      }
-      .btn-primary-compact:hover{ background:#0b5ed7; box-shadow:0 6px 14px rgba(13,110,253,.25); }
-      .btn-primary-compact:active{ transform: translateY(1px); }
+    .alert{ padding:.55rem .7rem; border-radius:.6rem; }
 
-      /* Alertas mais discretos */
-      .alert{ padding:.55rem .7rem; border-radius:.6rem; }
+    /* WhatsApp */
+    #whatsapp-flutuante{
+      position:fixed; bottom:18px; right:18px; width:58px; height:58px; border-radius:50%;
+      cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2100;
+      transition: transform .15s ease, box-shadow .15s ease; box-shadow:0 6px 18px rgba(0,0,0,.2);
+      overflow:hidden; background:#25D366;
+    }
+    #whatsapp-flutuante img{ width:100%; height:100%; object-fit:cover; }
+    #whatsapp-flutuante:hover{ transform:scale(1.05); box-shadow:0 10px 24px rgba(0,0,0,.28); }
 
-      /* WhatsApp */
-      #whatsapp-flutuante{
-        position:fixed; bottom:18px; right:18px; width:58px; height:58px; border-radius:50%;
-        cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2100;
-        transition: transform .15s ease, box-shadow .15s ease; box-shadow:0 6px 18px rgba(0,0,0,.2);
-        overflow:hidden; background:#25D366;
-      }
-      #whatsapp-flutuante img{ width:100%; height:100%; object-fit:cover; }
-      #whatsapp-flutuante:hover{ transform: scale(1.05); box-shadow:0 10px 24px rgba(0,0,0,.28); }
+    /* Modal */
+    .modal-lite{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+      justify-content:center; align-items:center; z-index:2200; padding:12px; }
+    .modal-lite.show{ display:flex; }
+    .modal-content-lite{
+      background:#fff; border-radius:12px; padding:18px; max-width:640px; width:100%;
+      max-height:90vh; overflow:auto; position:relative; border:1px solid var(--line);
+      box-shadow:0 14px 34px rgba(2,6,23,.25);
+    }
+    .close-lite{ position:absolute; right:10px; top:6px; font-size:26px; line-height:1; cursor:pointer; color:#9ca3af; }
+    .close-lite:hover{ color:#111827; }
+    .btn-whatsapp{
+      background:#25D366; color:#fff; border:none; border-radius:.6rem;
+      padding:.6rem 1rem; font-size:1rem; font-weight:800; text-decoration:none; display:inline-block;
+    }
+    .politica-link{ text-align:center; margin:10px 0 0; font-weight:700; }
+    .politica-link a{ color:var(--primary); text-decoration:none; }
+    .politica-link a:hover{ text-decoration:underline; }
+    footer{ text-align:center; font-size:.75rem; color:#9aa3b2; margin-top:10px; }
 
-      /* Modal leve */
-      .modal-lite{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
-        justify-content:center; align-items:center; z-index:2200; padding:12px; }
-      .modal-lite.show{ display:flex; }
-      .modal-content-lite{
-        background:#fff; border-radius:12px; padding:18px; max-width:640px; width:100%;
-        max-height:90vh; overflow:auto; position:relative; border:1px solid var(--line);
-        box-shadow:0 14px 34px rgba(2,6,23,.25);
-      }
-      .close-lite{ position:absolute; right:10px; top:6px; font-size:26px; line-height:1; cursor:pointer; color:#9ca3af; }
-      .close-lite:hover{ color:#111827; }
-      .btn-whatsapp{
-        background:#25D366; color:#fff; border:none; border-radius:.6rem;
-        padding:.6rem 1rem; font-size:1rem; font-weight:800; text-decoration:none; display:inline-block;
-      }
-
-      .politica-link{ text-align:center; margin:10px 0 0; font-weight:700; }
-      .politica-link a{ color:var(--primary); text-decoration:none; }
-      .politica-link a:hover{ text-decoration:underline; }
-
-      footer{ text-align:center; font-size:.75rem; color:#9aa3b2; margin-top:10px; }
-    </style>
-  </head>
-  <body>
-    <header>
-      {% if evento.banner %}
-        <img src="{{ evento.banner.url }}" alt="Banner {{ evento.nome }}">
-      {% endif %}
-      <h1>{{ evento.nome }}</h1>
-      {% if evento.data_inicio and evento.data_fim %}
-        <p><strong>Data:</strong> {{ evento.data_inicio|date:"d/m/Y" }} - {{ evento.data_fim|date:"d/m/Y" }}</p>
-      {% endif %}
-    </header>
-
-    {% if messages %}
-      <div class="mb-2">
-        {% for message in messages %}
-          <div class="alert alert-{{ message.tags|default:'info' }} mb-2">{{ message }}</div>
-        {% endfor %}
-      </div>
+    /* Aparência: capitaliza enquanto digita (JS garante valor final correto) */
+    input#id_nome,
+    input#id_nome_segundo,
+    input#id_cidade{
+      text-transform: capitalize;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    {% if evento.banner %}
+      <img src="{{ evento.banner.url }}" alt="Banner {{ evento.nome }}">
     {% endif %}
+    <h1>{{ evento.nome }}</h1>
+    {% if evento.data_inicio and evento.data_fim %}
+      <p><strong>Data:</strong> {{ evento.data_inicio|date:"d/m/Y" }} - {{ evento.data_fim|date:"d/m/Y" }}</p>
+    {% endif %}
+  </header>
 
-    <div class="form-card">
-      <form class="form-compact" method="post" novalidate>
-        {% csrf_token %}
+  {% if messages %}
+    <div class="mb-2">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} mb-2">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
 
-        {% if form.non_field_errors %}
-          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-        {% endif %}
+  <div class="form-card">
+    <form class="form-compact" method="post" novalidate>
+      {% csrf_token %}
 
-        <fieldset>
-          <legend>Dados do(s) Participante(s)</legend>
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
 
-          <!-- Participante 1 -->
-          <div class="row g-compact">
-            <div class="col-md-8">
-              <label for="id_nome">Nome completo (Cônjuge 1)</label>
-              {{ form.nome }}
-              <div class="text-danger small">{{ form.nome.errors }}</div>
-            </div>
-            <div class="col-md-4">
-              <label for="id_cpf">CPF (Cônjuge 1)</label>
-              {{ form.cpf }}
-              <div class="text-danger small">{{ form.cpf.errors }}</div>
-            </div>
+      <fieldset>
+        <legend>Dados do(s) Participante(s)</legend>
+
+        <!-- Participante 1 -->
+        <div class="row g-compact">
+          <div class="col-md-8">
+            <label for="id_nome">Nome completo (Cônjuge 1)</label>
+            {{ form.nome }}
+            <div class="text-danger small">{{ form.nome.errors }}</div>
           </div>
-
-          <hr class="divider">
-
-          <!-- Participante 2 (opcional) -->
-          <div class="row g-compact">
-            <div class="col-md-8">
-              <label for="id_nome_segundo">Nome completo (Cônjuge 2)</label>
-              {{ form.nome_segundo }}
-              <div class="text-danger small">{{ form.nome_segundo.errors }}</div>
-            </div>
-            <div class="col-md-4">
-              <label for="id_cpf_segundo">CPF (Cônjuge 2)</label>
-              {{ form.cpf_segundo }}
-              <div class="text-danger small">{{ form.cpf_segundo.errors }}</div>
-            </div>
+          <div class="col-md-4">
+            <label for="id_cpf">CPF (Cônjuge 1)</label>
+            {{ form.cpf }}
+            <div class="text-danger small">{{ form.cpf.errors }}</div>
           </div>
-
-          <!-- CEP + Cidade + UF -->
-          <div class="row g-compact mt-2">
-            <div class="col-md-4">
-              <label for="id_CEP">CEP</label>
-              {{ form.CEP }}
-              <div class="text-danger small">{{ form.CEP.errors }}</div>
-            </div>
-            <div class="col-md-5">
-              <label for="id_cidade">Cidade</label>
-              {{ form.cidade }}
-              <div class="text-danger small">{{ form.cidade.errors }}</div>
-            </div>
-            <div class="col-md-3">
-              <label for="id_estado">Estado (UF)</label>
-              {{ form.estado }}
-              <div class="text-danger small">{{ form.estado.errors }}</div>
-            </div>
-          </div>
-        </fieldset>
-
-        <div class="d-flex justify-content-center">
-          <button type="submit" class="btn-primary-compact">
-            <i class="fa-solid fa-circle-check me-1"></i> Criar e Realizar Pagamento
-          </button>
         </div>
-      </form>
-    </div>
 
-    <p class="politica-link">
-      <a href="#" onclick="openModal('modalPolitica')">Política de Privacidade</a>
-    </p>
+        <hr class="divider">
 
-    <footer>eismeaqui.app - Desenvolvido por Alexandre Martins Vieira 2025 ©</footer>
+        <!-- Participante 2 (opcional) -->
+        <div class="row g-compact">
+          <div class="col-md-8">
+            <label for="id_nome_segundo">Nome completo (Cônjuge 2)</label>
+            {{ form.nome_segundo }}
+            <div class="text-danger small">{{ form.nome_segundo.errors }}</div>
+          </div>
+          <div class="col-md-4">
+            <label for="id_cpf_segundo">CPF (Cônjuge 2)</label>
+            {{ form.cpf_segundo }}
+            <div class="text-danger small">{{ form.cpf_segundo.errors }}</div>
+          </div>
+        </div>
 
-    <!-- Modal Política -->
-    <div id="modalPolitica" class="modal-lite" aria-hidden="true">
-      <div class="modal-content-lite">
-        <span class="close-lite" onclick="closeModal('modalPolitica')">&times;</span>
-        <h3 class="mb-2">Política de Privacidade</h3>
-        {% if politica and politica.texto %}
-          <div class="text-start">{{ politica.texto|linebreaks }}</div>
-        {% else %}
-          <p>Política de privacidade indisponível.</p>
-        {% endif %}
+        <!-- CEP + Cidade + UF -->
+        <div class="row g-compact mt-2">
+          <div class="col-md-4">
+            <label for="id_CEP">CEP</label>
+            {{ form.CEP }}
+            <div class="text-danger small">{{ form.CEP.errors }}</div>
+          </div>
+          <div class="col-md-5">
+            <label for="id_cidade">Cidade</label>
+            {{ form.cidade }}
+            <div class="text-danger small">{{ form.cidade.errors }}</div>
+          </div>
+          <div class="col-md-3">
+            <label for="id_estado">Estado (UF)</label>
+            {{ form.estado }}
+            <div class="text-danger small">{{ form.estado.errors }}</div>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="d-flex justify-content-center">
+        <button type="submit" class="btn-primary-compact">
+          <i class="fa-solid fa-circle-check me-1"></i> Criar e Realizar Pagamento
+        </button>
       </div>
-    </div>
+    </form>
+  </div>
 
-    <!-- Botão flutuante WhatsApp -->
-    <div id="whatsapp-flutuante" onclick="openModal('modalWhatsApp')" role="button" aria-label="Ajuda via WhatsApp">
-      {% if politica and politica.imagem_ajuda %}
-        <img src="{{ politica.imagem_ajuda.url }}" alt="Ajuda">
+  <p class="politica-link">
+    <a href="#" onclick="openModal('modalPolitica')">Política de Privacidade</a>
+  </p>
+
+  <footer>eismeaqui.app - Desenvolvido por Alexandre Martins Vieira 2025 ©</footer>
+
+  <!-- Modal Política -->
+  <div id="modalPolitica" class="modal-lite" aria-hidden="true">
+    <div class="modal-content-lite">
+      <span class="close-lite" onclick="closeModal('modalPolitica')">&times;</span>
+      <h3 class="mb-2">Política de Privacidade</h3>
+      {% if politica and politica.texto %}
+        <div class="text-start">{{ politica.texto|linebreaks }}</div>
       {% else %}
-        <img src="{% static 'img/ajuda/porquinho.png' %}" alt="Ajuda">
+        <p>Política de privacidade indisponível.</p>
       {% endif %}
     </div>
+  </div>
 
-    <!-- Modal WhatsApp -->
-    <div id="modalWhatsApp" class="modal-lite" aria-hidden="true">
-      <div class="modal-content-lite text-center">
-        <span class="close-lite" onclick="closeModal('modalWhatsApp')">&times;</span>
-        <h3>Fale conosco pelo WhatsApp</h3>
-        <p class="mb-3">Estamos prontos para ajudar você!</p>
-        <a href="https://wa.me/5511999999999" target="_blank" class="btn-whatsapp">
-          <i class="fa-brands fa-whatsapp me-1"></i> Abrir WhatsApp
-        </a>
-      </div>
+  <!-- Botão flutuante WhatsApp -->
+  <div id="whatsapp-flutuante" onclick="openModal('modalWhatsApp')" role="button" aria-label="Ajuda via WhatsApp">
+    {% if politica and politica.imagem_ajuda %}
+      <img src="{{ politica.imagem_ajuda.url }}" alt="Ajuda">
+    {% else %}
+      <img src="{% static 'img/ajuda/porquinho.png' %}" alt="Ajuda">
+    {% endif %}
+  </div>
+
+  <!-- Modal WhatsApp -->
+  <div id="modalWhatsApp" class="modal-lite" aria-hidden="true">
+    <div class="modal-content-lite text-center">
+      <span class="close-lite" onclick="closeModal('modalWhatsApp')">&times;</span>
+      <h3>Fale conosco pelo WhatsApp</h3>
+      <p class="mb-3">Estamos prontos para ajudar você!</p>
+      <a href="https://wa.me/5511999999999" target="_blank" class="btn-whatsapp">
+        <i class="fa-brands fa-whatsapp me-1"></i> Abrir WhatsApp
+      </a>
     </div>
+  </div>
 
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.9/dist/inputmask.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.9/dist/inputmask.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
-      // Força classes Bootstrap nos widgets renderizados pelo Django
-      document.addEventListener('DOMContentLoaded', function () {
-        const sel = 'input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea';
-        document.querySelectorAll(sel).forEach(el => {
-          el.classList.add('form-control','form-control-sm');
-        });
+  <script>
+    // Força classes Bootstrap nos widgets renderizados pelo Django
+    document.addEventListener('DOMContentLoaded', function () {
+      const sel = 'input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea';
+      document.querySelectorAll(sel).forEach(el => {
+        el.classList.add('form-control','form-control-sm');
       });
+    });
 
-      // ===== Modais (lite) =====
-      function openModal(id){ document.getElementById(id)?.classList.add('show'); }
-      function closeModal(id){ document.getElementById(id)?.classList.remove('show'); }
-      window.addEventListener('click', e => {
-        if (e.target.classList?.contains('modal-lite')) closeModal(e.target.id);
-      });
-      window.addEventListener('keydown', e => {
-        if (e.key === 'Escape') document.querySelectorAll('.modal-lite.show').forEach(m => m.classList.remove('show'));
-      });
+    // Modais (lite)
+    function openModal(id){ document.getElementById(id)?.classList.add('show'); }
+    function closeModal(id){ document.getElementById(id)?.classList.remove('show'); }
+    window.addEventListener('click', e => {
+      if (e.target.classList?.contains('modal-lite')) closeModal(e.target.id);
+    });
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Escape') document.querySelectorAll('.modal-lite.show').forEach(m => m.classList.remove('show'));
+    });
 
-      // ===== Máscaras de CPF/CEP =====
-      document.addEventListener('DOMContentLoaded', function () {
-        if (window.Inputmask) {
-          if (document.getElementById('id_cpf'))         Inputmask("999.999.999-99").mask("#id_cpf");
-          if (document.getElementById('id_cpf_segundo')) Inputmask("999.999.999-99").mask("#id_cpf_segundo");
-          if (document.getElementById('id_CEP'))         Inputmask("99999-999").mask("#id_CEP");
-        }
-      });
-
-      // ===== ViaCEP: auto-preencher Cidade/UF =====
-      function onlyDigits(s){ return (s||"").replace(/\D/g,''); }
-      async function preencherPorCEP(raw){
-        const cep = onlyDigits(raw);
-        const cidadeEl = document.getElementById('id_cidade');
-        const ufEl     = document.getElementById('id_estado');
-        if(!cidadeEl || !ufEl) return;
-        if(cep.length !== 8) return;
-
-        try{
-          const resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-          if(!resp.ok) return;
-          const data = await resp.json();
-          if(data && !data.erro){
-            cidadeEl.value = data.localidade || '';
-            ufEl.value     = data.uf || '';
-            cidadeEl.dispatchEvent(new Event('input', { bubbles:true }));
-            ufEl.dispatchEvent(new Event('change', { bubbles:true }));
-          }
-        }catch(e){ /* silencioso */ }
+    // Máscaras de CPF/CEP
+    document.addEventListener('DOMContentLoaded', function () {
+      if (window.Inputmask) {
+        if (document.getElementById('id_cpf'))         Inputmask("999.999.999-99").mask("#id_cpf");
+        if (document.getElementById('id_cpf_segundo')) Inputmask("999.999.999-99").mask("#id_cpf_segundo");
+        if (document.getElementById('id_CEP'))         Inputmask("99999-999").mask("#id_CEP");
       }
-      document.addEventListener('DOMContentLoaded', function(){
-        const cepEl = document.getElementById('id_CEP');
-        if(cepEl){
-          cepEl.addEventListener('blur', () => preencherPorCEP(cepEl.value));
-          cepEl.addEventListener('input', () => {
-            const d = (cepEl.value||'').replace(/\D/g,'');
-            if(d.length === 8) preencherPorCEP(cepEl.value);
-          });
+    });
+
+    // ViaCEP
+    function onlyDigits(s){ return (s||"").replace(/\D/g,''); }
+    async function preencherPorCEP(raw){
+      const cep = onlyDigits(raw);
+      const cidadeEl = document.getElementById('id_cidade');
+      const ufEl     = document.getElementById('id_estado');
+      if(!cidadeEl || !ufEl) return;
+      if(cep.length !== 8) return;
+
+      try{
+        const resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        if(!resp.ok) return;
+        const data = await resp.json();
+        if(data && !data.erro){
+          cidadeEl.value = data.localidade || '';
+          ufEl.value     = data.uf || '';
+          cidadeEl.dispatchEvent(new Event('input', { bubbles:true }));
+          ufEl.dispatchEvent(new Event('change', { bubbles:true }));
         }
-      });
-    </script>
-  </body>
-  </html>
+      }catch(e){}
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+      const cepEl = document.getElementById('id_CEP');
+      if(cepEl){
+        cepEl.addEventListener('blur', () => preencherPorCEP(cepEl.value));
+        cepEl.addEventListener('input', () => {
+          const d = (cepEl.value||'').replace(/\D/g,'');
+          if(d.length === 8) preencherPorCEP(cepEl.value);
+        });
+      }
+    });
+  </script>
+
+  <!-- Normalização Title Case (impede tudo MAIÚSCULO) -->
+  <script>
+  (function(){
+    const LOWER_KEEP = new Set(["de","da","do","dos","das","e"]);
+
+    function isLetter(ch){ return /[A-Za-zÀ-ÿ]/.test(ch); }
+
+    function isMostlyUppercase(str){
+      let letters = 0, upper = 0;
+      for(const ch of str){
+        if(isLetter(ch)){ letters++; if(ch === ch.toUpperCase()) upper++; }
+      }
+      return letters > 0 && (upper / letters) >= 0.8;
+    }
+
+    function titleCaseName(raw){
+      if(!raw) return "";
+      let s = raw.trim().replace(/\s+/g, " ");
+      if(isMostlyUppercase(s)) s = s.toLowerCase();
+
+      return s
+        .split(" ")
+        .map((word, idxWord) => {
+          if(/^[A-Za-zÀ-ÿ]\.$/.test(word)) return word.toUpperCase(); // iniciais
+
+          const parts = word.split("-");
+          const cased = parts.map((p) => {
+            if(!p) return p;
+            const base = p.toLowerCase();
+            const aposParts = base.split("'");
+            const aposCased = aposParts.map(ap => ap ? ap[0].toUpperCase() + ap.slice(1) : ap);
+            return aposCased.join("'");
+          }).join("-");
+
+          // primeira palavra sempre capitalizada
+          if(idxWord === 0) return cased[0] ? cased[0].toUpperCase() + cased.slice(1) : cased;
+
+          // palavras internas que devem ficar minúsculas
+          const baseWord = cased.toLowerCase();
+          if(LOWER_KEEP.has(baseWord)) return baseWord;
+
+          return cased[0] ? cased[0].toUpperCase() + cased.slice(1) : cased;
+        })
+        .join(" ");
+    }
+
+    function bindTitleCase(id){
+      const el = document.getElementById(id);
+      if(!el) return;
+
+      const fix = () => {
+        const v = el.value || "";
+        const t = titleCaseName(v);
+        if(v !== t){
+          const pos = el.selectionStart;
+          el.value = t;
+          try{ el.setSelectionRange(pos, pos); }catch(_){}
+        }
+      };
+
+      el.addEventListener("blur", fix);
+      el.addEventListener("input", () => { if(isMostlyUppercase(el.value||"")) fix(); });
+      el.form?.addEventListener("submit", fix);
+    }
+
+    ["id_nome","id_nome_segundo","id_cidade"].forEach(bindTitleCase);
+  })();
+  </script>
+</body>
+</html>

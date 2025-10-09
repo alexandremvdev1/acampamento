@@ -137,7 +137,7 @@
           <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_eventos' evento.paroquia.id %}">🗂️ <span>Lista de eventos</span></a></li>
           <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">👥 <span>Participantes</span></a></li>
 
-          <!-- 👇 AQUI: botão Grupos/Famílias (abaixo de Participantes) -->
+          <!-- 👇 botão Grupos/Famílias -->
           <li class="nav-item">
             <a href="{% url 'inscricoes:grupos_evento_home' evento.id %}">👨‍👩‍👧‍👦 <span>Grupos/Famílias</span></a>
           </li>
@@ -236,101 +236,121 @@
               </thead>
               <tbody id="tbodyRows">
                 {% for inscricao in participantes %}
-                <tr id="row_{{ inscricao.id }}">
-                  <td class="col-nome">
-                    <a href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.id %}"
-                       class="link-ink fw-semibold nome-single-line"
-                       title="Abrir inscrição">
-                      {{ inscricao.participante.nome }}
-                      {% if inscricao.par_inscrito %}
-                        — {{ inscricao.par_inscrito.participante.nome }}
-                      {% elif inscricao.inscricao_casal %}
-                        {% if inscricao.inscricao_casal.par_inscrito %}
-                          — {{ inscricao.inscricao_casal.par_inscrito.participante.nome }}
-                        {% else %}
-                          — {{ inscricao.inscricao_casal.participante.nome }}
-                        {% endif %}
-                      {% elif inscricao.casal_vinculado %}
-                        {% if inscricao.casal_vinculado.par_inscrito %}
-                          — {{ inscricao.casal_vinculado.par_inscrito.participante.nome }}
-                        {% else %}
-                          — {{ inscricao.casal_vinculado.participante.nome }}
-                        {% endif %}
-                      {% endif %}
-                    </a>
 
-                    {% if inscricao.participante.cidade or inscricao.participante.estado %}
-                      <div class="small text-muted-2">
-                        {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
-                      </div>
-                    {% endif %}
-                  </td>
+                  {# ====== SKIP da "segunda" inscrição do casal (evita linha duplicada) ====== #}
+                  {% if inscricao.par and inscricao.par.id < inscricao.id %}
+                    {% comment %} pulando a duplicata {% endcomment %}
+                  {% elif inscricao.par_inscrito and inscricao.par_inscrito.id < inscricao.id %}
+                    {% comment %} pulando a duplicata {% endcomment %}
+                  {% elif inscricao.inscricao_casal and inscricao.inscricao_casal.id < inscricao.id %}
+                    {% comment %} pulando a duplicata {% endcomment %}
+                  {% elif inscricao.casal_vinculado and inscricao.casal_vinculado.id < inscricao.id %}
+                    {% comment %} pulando a duplicata {% endcomment %}
+                  {% else %}
 
-                  <td class="text-center col-idade">
-                    {% if inscricao.idade is not None %}{{ inscricao.idade }}{% else %}-{% endif %}
-                  </td>
+                    <tr id="row_{{ inscricao.id }}">
+                      <td class="col-nome">
+                        <a href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.id %}"
+                           class="link-ink fw-semibold nome-single-line"
+                           title="Abrir inscrição">
 
-                  <!-- STATUS (select) -->
-                  <td class="text-center col-status">
-                    <select class="form-select form-select-sm d-inline-block w-100"
-                            id="status_{{ inscricao.id }}"
-                            onfocus="this.dataset.prev=this.value"
-                            onchange="alterarStatus({{ inscricao.id }}, this.value, this)">
-                      {% for value, label in status_choices %}
-                        <option value="{{ value }}" {% if value == inscricao.status %}selected{% endif %}>{{ label }}</option>
-                      {% endfor %}
-                    </select>
-                  </td>
-
-                  <!-- Pagamento (badge) -->
-                  <td class="text-center col-pag" id="paycell_{{ inscricao.id }}">
-                    {% if inscricao.pagamento_confirmado %}
-                      <span class="badge rounded-pill text-bg-success"><i class="fa-solid fa-check me-1"></i> Pago</span>
-                    {% else %}
-                      <span class="badge rounded-pill text-bg-danger"><i class="fa-solid fa-xmark me-1"></i> Pendente</span>
-                    {% endif %}
-                  </td>
-
-                  <!-- Switch Selecionado -->
-                  <td class="text-center col-sel">
-                    <div class="form-check form-switch d-inline-flex align-items-center gap-2 m-0">
-                      <input class="form-check-input"
-                             type="checkbox"
-                             id="sel_{{ inscricao.id }}"
-                             {% if inscricao.foi_selecionado %}checked{% endif %}
-                             onchange="toggleSelecao({{ inscricao.id }}, this.checked)">
-                      <label class="form-check-label small" for="sel_{{ inscricao.id }}">Sim</label>
-                    </div>
-                  </td>
-
-                  <td class="text-center col-acoes">
-                    <div class="actions-wrap">
-                      <div class="btn-group btn-group-tight" role="group" aria-label="Ações principais">
-                        <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}"
-                           class="btn btn-primary btn-sm btn-icon" title="Editar inscrição">
-                          <i class="fa-solid fa-pen"></i>
+                          {# ===== Nome em UMA linha: "A — B" quando houver vínculo ===== #}
+                          {% if inscricao.par %}
+                            {{ inscricao.participante.nome }} — {{ inscricao.par.participante.nome }}
+                          {% elif inscricao.par_inscrito %}
+                            {{ inscricao.participante.nome }} — {{ inscricao.par_inscrito.participante.nome }}
+                          {% elif inscricao.inscricao_casal %}
+                            {% if inscricao.inscricao_casal.par_inscrito %}
+                              {{ inscricao.participante.nome }} — {{ inscricao.inscricao_casal.par_inscrito.participante.nome }}
+                            {% else %}
+                              {{ inscricao.participante.nome }} — {{ inscricao.inscricao_casal.participante.nome }}
+                            {% endif %}
+                          {% elif inscricao.casal_vinculado %}
+                            {% if inscricao.casal_vinculado.par_inscrito %}
+                              {{ inscricao.participante.nome }} — {{ inscricao.casal_vinculado.par_inscrito.participante.nome }}
+                            {% else %}
+                              {{ inscricao.participante.nome }} — {{ inscricao.casal_vinculado.participante.nome }}
+                            {% endif %}
+                          {% else %}
+                            {{ inscricao.participante.nome }}
+                          {% endif %}
                         </a>
-                        <a href="{% url 'inscricoes:deletar_inscricao' inscricao.id %}"
-                           class="btn btn-danger btn-sm btn-icon" title="Excluir inscrição"
-                           onclick="return confirm('Tem certeza que deseja excluir?');">
-                          <i class="fa-solid fa-trash"></i>
-                        </a>
-                      </div>
 
-                      {% with fone=inscricao.participante.celular|default:inscricao.participante.telefone %}
-                      <a href="#"
-                         class="btn btn-success btn-sm btn-icon"
-                         title="WhatsApp"
-                         data-phone="{{ fone|default:'' }}"
-                         data-name="{{ inscricao.participante.nome }}"
-                         data-event="{{ evento.nome }}"
-                         onclick="openWhatsApp(this); return false;">
-                        <i class="fa-brands fa-whatsapp"></i>
-                      </a>
-                      {% endwith %}
-                    </div>
-                  </td>
-                </tr>
+                        {% if inscricao.participante.cidade or inscricao.participante.estado %}
+                          <div class="small text-muted-2">
+                            {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
+                          </div>
+                        {% endif %}
+                      </td>
+
+                      <td class="text-center col-idade">
+                        {% if inscricao.idade is not None %}{{ inscricao.idade }}{% else %}-{% endif %}
+                      </td>
+
+                      <!-- STATUS (select) -->
+                      <td class="text-center col-status">
+                        <select class="form-select form-select-sm d-inline-block w-100"
+                                id="status_{{ inscricao.id }}"
+                                onfocus="this.dataset.prev=this.value"
+                                onchange="alterarStatus({{ inscricao.id }}, this.value, this)">
+                          {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if value == inscricao.status %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+
+                      <!-- Pagamento (badge) -->
+                      <td class="text-center col-pag" id="paycell_{{ inscricao.id }}">
+                        {% if inscricao.pagamento_confirmado %}
+                          <span class="badge rounded-pill text-bg-success"><i class="fa-solid fa-check me-1"></i> Pago</span>
+                        {% else %}
+                          <span class="badge rounded-pill text-bg-danger"><i class="fa-solid fa-xmark me-1"></i> Pendente</span>
+                        {% endif %}
+                      </td>
+
+                      <!-- Switch Selecionado -->
+                      <td class="text-center col-sel">
+                        <div class="form-check form-switch d-inline-flex align-items-center gap-2 m-0">
+                          <input class="form-check-input"
+                                 type="checkbox"
+                                 id="sel_{{ inscricao.id }}"
+                                 {% if inscricao.foi_selecionado %}checked{% endif %}
+                                 onchange="toggleSelecao({{ inscricao.id }}, this.checked)">
+                          <label class="form-check-label small" for="sel_{{ inscricao.id }}">Sim</label>
+                        </div>
+                      </td>
+
+                      <td class="text-center col-acoes">
+                        <div class="actions-wrap">
+                          <div class="btn-group btn-group-tight" role="group" aria-label="Ações principais">
+                            <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}"
+                               class="btn btn-primary btn-sm btn-icon" title="Editar inscrição">
+                              <i class="fa-solid fa-pen"></i>
+                            </a>
+                            <a href="{% url 'inscricoes:deletar_inscricao' inscricao.id %}"
+                               class="btn btn-danger btn-sm btn-icon" title="Excluir inscrição"
+                               onclick="return confirm('Tem certeza que deseja excluir?');">
+                              <i class="fa-solid fa-trash"></i>
+                            </a>
+                          </div>
+
+                          {% with fone=inscricao.participante.celular|default:inscricao.participante.telefone %}
+                          <a href="#"
+                             class="btn btn-success btn-sm btn-icon"
+                             title="WhatsApp"
+                             data-phone="{{ fone|default:'' }}"
+                             data-name="{{ inscricao.participante.nome }}"
+                             data-event="{{ evento.nome }}"
+                             onclick="openWhatsApp(this); return false;">
+                            <i class="fa-brands fa-whatsapp"></i>
+                          </a>
+                          {% endwith %}
+                        </div>
+                      </td>
+                    </tr>
+
+                  {% endif %} {# /skip duplicata #}
+
                 {% empty %}
                 <tr>
                   <td colspan="6" class="text-center text-muted py-4">Nenhum participante inscrito.</td>

@@ -41,6 +41,8 @@ from .models import Inscricao, EventoAcampamento, InscricaoStatus
 from django.db.models import Prefetch, Count, Q
 from decimal import Decimal
 from django.core.files.base import ContentFile
+from decimal import Decimal, ROUND_HALF_UP
+from django.db.models import Sum
 import re
 from datetime import date, datetime
 import uuid
@@ -1856,65 +1858,139 @@ def alterar_politica(request):
 
     return render(request, 'inscricoes/alterar_politica.html', {'form': form})
 
+def _q2(v):  # arredonda para 2 casas
+    return Decimal(v or 0).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+def _calc_taxa_liquido(pagamento, mp_cfg):
+    """Calcula (taxa, líquido) a partir do método e das taxas da config.
+       Se já houver net_received/fee_mp no banco, usa-os."""
+    if pagamento.net_received and pagamento.fee_mp is not None:
+        return _q2(pagamento.fee_mp), _q2(pagamento.net_received)
+
+    valor = _q2(pagamento.valor)
+    metodo = (pagamento.metodo or "").lower()
+    pct = fixo = Decimal("0.00")
+
+    if mp_cfg:
+        if metodo == "pix":
+            pct, fixo = Decimal(mp_cfg.taxa_pix_percent or 0), Decimal(mp_cfg.taxa_pix_fixa or 0)
+        elif metodo == "credito":
+            pct, fixo = Decimal(mp_cfg.taxa_credito_percent or 0), Decimal(mp_cfg.taxa_credito_fixa or 0)
+        elif metodo == "debito":
+            pct, fixo = Decimal(mp_cfg.taxa_debito_percent or 0), Decimal(mp_cfg.taxa_debito_fixa or 0)
+        # dinheiro: normalmente sem taxa
+
+    taxa = _q2(valor * (pct/Decimal("100")) + fixo)
+    liquido = _q2(valor - taxa)
+    if liquido < 0:
+        liquido = Decimal("0.00")
+    return taxa, liquido
+
 def relatorio_financeiro(request, evento_id):
-    """
-    Gera um relatório financeiro detalhado para um evento específico.
-    """
-    evento = EventoAcampamento.objects.get(pk=evento_id)
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
 
-    # Calcula o total arrecadado por método de pagamento
-    total_pix = Pagamento.objects.filter(
-        inscricao__evento=evento,
-        status=Pagamento.StatusPagamento.CONFIRMADO,
-        metodo=Pagamento.MetodoPagamento.PIX
-    ).aggregate(total=Sum('valor'))['total'] or 0
+    # 1) Pagamentos confirmados
+    pagos = (Pagamento.objects
+             .select_related("inscricao__evento__paroquia")
+             .filter(inscricao__evento=evento,
+                     status=Pagamento.StatusPagamento.CONFIRMADO)
+             .order_by("inscricao_id"))
 
-    total_credito = Pagamento.objects.filter(
-        inscricao__evento=evento,
-        status=Pagamento.StatusPagamento.CONFIRMADO,
-        metodo=Pagamento.MetodoPagamento.CREDITO
-    ).aggregate(total=Sum('valor'))['total'] or 0
+    # 2) Deduplicação (casais / inscrição vinculada):
+    #    conta apenas UM pagamento por par.
+    dedup = []
+    vistos = set()
+    tipo_lower = (evento.tipo or "").lower()
+    dedup_por_par = tipo_lower in {"casais", "pagamento"}  # ajuste aqui se quiser outra regra
 
-    total_debito = Pagamento.objects.filter(
-        inscricao__evento=evento,
-        status=Pagamento.StatusPagamento.CONFIRMADO,
-        metodo=Pagamento.MetodoPagamento.DEBITO
-    ).aggregate(total=Sum('valor'))['total'] or 0
+    for p in pagos:
+        ins = p.inscricao
+        if dedup_por_par:
+            par_id = getattr(ins, "inscricao_pareada_id", None) or getattr(ins, "pareada_por_id", None)
+            if par_id:
+                raiz = min(ins.id, par_id)  # mesmo id para o par
+                if raiz in vistos:
+                    continue
+                vistos.add(raiz)
+        dedup.append(p)
 
-    total_dinheiro = Pagamento.objects.filter(
-        inscricao__evento=evento,
-        status=Pagamento.StatusPagamento.CONFIRMADO,
-        metodo=Pagamento.MetodoPagamento.DINHEIRO
-    ).aggregate(total=Sum('valor'))['total'] or 0
+    # 3) KPIs por método (bruto / líquido) + totais
+    mp_cfg = getattr(evento.paroquia, "mp_config", None)
 
-    # Calcula o total arrecadado com pagamentos confirmados
-    total_arrecadado = total_pix + total_credito + total_debito + total_dinheiro
-
-    # Calcula o total esperado (valor das inscrições * número de inscritos)
-    total_esperado = evento.valor_inscricao * Inscricao.objects.filter(evento=evento).count()
-
-    # Calcula o total pendente
-    total_pendente = total_esperado - total_arrecadado
-
-    # Recupera os pagamentos confirmados para detalhamento
-    pagamentos_confirmados = Pagamento.objects.filter(
-        inscricao__evento=evento,
-        status=Pagamento.StatusPagamento.CONFIRMADO
-    )
-
-    context = {
-        'evento': evento,
-        'total_arrecadado': total_arrecadado,
-        'total_esperado': total_esperado,
-        'total_pendente': total_pendente,
-        'pagamentos_confirmados': pagamentos_confirmados,
-        'total_pix': total_pix,
-        'total_credito': total_credito,
-        'total_debito': total_debito,
-        'total_dinheiro': total_dinheiro,
+    totals = {
+        "pix":      {"bruto": Decimal("0"), "liq": Decimal("0")},
+        "credito":  {"bruto": Decimal("0"), "liq": Decimal("0")},
+        "debito":   {"bruto": Decimal("0"), "liq": Decimal("0")},
+        "dinheiro": {"bruto": Decimal("0"), "liq": Decimal("0")},
     }
 
-    return render(request, 'inscricoes/relatorio_financeiro.html', context)
+    for p in dedup:
+        metodo = (p.metodo or "").lower()
+        if metodo not in totals:
+            metodo = "dinheiro"  # fallback
+        bruto = _q2(p.valor)
+        taxa, liquido = _calc_taxa_liquido(p, mp_cfg)
+        totals[metodo]["bruto"] += bruto
+        totals[metodo]["liq"]   += liquido
+
+    total_pix_bruto      = _q2(totals["pix"]["bruto"])
+    total_credito_bruto  = _q2(totals["credito"]["bruto"])
+    total_debito_bruto   = _q2(totals["debito"]["bruto"])
+    total_dinheiro_bruto = _q2(totals["dinheiro"]["bruto"])
+
+    total_pix_liq      = _q2(totals["pix"]["liq"])
+    total_credito_liq  = _q2(totals["credito"]["liq"])
+    total_debito_liq   = _q2(totals["debito"]["liq"])
+    total_dinheiro_liq = _q2(totals["dinheiro"]["liq"])
+
+    total_arrecadado_bruto = _q2(
+        total_pix_bruto + total_credito_bruto + total_debito_bruto + total_dinheiro_bruto
+    )
+    total_arrecadado_liq = _q2(
+        total_pix_liq + total_credito_liq + total_debito_liq + total_dinheiro_liq
+    )
+    total_taxas = _q2(total_arrecadado_bruto - total_arrecadado_liq)
+
+    # 4) Total esperado — conta 1 unidade por casal quando for casais/pagamento
+    inscricoes = Inscricao.objects.filter(evento=evento).only("id", "inscricao_pareada")
+    if dedup_por_par:
+        unidades = 0
+        for i in inscricoes:
+            par_id = getattr(i, "inscricao_pareada_id", None) or getattr(i, "pareada_por_id", None)
+            if not par_id or i.id < par_id:  # só um dos dois da dupla conta
+                unidades += 1
+    else:
+        unidades = inscricoes.count()
+
+    total_esperado = _q2(Decimal(evento.valor_inscricao or 0) * Decimal(unidades))
+    total_pendente_bruto = _q2(max(Decimal("0.00"), total_esperado - total_arrecadado_bruto))
+    total_pendente_liq   = _q2(max(Decimal("0.00"), total_esperado - total_arrecadado_liq))
+
+    context = {
+        "evento": evento,
+
+        # já usados no template antigo (bruto)
+        "total_arrecadado": total_arrecadado_bruto,
+        "total_esperado":   total_esperado,
+        "total_pendente":   total_pendente_bruto,
+        "total_pix":        total_pix_bruto,
+        "total_credito":    total_credito_bruto,
+        "total_debito":     total_debito_bruto,
+        "total_dinheiro":   total_dinheiro_bruto,
+
+        # pagos que aparecem na tabela (já deduplicados)
+        "pagamentos_confirmados": dedup,
+
+        # NOVOS (líquido e taxas)
+        "total_liquido":          total_arrecadado_liq,
+        "total_taxas":            total_taxas,
+        "total_pendente_liquido": total_pendente_liq,
+        "total_pix_liquido":      total_pix_liq,
+        "total_credito_liquido":  total_credito_liq,
+        "total_debito_liquido":   total_debito_liq,
+        "total_dinheiro_liquido": total_dinheiro_liq,
+    }
+    return render(request, "inscricoes/relatorio_financeiro.html", context)
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser or u.is_staff)

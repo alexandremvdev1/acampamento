@@ -4,155 +4,259 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Inscrições Encerradas • {{ evento.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>
+    {% now "U" as now_ts %}
+    {% if evento.inicio_inscricoes|date:"U" > now_ts %}
+      Inscrições não iniciadas • {{ evento.nome }}
+    {% else %}
+      Inscrições Encerradas • {{ evento.nome }}
+    {% endif %}
+  </title>
   <style>
     :root{
       --bg:#0b1020; --card:#11162a; --text:#f4f6fb; --muted:#c1c7d3; --line:rgba(255,255,255,.10);
       --shadow:0 18px 40px rgba(0,0,0,.35); --brand:#4f7cff; --accent:#22c55e;
+      --chip-bg:rgba(79,124,255,.12); --chip-br:#4f7cff33;
     }
     @media (prefers-color-scheme: light){
       :root{
         --bg:#f3f5f9; --card:#ffffff; --text:#0e1320; --muted:#5b6473; --line:#e9edf5; --shadow:0 12px 30px rgba(10,36,99,.10);
+        --chip-bg:#eef2ff; --chip-br:#dbe4ff;
       }
     }
 
-    *{ box-sizing:border-box }
-    html,body{ margin:0; background:
-      radial-gradient(1200px 1200px at -10% -10%, rgba(79,124,255,.18), transparent 40%),
-      radial-gradient(1200px 1200px at 110% 10%, rgba(34,197,94,.14), transparent 40%),
-      var(--bg);
+    /* Reset básico e proteção contra scroll lateral */
+    *{ box-sizing:border-box; max-width:100%; }
+    html,body{
+      margin:0;
+      background:
+        radial-gradient(1200px 1200px at -10% -10%, rgba(79,124,255,.18), transparent 40%),
+        radial-gradient(1200px 1200px at 110% 10%, rgba(34,197,94,.14), transparent 40%),
+        var(--bg);
       color:var(--text);
       font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif;
       min-height:100dvh;
+      overflow-x:hidden;              /* <- impede rolagem lateral */
+      -webkit-text-size-adjust:100%;
+      word-break:break-word;          /* <- previne estouro de textos longos */
     }
+    img,svg,video,canvas{ display:block; max-width:100%; height:auto; }
 
     .wrap{
       min-height:100dvh;
-      display:grid; place-items:center;
-      padding:28px 16px;
+      display:grid;
+      place-items:center;
+      padding:24px 12px;
     }
 
     .card{
-      width:min(560px, 90vw);
+      width:100%;
+      max-width:720px;                /* <- limita a largura e centraliza */
       background:var(--card);
       border-radius:20px;
       box-shadow:var(--shadow);
       outline:1px solid var(--line);
       overflow:hidden;
+      margin:0 auto;
     }
 
     .head{
-      padding:18px 18px 0;
+      padding:16px 16px 0;
       text-align:center;
     }
     .logo{
-      height:52px; width:auto; display:block; margin:0 auto 8px; object-fit:contain;
+      height:48px; width:auto; margin:0 auto 8px; object-fit:contain;
       filter: drop-shadow(0 4px 14px rgba(0,0,0,.18));
     }
     .banner{
-      width:100%; max-height:200px; object-fit:cover; display:block;
-      border-bottom:1px solid var(--line);
+      width:100%; max-height:220px; object-fit:cover; border-bottom:1px solid var(--line);
+      margin:0 auto;
+    }
+    .img-insc{
+      width:100%; max-height:220px; object-fit:cover; border-bottom:1px dashed var(--line);
+      margin:0 auto;
     }
 
     .body{
-      padding:18px;
-      text-align:center;
+      padding:16px;
+      text-align:center;              /* <- centraliza todo o conteúdo do corpo */
     }
-
-    .emoji{
-      font-size:46px; line-height:1; margin:6px 0 8px;
-    }
-
-    h1{
-      margin:0 0 6px;
-      font-size:clamp(18px, 5vw, 24px);
-      letter-spacing:.2px;
-    }
+    .emoji{ font-size:50px; line-height:1; margin:4px 0 8px; }
+    h1{ margin:0 0 8px; font-size:clamp(18px, 5vw, 26px); letter-spacing:.2px; }
     p{ margin:8px 0; color:var(--muted) }
 
     .pill{
-      display:inline-block;
-      margin:10px 0 2px;
-      padding:6px 12px; border-radius:999px;
-      background:rgba(79,124,255,.12);
-      color:var(--text); font-weight:700; font-size:.92rem;
-      outline:1px solid var(--line);
+      display:inline-block; margin:8px 0 10px; padding:8px 14px; border-radius:999px;
+      background:var(--chip-bg); color:var(--text); font-weight:800; font-size:.95rem; outline:1px solid var(--chip-br);
     }
 
+    /* ===== Datas destacadas (agora centralizadas e fluídas) ===== */
     .details{
       margin-top:12px;
       display:grid; gap:10px;
       grid-template-columns:1fr 1fr;
+      justify-items:center;           /* <- centraliza cada item no grid */
+      align-items:stretch;
+      text-align:center;              /* <- centraliza textos dentro dos itens */
     }
-    @media (max-width:520px){ .details{ grid-template-columns:1fr } }
+    @media (max-width:560px){ .details{ grid-template-columns:1fr } }
+
     .item{
-      background:rgba(255,255,255,.04);
-      border-radius:12px; padding:10px;
+      width:100%;
+      border-radius:14px; padding:12px;
       outline:1px solid var(--line);
-      text-align:center;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0));
     }
-    @media (prefers-color-scheme: light){
-      .item{ background:#f6f8fc }
+    @media (prefers-color-scheme: light){ .item{ background:#f6f8fc; } }
+
+    .item .label{
+      display:flex; justify-content:center; align-items:center; gap:8px;
+      font-size:.9rem; color:var(--muted); margin-bottom:6px; letter-spacing:.2px;
     }
-    .item small{ display:block; color:var(--muted); margin-bottom:4px; font-size:.9rem }
-    .item b{ font-size:1rem }
+    .item .label .dot{ width:10px; height:10px; border-radius:50%; background:var(--brand); opacity:.8 }
+
+    .item .date{
+      display:inline-flex; align-items:center; justify-content:center; gap:10px;
+      padding:10px 14px; border-radius:12px; font-weight:900;
+      outline:1px solid var(--chip-br);
+      background:linear-gradient(135deg, rgba(79,124,255,.18), rgba(79,124,255,.06));
+      font-size:clamp(18px, 6vw, 28px);
+      letter-spacing:.5px;
+      width:100%;
+      max-width:360px;                /* <- impede larguras estranhas */
+      margin:0 auto;
+    }
+
+    /* ===== Countdown (centralizado e sem overflow) ===== */
+    .countwrap{ margin-top:12px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+    .countwrap .legend{ font-size:.9rem; color:var(--muted); text-align:center; }
+
+    .countdown{
+      display:flex; gap:10px; padding:10px; border-radius:14px;
+      outline:1px solid var(--chip-br);
+      background:linear-gradient(135deg, rgba(34,197,94,.14), rgba(34,197,94,.06));
+      font-weight:800; flex-wrap:wrap; justify-content:center;
+      width:100%;
+      max-width:520px;                /* <- largura máxima controlada */
+      margin:0 auto;
+    }
+    .cd-box{
+      min-width:64px; border-radius:12px; padding:10px 12px; text-align:center;
+      background:rgba(255,255,255,.06); outline:1px solid var(--line);
+      flex:1 0 64px; max-width:110px;
+    }
+    @media (prefers-color-scheme: light){ .cd-box{ background:#fff; } }
+    .cd-box .num{ display:block; font-size:clamp(20px, 8vw, 32px); line-height:1; }
+    .cd-box .lbl{ display:block; margin-top:4px; font-size:.8rem; color:var(--muted); letter-spacing:.2px }
 
     .actions{
-      margin-top:14px; display:grid; gap:10px; grid-template-columns:1fr;
+      margin-top:14px;
+      display:grid; gap:10px; grid-template-columns:1fr;
+      justify-items:center;           /* <- centraliza botão */
     }
-    @media (min-width:520px){ .actions{ grid-template-columns:1fr 1fr } }
-
     .btn{
       appearance:none; border:0; cursor:pointer; text-decoration:none;
       display:inline-block; padding:12px 14px; border-radius:12px; font-weight:800; text-align:center;
-      background:#fff; color:#0e1320; outline:1px solid #e5e7eb;
-    }
-    .btn.primary{
-      background:linear-gradient(135deg, var(--brand), #3f5eea);
-      color:#fff; outline:none;
-    }
-    .btn.whats{
       background:linear-gradient(135deg, #25D366, #1ebc59); color:#fff; outline:none;
+      width:100%; max-width:360px;    /* <- largura do botão controlada e centralizada */
     }
 
     .foot{
-      padding:12px 14px; text-align:center; color:var(--muted); font-size:.9rem; border-top:1px solid var(--line);
+      padding:12px 14px;
+      text-align:center; color:var(--muted); font-size:.9rem;
+      border-top:1px solid var(--line);
+    }
+
+    /* Afinando em telas bem pequenas */
+    @media (max-width:380px){
+      .logo{ height:42px }
+      .banner,.img-insc{ max-height:170px }
+      .emoji{ font-size:44px }
+      .item .date{ padding:8px 12px }
     }
   </style>
 </head>
 <body>
+  {% now "U" as now_ts %}
+  {% with inicio_ts=evento.inicio_inscricoes|date:"U" fim_ts=evento.fim_inscricoes|date:"U" %}
   <div class="wrap">
-    <div class="card">
+    <div class="card" role="region" aria-label="Status das inscrições do evento">
       <div class="head">
         {% if politica and politica.logo %}
-          <img class="logo" src="{{ politica.logo.url }}" alt="Logo" />
+          <img class="logo" src="{{ politica.logo.url }}" alt="Logo da organização" loading="lazy" />
         {% endif %}
         {% if evento.banner %}
-          <img class="banner" src="{{ evento.banner.url }}" alt="Banner do evento {{ evento.nome }}">
+          <img class="banner" src="{{ evento.banner.url }}" alt="Banner do evento {{ evento.nome }}" loading="lazy">
         {% endif %}
+        <img
+          class="img-insc"
+          src="{% if politica and politica.imagem_insc %}{{ politica.imagem_insc.url }}{% else %}{% static 'img/inscricao_default.jpg' %}{% endif %}"
+          alt="Informações da inscrição"
+          loading="lazy">
       </div>
 
       <div class="body">
-        <div class="emoji">🚫</div>
-        <span class="pill">Inscrições Encerradas</span>
-        <h1>{{ evento.nome }}</h1>
+        {% if inicio_ts > now_ts %}
+          <div class="emoji" aria-hidden="true"></div>
+          <span class="pill" aria-live="polite">Inscrições não iniciadas</span>
+          <h1>{{ evento.nome }}</h1>
 
-        <div class="details" aria-label="Informações do evento">
-          <div class="item">
-            <small>Encerramento</small>
-            <b>{{ evento.fim_inscricoes|date:"d/m/Y" }}</b>
+          <div class="details" aria-label="Informações do evento">
+            <div class="item">
+              <div class="label"><span class="dot" aria-hidden="true"></span> Início das Inscrições</div>
+              <div class="date" aria-label="Início das inscrições">
+                {{ evento.inicio_inscricoes|date:"d/m/Y" }}
+              </div>
+            </div>
+            <div class="item">
+              <div class="label"><span class="dot" aria-hidden="true" style="background:var(--accent)"></span> Início do Evento</div>
+              <div class="date" aria-label="Início do evento">
+                {{ evento.data_inicio|date:"d/m/Y" }}
+              </div>
+            </div>
           </div>
-          <div class="item">
-            <small>Início do Evento</small>
-            <b>{{ evento.data_inicio|date:"d/m/Y" }}</b>
-          </div>
-        </div>
 
-        <p>As inscrições para este evento não estão mais disponíveis.</p>
-        <p>Fique de olho nos próximos encontros e atividades!</p>
+          <div class="countwrap" aria-live="polite">
+            <div class="legend">Tempo restante para abrir inscrições</div>
+            <div id="countdown" class="countdown" hidden>
+              <div class="cd-box"><span id="cd-d" class="num">0</span><span class="lbl">dias</span></div>
+              <div class="cd-box"><span id="cd-h" class="num">0</span><span class="lbl">horas</span></div>
+              <div class="cd-box"><span id="cd-m" class="num">0</span><span class="lbl">min</span></div>
+              <div class="cd-box"><span id="cd-s" class="num">0</span><span class="lbl">seg</span></div>
+            </div>
+          </div>
+
+          <p>As inscrições ainda não começaram. Volte a partir da data indicada acima.</p>
+        {% else %}
+          <div class="emoji" aria-hidden="true">🚫</div>
+          <span class="pill">Inscrições Encerradas</span>
+          <h1>{{ evento.nome }}</h1>
+
+          <div class="details" aria-label="Informações do evento">
+            <div class="item">
+              <div class="label"><span class="dot" aria-hidden="true"></span> Encerramento das Inscrições</div>
+              <div class="date" aria-label="Encerramento das inscrições">
+                {{ evento.fim_inscricoes|date:"d/m/Y" }}
+              </div>
+            </div>
+            <div class="item">
+              <div class="label"><span class="dot" aria-hidden="true" style="background:var(--accent)"></span> Início do Evento</div>
+              <div class="date" aria-label="Início do evento">
+                {{ evento.data_inicio|date:"d/m/Y" }}
+              </div>
+            </div>
+          </div>
+
+          <p>As inscrições para este evento não estão mais disponíveis.</p>
+          <p>Fique de olho nos próximos encontros e atividades!</p>
+        {% endif %}
+
+        <div class="actions">
           {% if evento.paroquia.telefone %}
-            <a class="btn whats" href="https://wa.me/{{ evento.paroquia.telefone|slice:'3:' }}" target="_blank" rel="noopener">Falar com a organização</a>
+            <a class="btn" href="https://wa.me/{{ evento.paroquia.telefone|slice:'3:' }}" target="_blank" rel="noopener">
+              Falar com a organização
+            </a>
           {% endif %}
         </div>
       </div>
@@ -162,5 +266,35 @@
       </div>
     </div>
   </div>
+  {% endwith %}
+
+  {% if evento.inicio_inscricoes|date:"U" > now_ts %}
+  <script>
+    (function(){
+      const target = new Date("{{ evento.inicio_inscricoes|date:'Y-m-d' }}T00:00:00").getTime();
+      const box = document.getElementById('countdown');
+      if(!box) return;
+      box.hidden = false;
+      const $ = id => document.getElementById(id);
+      const t = setInterval(() => {
+        const now = Date.now();
+        const dist = target - now;
+        if (dist <= 0){
+          clearInterval(t);
+          box.outerHTML = '<div class="pill" role="status">Inscrições liberadas</div>';
+          return;
+        }
+        const days = Math.floor(dist / (1000*60*60*24));
+        const hours = Math.floor((dist % (1000*60*60*24)) / (1000*60*60));
+        const mins = Math.floor((dist % (1000*60*60)) / (1000*60));
+        const secs = Math.floor((dist % (1000*60)) / 1000);
+        $('cd-d').textContent = days;
+        $('cd-h').textContent = hours;
+        $('cd-m').textContent = mins;
+        $('cd-s').textContent = secs;
+      }, 1000);
+    })();
+  </script>
+  {% endif %}
 </body>
 </html>

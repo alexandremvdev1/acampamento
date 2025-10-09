@@ -1082,6 +1082,11 @@ class PoliticaPrivacidade(models.Model):
         null=True, blank=True
     )
 
+    imagem_insc = CloudinaryField(
+        verbose_name="Imagem da Inscrição",
+        null=True, blank=True,
+        help_text="Imagem exibida nas telas de inscrição (opcional)."
+    )
 
     # Dados do dono do sistema...
     cpf_cnpj = models.CharField("CPF/CNPJ", max_length=18, blank=True, null=True)
@@ -1179,9 +1184,22 @@ class CrachaTemplate(models.Model):
 # ---------------------------------------------------------------------
 class MercadoPagoConfig(models.Model):
     paroquia = models.OneToOneField(Paroquia, on_delete=models.CASCADE, related_name="mp_config")
-    access_token = models.CharField("Access Token", max_length=255, help_text="Token de acesso gerado no painel do Mercado Pago")
-    public_key = models.CharField("Public Key", max_length=255, help_text="Public Key do Mercado Pago")
-    sandbox_mode = models.BooleanField("Sandbox", default=True, help_text="Use modo sandbox para testes")
+    access_token = models.CharField("Access Token", max_length=255)
+    public_key   = models.CharField("Public Key", max_length=255)
+    sandbox_mode = models.BooleanField("Sandbox", default=True)
+
+    # >>> NOVOS CAMPOS (taxas)
+    taxa_pix_percent      = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"),
+                           validators=[MinValueValidator(0), MaxValueValidator(100)],
+                           help_text="Percentual sobre o valor do PIX (ex.: 0.99 para 0,99%)")
+    taxa_pix_fixa         = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0.00"),
+                           help_text="Valor fixo por transação PIX")
+    taxa_credito_percent  = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"),
+                           validators=[MinValueValidator(0), MaxValueValidator(100)])
+    taxa_credito_fixa     = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0.00"))
+    taxa_debito_percent   = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"),
+                           validators=[MinValueValidator(0), MaxValueValidator(100)])
+    taxa_debito_fixa      = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0.00"))
 
     def __str__(self):
         return f"MP Config para {self.paroquia.nome}"
