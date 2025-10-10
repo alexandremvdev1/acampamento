@@ -2258,53 +2258,22 @@ def _mp_client_by_paroquia(paroquia):
 
 def _sincronizar_pagamento(mp_client, inscricao, payment_id):
     """
-    Busca o pagamento no MP, confere vínculo e sincroniza o OneToOne Pagamento.
-    - Usa external_reference OU, se faltar, metadata.inscricao_id.
-    - Mapeia corretamente payment_type_id -> metodo ('credito','debito','pix', etc.)
-    - Preenche fee_mp e net_received se existirem.
+    Busca o pagamento no MP, garante que o external_reference bate com a inscrição
+    e sincroniza o registro OneToOne Pagamento dessa inscrição.
     """
-    payment = mp_client.payment().get(str(payment_id))["response"] or {}
+    payment = mp_client.payment().get(payment_id)["response"]
 
-    # ----- Resolvem inscrição do pagamento -----
-    ext_ref = (payment.get("external_reference") or "")  # string
-    meta_insc = (payment.get("metadata") or {}).get("inscricao_id")
-    ref_ok = str(inscricao.id) if inscricao else None
+    # Segurança: confere vínculo
+    if str(payment.get("external_reference")) != str(inscricao.id):
+        raise ValueError("Pagamento não corresponde à inscrição.")
 
-    if ref_ok and ext_ref and str(ext_ref) != ref_ok:
-        raise ValueError(f"Pagamento {payment_id} não corresponde à inscrição.")
-
-    if not ref_ok:
-        # Se a função foi chamada sem inscrição (via webhook), localiza por ext_ref/metadata
-        alvo_id = ext_ref or meta_insc
-        if not alvo_id:
-            raise ValueError(f"Pagamento {payment_id} sem external_reference/metadata.inscricao_id.")
-        inscricao = Inscricao.objects.get(pk=int(alvo_id))
-
-    # ----- OneToOne Pagamento -----
+    # Atualiza sempre o mesmo registro (OneToOne)
     pagamento, _ = Pagamento.objects.get_or_create(inscricao=inscricao)
-
-    # Valor / datas
     pagamento.transacao_id = str(payment.get("id") or "")
-    pagamento.valor = Decimal(str(payment.get("transaction_amount") or 0) or "0")
+    pagamento.metodo = payment.get("payment_method_id", Pagamento.MetodoPagamento.PIX)
+    pagamento.valor = payment.get("transaction_amount", 0) or 0
 
-    # Método – usar *payment_type_id* para o tipo (credit_card/debit_card/pix/ticket/account_money)
-    ptype = (payment.get("payment_type_id") or "").lower()
-    if ptype == "credit_card":
-        metodo = Pagamento.MetodoPagamento.CREDITO
-    elif ptype == "debit_card":
-        metodo = Pagamento.MetodoPagamento.DEBITO
-    elif ptype == "pix":
-        metodo = Pagamento.MetodoPagamento.PIX
-    elif ptype == "ticket":
-        # se seu enum tiver 'boleto', use-o; senão, mantenha 'PIX' ou crie um novo
-        metodo = getattr(Pagamento.MetodoPagamento, "BOLETO", Pagamento.MetodoPagamento.PIX)
-    else:
-        # fallback (conta como 'dinheiro' ou 'pix' conforme seu enum)
-        metodo = getattr(Pagamento.MetodoPagamento, "DINHEIRO", Pagamento.MetodoPagamento.PIX)
-    pagamento.metodo = metodo
-
-    # Status
-    status = (payment.get("status") or "").lower()
+    status = payment.get("status")
     if status == "approved":
         pagamento.status = Pagamento.StatusPagamento.CONFIRMADO
         inscricao.pagamento_confirmado = True
@@ -2315,28 +2284,7 @@ def _sincronizar_pagamento(mp_client, inscricao, payment_id):
     else:
         pagamento.status = Pagamento.StatusPagamento.CANCELADO
 
-    # Datas
-    dt_apr = payment.get("date_approved")
-    pagamento.data_pagamento = parse_datetime(dt_apr) if dt_apr else None
-
-    # Taxas / líquido (se seu modelo tiver esses campos)
-    try:
-        td = payment.get("transaction_details") or {}
-        net = td.get("net_received_amount")
-        if net is not None and hasattr(pagamento, "net_received"):
-            pagamento.net_received = Decimal(str(net))
-        # tax fee somando fee_details (quando existir)
-        total_fee = Decimal("0")
-        for fd in (payment.get("fee_details") or []):
-            try:
-                total_fee += Decimal(str(fd.get("amount") or "0"))
-            except Exception:
-                pass
-        if hasattr(pagamento, "fee_mp"):
-            pagamento.fee_mp = total_fee
-    except Exception:
-        pass
-
+    pagamento.data_pagamento = parse_datetime(payment.get("date_approved")) if payment.get("date_approved") else None
     pagamento.save()
     return status
 
@@ -2513,27 +2461,26 @@ def mp_failure(request, inscricao_id):
 @csrf_exempt
 def mp_webhook(request):
     """
-    Aceita:
-      - Formato novo: body {"data":{"id":"..."},"type":"payment"}
-      - Formato antigo: querystring ?id=...&topic=payment e body {"resource":"...","topic":"payment"}
-      - topic=merchant_order: busca payments dentro da ordem
+    Produção: consulta pagamento na API do MP e sincroniza por external_reference.
+    DEBUG: se payload trouxer 'test': {'inscricao_id': ..., 'status': ...},
+           atualiza direto sem chamar o MP.
     """
     try:
-        # 0) DEBUG curto para testes locais
-        try:
-            payload = json.loads(request.body or "{}")
-        except Exception:
-            payload = {}
+        payload = json.loads(request.body or "{}")
 
+        # ------- ATALHO DE TESTE LOCAL (somente em DEBUG) -------
         if settings.DEBUG:
             test = payload.get("test")
             if isinstance(test, dict) and test.get("inscricao_id"):
                 inscricao = get_object_or_404(Inscricao, id=test["inscricao_id"])
                 status = (test.get("status") or "approved").lower()
+
+                # Atualiza/garante Pagamento OneToOne
                 pagamento, _ = Pagamento.objects.get_or_create(
                     inscricao=inscricao,
                     defaults={"valor": inscricao.evento.valor_inscricao}
                 )
+
                 if status in ("approved", "confirmado"):
                     pagamento.status = Pagamento.StatusPagamento.CONFIRMADO
                     inscricao.pagamento_confirmado = True
@@ -2543,89 +2490,44 @@ def mp_webhook(request):
                     pagamento.status = Pagamento.StatusPagamento.PENDENTE
                 else:
                     pagamento.status = Pagamento.StatusPagamento.CANCELADO
+
                 pagamento.transacao_id = str(payload.get("data", {}).get("id") or "TESTE_LOCAL")
                 pagamento.save()
                 logging.info("Webhook DEBUG aplicado para inscrição %s com status %s", inscricao.id, status)
                 return HttpResponse(status=200)
+        # --------------------------------------------------------
 
-        # 1) Extrai id/topic de TODOS os jeitos possíveis
-        qs_id   = request.GET.get("id") or request.GET.get("data.id")
-        qs_topic = (request.GET.get("topic") or "").lower()
-        body_id = (payload.get("data") or {}).get("id") or payload.get("id") or payload.get("resource")
-        body_topic = (payload.get("type") or payload.get("topic") or "").lower()
-
-        topic = body_topic or qs_topic or "payment"
-        raw_id = body_id or qs_id
-
-        if not raw_id:
-            logging.warning("Webhook sem payment_id: %r", payload or {"query": dict(request.GET)})
+        # Fluxo normal (produção): extrai payment_id e descobre external_reference
+        payment_id = (payload.get("data") or {}).get("id") or payload.get("id")
+        if not payment_id:
+            logging.warning("Webhook sem payment_id: %s", payload)
             return HttpResponse(status=200)
 
-        # 2) Primeiro cliente *qualquer* só para descobrir external_reference/inscricao
+        # 1ª consulta (qualquer token) só para descobrir external_reference
         cfg_any = MercadoPagoConfig.objects.first()
         if not cfg_any or not cfg_any.access_token:
             logging.error("Nenhuma configuração do MP encontrada.")
             return HttpResponse(status=200)
 
         mp_any = mercadopago.SDK(cfg_any.access_token.strip())
-
-        def _fetch_payment(pid):
-            return mp_any.payment().get(str(pid)).get("response", {}) or {}
-
-        payment_id = None
-        payment_obj = {}
-
-        if topic == "payment":
-            payment_id = str(raw_id)
-            payment_obj = _fetch_payment(payment_id)
-
-            # às vezes o MP dispara só merchant_order → pega de lá
-            if not payment_obj or not payment_obj.get("id"):
-                # tenta como merchant_order também
-                try:
-                    mo = mp_any.merchant_order().get(str(raw_id)).get("response", {}) or {}
-                    pagos = (mo.get("payments") or [])
-                    # pega o mais recente/maior id aprovado ou pendente
-                    if pagos:
-                        pagos.sort(key=lambda x: x.get("id", 0), reverse=True)
-                        payment_id = str(pagos[0].get("id"))
-                        payment_obj = _fetch_payment(payment_id)
-                except Exception:
-                    pass
-
-        elif topic == "merchant_order":
-            mo = mp_any.merchant_order().get(str(raw_id)).get("response", {}) or {}
-            pagos = (mo.get("payments") or [])
-            if pagos:
-                pagos.sort(key=lambda x: x.get("id", 0), reverse=True)
-                payment_id = str(pagos[0].get("id"))
-                payment_obj = _fetch_payment(payment_id)
-
-        if not payment_id:
-            logging.warning("Webhook não conseguiu resolver payment_id (topic=%s id=%s).", topic, raw_id)
-            return HttpResponse(status=200)
-
-        # 3) Descobre inscrição alvo
-        ext_ref = payment_obj.get("external_reference")
-        meta_insc = (payment_obj.get("metadata") or {}).get("inscricao_id")
-        alvo_id = ext_ref or meta_insc
-        if not alvo_id:
+        payment_tmp = mp_any.payment().get(payment_id).get("response", {})
+        inscricao_id = payment_tmp.get("external_reference")
+        if not inscricao_id:
             logging.error("Pagamento %s sem external_reference.", payment_id)
             return HttpResponse(status=200)
 
-        inscricao = get_object_or_404(Inscricao, id=int(alvo_id))
+        inscricao = get_object_or_404(Inscricao, id=inscricao_id)
 
-        # 4) Reconsulta com a credencial da paróquia correta e sincroniza
+        # Reconsulta com a credencial da paróquia correta e sincroniza
         mp = _mp_client_by_paroquia(inscricao.paroquia)
         _sincronizar_pagamento(mp, inscricao, payment_id)
 
-        logging.info("Webhook OK para payment %s (inscrição %s)", payment_id, inscricao.id)
+        logging.info("Webhook OK para pagamento %s (inscrição %s)", payment_id, inscricao_id)
         return HttpResponse(status=200)
 
     except Exception as e:
         logging.exception("Erro ao processar webhook MP: %s", e)
-        # Retornamos 200 para evitar reentregas infinitas, mas mantendo log
-        return HttpResponse(status=200)
+        return HttpResponse(status=200)  # evita reentrega infinita
 
 
 # ===== Página de contato (sem alterações lógicas) ===========================
