@@ -11,7 +11,7 @@ from .views import (
     LoginComImagemView,
     mp_config,
     buscar_participante_ajax,
-    iniciar_pagamento, relatorio_conferencia_pagamento
+    iniciar_pagamento, relatorio_conferencia_pagamento, gerar_repasse, repasse_qr
 )
 
 # ========= Conversor que aceita int OU UUID =========
@@ -290,6 +290,10 @@ urlpatterns = [
         views.grupo_mover_membro,
         name="grupo_mover_membro",
     ),
+
+    path("evento/<uuid:evento_id>/gerar-repasse/", views.gerar_repasse, name="gerar_repasse"),
+    path("evento/<uuid:evento_id>/gerar-repasse",  views.gerar_repasse),  # <- sem barra, evita 301 em POST
+    path("repasse/<int:repasse_id>/qr/", views.repasse_qr, name="repasse_qr"),
 
 ]
 
