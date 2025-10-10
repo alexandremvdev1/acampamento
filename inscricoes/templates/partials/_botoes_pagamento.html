@@ -1,0 +1,40 @@
+{# templates/partials/_botoes_pagamento.html  #}
+{# espera receber "inscricao" no include  #}
+
+<style>
+  /* Escopo bem pequeno só para este bloco */
+  .pay-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .pay-actions .btn{
+    flex:1 1 200px; justify-content:center;
+    padding:10px 12px; /* menor */
+    border-radius:10px; /* um pouco menor */
+  }
+  .pay-actions .btn .t{
+    display:block; font-weight:800; line-height:1.2;
+    font-size:14px;           /* título menor */
+  }
+  .pay-actions .btn .s{
+    display:block; margin-top:2px; line-height:1.2;
+    font-size:12px; opacity:.9;   /* subtítulo bem menor */
+  }
+
+  @media (max-width:576px){
+    .pay-actions .btn{flex:1 1 100%}
+  }
+</style>
+
+<div class="pay-actions" aria-label="Formas de pagamento">
+  <a class="btn btn-pay"
+     href="{% url 'inscricoes:iniciar_pagamento_pix' inscricao.id %}"
+     aria-label="Pagar com PIX">
+    <span class="t">💸 Pagar com PIX</span>
+    <span class="s">Confirmação rápida</span>
+  </a>
+
+  <a class="btn btn-card"
+     href="{% url 'inscricoes:aguardando_pagamento' inscricao.id %}"
+     aria-label="Pagar com cartão">
+    <span class="t">💳 Pagar com Cartão</span>
+    <span class="s">Crédito/Débito</span>
+  </a>
+</div>

@@ -100,7 +100,6 @@
     <main>
       <section class="card" aria-labelledby="busca-inscricoes">
         
-
         {% include "partials/flash_messages.html" %}
 
         <form method="post" role="search" novalidate id="frmCpf">
@@ -166,10 +165,8 @@
                   </div>
 
                   {% if ins.foi_selecionado and not ins.pagamento_confirmado %}
-                    <div class="pay-actions" aria-label="Formas de pagamento">
-                      <a class="btn btn-pay"  href="{% url 'inscricoes:iniciar_pagamento_pix' ins.id %}" aria-label="Pagar com PIX">Pagar com PIX</a>
-                      <a class="btn btn-card" href="{% url 'inscricoes:aguardando_pagamento' ins.id %}" aria-label="Pagar com cartão">Pagar com Cartão</a>
-                    </div>
+                    {# usa o mesmo bloco de botões do ver_inscricao #}
+                    {% include "partials/_botoes_pagamento.html" with inscricao=ins %}
                   {% endif %}
 
                   <div class="row" style="margin-top:8px">

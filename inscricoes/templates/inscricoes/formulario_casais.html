@@ -31,7 +31,6 @@
     header img { max-width: 100%; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     header h1 { font-size: 1.6rem; margin-bottom: 6px; color: #222; }
 
-    /* ====== Inputs menores e arredondados (sem mexer no Django) ====== */
     :root{
       --radius: .7rem;
       --inp-pad-y: .45rem;
@@ -58,14 +57,12 @@
       box-shadow: 0 0 0 .2rem rgba(59,130,246,.15);
     }
 
-    /* Forçar “sm” visual em tudo que for form-control/form-select Bootstrap */
     .form-control, .form-select {
       padding: var(--inp-pad-y) var(--inp-pad-x);
       font-size: var(--inp-fs);
       border-radius: var(--radius);
     }
 
-    /* Input group compacto e arredondado */
     .input-group-sm > .form-control, .input-group-sm > .form-select, .input-group-sm > .input-group-text {
       padding: var(--inp-pad-y) var(--inp-pad-x);
       font-size: var(--inp-fs);
@@ -108,13 +105,11 @@
 
     footer { text-align: center; font-size: 0.75rem; color: rgba(0,0,0,0.35); margin-top: 8px; }
 
-    /* preview da foto do casal */
     #preview-foto-casal{
       width: 90px; height: 90px; object-fit: cover; border-radius: 12px;
       border: 1px solid #e5e7eb; background: #f8fafc; display: none;
     }
 
-    /* Ícones dentro do input group mais “respirados” */
     .input-group-text i{ opacity:.8; }
   </style>
 </head>
@@ -141,6 +136,7 @@
     <fieldset>
       <legend>Cônjuge {{ etapa }}</legend>
 
+      <!-- IDENTIFICAÇÃO: Nome + CPF/E-mail/Telefone/Nascimento + Tema do acampamento -->
       <div class="row g-3">
         <div class="col-md-6">
           <label for="{{ form.nome.id_for_label }}">Nome completo</label>
@@ -152,15 +148,35 @@
         </div>
       </div>
 
-      <div class="row g-3">
+      <div class="row g-3 align-items-end" id="linha-identidade-2">
         <div class="col-md-6">
           <label for="{{ form.email.id_for_label }}">E-mail</label>
           {{ form.email }} <div class="text-danger">{{ form.email.errors }}</div>
         </div>
         <div class="col-md-6">
           <label for="{{ form.telefone.id_for_label }}">Telefone</label>
-          <!-- O campo é decorado via JS para ganhar ícone e input-group -->
           {{ form.telefone }} <div class="text-danger">{{ form.telefone.errors }}</div>
+        </div>
+
+        <!-- estes dois serão reposicionados via JS se os IDs já existirem no form -->
+        <div class="col-md-6" id="slot-data-nascimento">
+          {% if form.data_nascimento %}
+            <label for="{{ form.data_nascimento.id_for_label }}">Data de nascimento</label>
+            {{ form.data_nascimento }} <div class="text-danger">{{ form.data_nascimento.errors }}</div>
+          {% endif %}
+        </div>
+
+        <div class="col-md-6" id="slot-tema-acampamento">
+          <!-- Campo “Qual tema do acampamento que participou?” MOVIDO pra cá -->
+          <label for="id_tema_acampamento">Qual tema do acampamento que participou?</label>
+          <input
+            type="text"
+            id="id_tema_acampamento"
+            name="tema_acampamento"
+            class="form-control"
+            placeholder="Ex.: Acampamento de Jovens 2023"
+            value="{{ request.POST.tema_acampamento|default_if_none:'' }}"
+          >
         </div>
       </div>
 
@@ -203,20 +219,6 @@
       </fieldset>
       {% endif %}
 
-      <!-- Campo fixo: Qual tema do acampamento que participou? -->
-      <div class="mb-2">
-        <label for="id_tema_acampamento">Qual tema do acampamento que participou?</label>
-        <input
-          type="text"
-          id="id_tema_acampamento"
-          name="tema_acampamento"
-          class="form-control"
-          placeholder="Ex.: Sênior 2024 - 'Em Cristo somos um'"
-          value="{{ request.POST.tema_acampamento|default_if_none:'' }}"
-          required
-        >
-      </div>
-
       {% if etapa == 1 %}
       <div class="mb-2">
         <label for="id_qtd_filhos">Quantidade de filhos</label>
@@ -236,7 +238,6 @@
         <label>Nome</label>
         <input type="text" name="contato_emergencia_nome" class="form-control">
         <label>Telefone</label>
-        <!-- Ganha ícone via JS -->
         <input type="text" name="contato_emergencia_telefone" class="form-control">
       </fieldset>
 
@@ -245,7 +246,6 @@
         <label>Nome</label>
         <input type="text" name="responsavel_2_nome" class="form-control">
         <label>Telefone</label>
-        <!-- Ganha ícone via JS -->
         <input type="text" name="responsavel_2_telefone" class="form-control">
       </fieldset>
       {% endif %}
@@ -253,7 +253,7 @@
       <!-- ===== Demais campos do form de casais (exceto foto_casal) ===== -->
       {% for field in form_insc %}
         {% if field.name != "foto_casal" %}
-          <div class="mb-2">
+          <div class="mb-2 form-insc-field" data-field-name="{{ field.name }}">
             {{ field.label_tag }}
             {{ field }}
             {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
@@ -263,7 +263,7 @@
       {% endfor %}
 
       {% if etapa == 2 %}
-      <!-- ============== FOTO DO CASAL — SOMENTE NA ETAPA 2 (no fim) ============== -->
+      <!-- ============== FOTO DO CASAL — SOMENTE NA ETAPA 2 ============== -->
       <div id="foto-casal-final" class="mb-3">
         <label for="{{ form_insc.foto_casal.id_for_label }}">Foto do casal</label>
         <div class="d-flex align-items-center gap-3">
@@ -329,11 +329,11 @@
       $btn.prop("disabled", true).text("Enviando...");
     });
 
-    // ======= Tornar todos inputs/selects menores (+ classe) sem mudar widgets =======
+    // Tornar inputs/selects menores
     $('input, select, textarea').addClass('form-control form-control-sm rounded-3');
     $('select').removeClass('form-control').addClass('form-select');
 
-    // ================= Máscaras principais =================
+    // Máscaras
     if (window.Inputmask) {
       if ($("#id_cpf").length)       Inputmask("999.999.999-99").mask("#id_cpf");
       if ($("#id_telefone").length)  Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true }).mask("#id_telefone");
@@ -341,7 +341,7 @@
         Inputmask("99/99/9999", { placeholder: "DD/MM/AAAA", clearMaskOnLostFocus: false }).mask("#id_data_nascimento");
     }
 
-    // ================= Datepicker =================
+    // Datepicker
     if ($.fn.datepicker) {
       $('.date').datepicker({
         format: 'dd/mm/yyyy',
@@ -351,7 +351,7 @@
       });
     }
 
-    // ================= Modais =================
+    // Modais
     window.openModal = function(id) { $('#' + id).addClass('show'); };
     window.closeModal = function(id) { $('#' + id).removeClass('show'); };
     $(window).on('click', function(e) { if ($(e.target).hasClass('modal')) closeModal(e.target.id); });
@@ -359,30 +359,20 @@
       if (e.key === 'Escape') $('.modal.show').each(function(){ closeModal(this.id); });
     });
 
-    // ======== Helper: colocar ícone ao lado do telefone (sem alterar widget) ========
+    // Ícone nos telefones
     function decorateWithIcon($input, iconClass){
       if(!$input.length || $input.closest('.input-group').length) return;
-      const id = $input.attr('id');
-      const name = $input.attr('name');
-      const placeholder = $input.attr('placeholder') || '';
-      const $wrap = $(`
-        <div class="input-group input-group-sm">
-          <span class="input-group-text"><i class="${iconClass}"></i></span>
-        </div>
-      `);
-      $input.addClass('form-control').attr('placeholder', placeholder || '(00) 00000-0000');
+      const $wrap = $(
+        '<div class="input-group input-group-sm"><span class="input-group-text"><i class="'+iconClass+'"></i></span></div>'
+      );
+      $input.addClass('form-control');
       $input.after($wrap);
       $wrap.append($input);
     }
-
-    // Telefones principais
     decorateWithIcon($('#id_telefone'), 'fa-solid fa-phone');
-
-    // Telefones de contato (emergência e adicional)
     decorateWithIcon($("input[name='contato_emergencia_telefone']"), 'fa-solid fa-phone-volume');
     decorateWithIcon($("input[name='responsavel_2_telefone']"), 'fa-solid fa-user-plus');
 
-    // Reaplicar máscara nos contatos
     function maskTelefone($els){
       if (window.Inputmask) {
         Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true }).mask($els);
@@ -390,26 +380,44 @@
     }
     maskTelefone($("input[name='contato_emergencia_telefone'], input[name='responsavel_2_telefone']"));
 
-    // ================= Condicionais de saúde =================
+    // ======= REMOVER campos que você não quer exibir =======
+    // Se existirem no form_insc, escondemos/removemos:
+    const camposRemover = [
+      '#id_ja_e_campista',
+      '#id_nome_conjuge',
+      '#id_conjuge_inscrito'
+    ];
+    camposRemover.forEach(sel=>{
+      const $el = $(sel);
+      if($el.length){
+        const $blk = $el.closest('.form-insc-field, .mb-2, .form-group, div');
+        $blk.remove();
+      }
+    });
+
+    // ======= SAÚDE: protocolo aparece quando "medicamento_controlado" = "sim" =======
     function toggleCondicionais() {
       const is = (sel, val) => $(sel).val && $(sel).val() === val;
 
       if ($("#id_problema_saude").length)
-        $("#id_qual_problema_saude").closest("p,div,.mb-3").toggle(is("#id_problema_saude","sim"));
-      if ($("#id_medicamento_controlado").length)
-        $("#id_qual_medicamento_controlado").closest("p,div,.mb-3").toggle(is("#id_medicamento_controlado","sim"));
+        $("#id_qual_problema_saude").closest("p,div,.mb-3,.form-insc-field").toggle(is("#id_problema_saude","sim"));
+      if ($("#id_medicamento_controlado").length){
+        const show = is("#id_medicamento_controlado","sim");
+        $("#id_qual_medicamento_controlado").closest("p,div,.mb-3,.form-insc-field").toggle(show);
+        $("#id_protocolo_administracao").closest("p,div,.mb-3,.form-insc-field").toggle(show);
+      }
       if ($("#id_mobilidade_reduzida").length)
-        $("#id_qual_mobilidade_reduzida").closest("p,div,.mb-3").toggle(is("#id_mobilidade_reduzida","sim"));
+        $("#id_qual_mobilidade_reduzida").closest("p,div,.mb-3,.form-insc-field").toggle(is("#id_mobilidade_reduzida","sim"));
       if ($("#id_alergia_alimento").length)
-        $("#id_qual_alergia_alimento").closest("p,div,.mb-3").toggle(is("#id_alergia_alimento","sim"));
+        $("#id_qual_alergia_alimento").closest("p,div,.mb-3,.form-insc-field").toggle(is("#id_alergia_alimento","sim"));
       if ($("#id_alergia_medicamento").length)
-        $("#id_qual_alergia_medicamento").closest("p,div,.mb-3").toggle(is("#id_alergia_medicamento","sim"));
+        $("#id_qual_alergia_medicamento").closest("p,div,.mb-3,.form-insc-field").toggle(is("#id_alergia_medicamento","sim"));
     }
     $("#id_problema_saude, #id_medicamento_controlado, #id_mobilidade_reduzida, #id_alergia_alimento, #id_alergia_medicamento")
       .on("change", toggleCondicionais);
     toggleCondicionais();
 
-    // ================= Campos de filhos dinâmicos =================
+    // ======= Campos de filhos dinâmicos =======
     $("#id_qtd_filhos").on("change", function() {
       const qtd = parseInt($(this).val(), 10) || 0;
       const container = $("#filhos_campos");
@@ -422,7 +430,7 @@
             <div class="row g-2">
               <div class="col-md-6">
                 <label>Nome</label>
-                <input type="text" name="filho_${i}_nome" class="form-control">
+                <input type="text" name="filho_${i}_nome" class="form-control nome-like">
               </div>
               <div class="col-md-3">
                 <label>Idade</label>
@@ -438,52 +446,13 @@
         container.append(bloco);
       }
 
-      // Ícone + máscara nos telefones dos filhos
-      $(".telefone-filho").each(function(){
-        decorateWithIcon($(this), 'fa-solid fa-phone');
-      });
+      $(".telefone-filho").each(function(){ decorateWithIcon($(this), 'fa-solid fa-phone'); });
       maskTelefone($("#filhos_campos .telefone-filho"));
+      aplicarTitleCase(); // reanexa listeners aos novos inputs
     });
 
-    // ====== FOTO DO CASAL (somente etapa 2) — sem duplicar o campo ======
-    (function(){
-      const etapa = parseInt($("form[data-etapa]").attr("data-etapa") || "1", 10);
-      const $file = $("input[name='foto_casal']");
-      const $preview = $("#preview-foto-casal");
-
-      if (!$file.length) return;         // nada a fazer na etapa 1
-      $file.attr("accept","image/*");
-      if (etapa === 2) $file.prop("required", true);
-
-      $file.on("change", function(){
-        const f = this.files && this.files[0];
-        if (!f) { $preview.hide(); return; }
-        if (!f.type.startsWith("image/")) { this.value=""; $preview.hide(); return; }
-        const reader = new FileReader();
-        reader.onload = e => { $preview.attr("src", e.target.result).show(); };
-        reader.readAsDataURL(f);
-      });
-    })();
-
-  });
-</script>
-
-<!-- =================== CEP → auto-preencher (ViaCEP com debounce) =================== -->
-<script>
-  $(function () {
-    function maskTelefone($els) {
-      if (window.Inputmask) {
-        Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true }).mask($els);
-      }
-    }
-    maskTelefone($("input[name='contato_emergencia_telefone'], input[name='responsavel_2_telefone']"));
-
+    // ======= CEP / ViaCEP =======
     if (window.Inputmask && $("#id_cep").length) Inputmask("99999-999").mask("#id_cep");
-
-    function limpaEndereco() {
-      $("#id_endereco, #id_bairro, #id_cidade, #id_estado").val("");
-    }
-
     async function preencherEnderecoPorCEP(cep) {
       const cepNum = (cep || "").replace(/\D/g, "");
       if (cepNum.length !== 8) { limpaEndereco(); return; }
@@ -501,13 +470,14 @@
         limpaEndereco();
       }
     }
-
+    function limpaEndereco() {
+      $("#id_endereco, #id_bairro, #id_cidade, #id_estado").val("");
+    }
     let cepTimer = null;
     function debounceCEP(handler) {
       clearTimeout(cepTimer);
       cepTimer = setTimeout(handler, 300);
     }
-
     $("#id_cep")
       .on("blur", function () { preencherEnderecoPorCEP(this.value); })
       .on("keyup", function () {
@@ -517,20 +487,81 @@
           if (digits.length === 8) preencherEnderecoPorCEP(val);
         });
       });
-
     const cepInicial = $("#id_cep").val && $("#id_cep").val();
     if (cepInicial && cepInicial.replace(/\D/g, "").length === 8) {
       preencherEnderecoPorCEP(cepInicial);
     }
+
+    // ======= TITLE CASE + impedir tudo MAIÚSCULO =======
+    const excecoes = new Set(["da","de","do","das","dos","e","a","o","as","os","di","du"]);
+    function toTitleCasePTBR(s){
+      s = (s||"").toLowerCase().replace(/\s+/g," ").trim();
+      return s.split(" ").map((w,i)=>{
+        if(i>0 && excecoes.has(w)) return w;
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      }).join(" ");
+    }
+    function normalizaNome(el){
+      const v = el.value || "";
+      if(!v) return;
+      const allCaps = v.length >= 3 && v === v.toUpperCase();
+      // se veio tudo maiúsculo, derrubo para minúsculo antes do title
+      const base = allCaps ? v.toLowerCase() : v;
+      const novo = toTitleCasePTBR(base);
+      if(novo !== v) el.value = novo;
+    }
+    function aplicarTitleCase(){
+      const seletores = [
+        "#id_nome",                                 // cônjuge
+        "input[name='contato_emergencia_nome']",
+        "input[name='responsavel_2_nome']",
+        "[name^='filho_'][name$='_nome']"           // nomes dos filhos
+      ];
+      $(seletores.join(",")).off(".tc").on("input.tc blur.tc", function(){
+        normalizaNome(this);
+      });
+    }
+    aplicarTitleCase();
+
+    // Também protege colar texto TODO CAPS:
+    $(document).on("paste", "#id_nome, input[name='contato_emergencia_nome'], input[name='responsavel_2_nome'], [name^='filho_'][name$='_nome']",
+      function(e){
+        e.preventDefault();
+        const text = (e.originalEvent || e).clipboardData.getData('text/plain') || "";
+        const norm = toTitleCasePTBR(text);
+        document.execCommand('insertText', false, norm);
+      }
+    );
+
+    // ====== FOTO DO CASAL (somente etapa 2) ======
+    (function(){
+      const etapa = parseInt($("form[data-etapa]").attr("data-etapa") || "1", 10);
+      const $file = $("input[name='foto_casal']");
+      const $preview = $("#preview-foto-casal");
+
+      if (!$file.length) return;
+      $file.attr("accept","image/*");
+      if (etapa === 2) $file.prop("required", true);
+
+      $file.on("change", function(){
+        const f = this.files && this.files[0];
+        if (!f) { $preview.hide(); return; }
+        if (!f.type.startsWith("image/")) { this.value=""; $preview.hide(); return; }
+        const reader = new FileReader();
+        reader.onload = e => { $preview.attr("src", e.target.result).show(); };
+        reader.readAsDataURL(f);
+      });
+    })();
   });
 </script>
 
-<!-- =================== Organização do bloco de saúde =================== -->
+<!-- =================== Organização do bloco de saúde (opcional) =================== -->
 <script>
   $(function () {
     const $form = $("form[data-etapa]");
     if (!$form.length) return;
 
+    // (mantido como antes; se preferir remover esse bloco, pode)
     if (!$("#fieldset-saude").length) {
       $form.append(`
         <fieldset id="fieldset-saude" class="mt-3">
@@ -556,7 +587,7 @@
     function moveToSaude(id){
       const $el = $("#"+id);
       if (!$el.length || $el.closest("#bloco-saude").length) return;
-      let $block = $el.closest(".col-md-6, .mb-3, .form-group, p, .form-check, div").first();
+      let $block = $el.closest(".col-md-6, .mb-2, .form-group, p, .form-check, div").first();
       if (!$block.length) { $block = $("<div class='col-md-6 mb-2'></div>").append($el); }
       if (!$block.hasClass("col-md-6")) $block.addClass("col-md-6");
       $block.appendTo($destSaude);
@@ -571,6 +602,7 @@
       };
       showIf("#id_problema_saude","sim","#id_qual_problema_saude");
       showIf("#id_medicamento_controlado","sim","#id_qual_medicamento_controlado");
+      showIf("#id_medicamento_controlado","sim","#id_protocolo_administracao"); // protocolo só quando SIM
       showIf("#id_mobilidade_reduzida","sim","#id_qual_mobilidade_reduzida");
       showIf("#id_alergia_alimento","sim","#id_qual_alergia_alimento");
       showIf("#id_alergia_medicamento","sim","#id_qual_alergia_medicamento");
