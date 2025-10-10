@@ -73,6 +73,15 @@ class Paroquia(models.Model):
         default='ativa',
         blank=True,   # opcional no formulário; o default cobre no banco
     )
+
+    repasse_percentual = models.DecimalField(
+        "Percentual de Repasse ao Dono (%)",
+        max_digits=5, decimal_places=2,
+        default=Decimal("2.00"),
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Percentual aplicado por padrão sobre o líquido arrecadado."
+    )
+    
     logo = CloudinaryField(null=True, blank=True, verbose_name="Logo da Paróquia")
 
     def __str__(self):
@@ -1307,13 +1316,23 @@ class PoliticaReembolso(models.Model):
         super().save(*args, **kwargs)
 
 
+# models.py
 class MercadoPagoOwnerConfig(models.Model):
     """
     Credenciais do Mercado Pago do DONO do sistema.
     Usado EXCLUSIVAMENTE para gerar PIX de repasse.
     """
     nome_exibicao = models.CharField(max_length=100, default="Admin do Sistema")
-    access_token = models.CharField(max_length=255)  # PROD access token do dono
+
+    # >>> suas credenciais MP
+    access_token = models.CharField("Access Token", max_length=255)
+    public_key   = models.CharField("Public Key", max_length=255, blank=True, null=True)
+
+    # >>> dados da CHAVE PIX e identificação do recebedor
+    chave_pix       = models.CharField("Chave PIX do dono", max_length=140)  # e-mail, CPF/CNPJ, telefone ou aleatória
+    nome_recebedor  = models.CharField("Nome (recebedor PIX)", max_length=25)  # limite Pix/EMV recomenda <=25
+    cidade_recebedor= models.CharField("Cidade (recebedor PIX)", max_length=15, default="SAO PAULO")  # recomenda <=15
+
     notificacao_webhook_url = models.URLField(blank=True, null=True, help_text="Opcional: URL pública do webhook de repasses")
     email_cobranca = models.EmailField(blank=True, null=True, help_text="E-mail que aparecerá como pagador padrão")
     ativo = models.BooleanField(default=True)
@@ -1324,6 +1343,7 @@ class MercadoPagoOwnerConfig(models.Model):
 
     def __str__(self):
         return f"MP Dono ({'ativo' if self.ativo else 'inativo'})"
+
 
 
 class Repasse(models.Model):

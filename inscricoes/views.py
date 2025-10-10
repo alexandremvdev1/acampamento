@@ -3,6 +3,8 @@ import os
 import csv
 import json
 import logging
+import io
+import base64
 from collections import OrderedDict
 from uuid import UUID
 from uuid import uuid4, UUID
@@ -21,6 +23,7 @@ from django.core.exceptions import FieldError
 from .forms import FormBasicoPagamentoPublico
 from .models import Inscricao, InscricaoStatus
 from django.conf import settings
+from .services.mercadopago_owner import MercadoPagoOwnerService
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -1886,42 +1889,78 @@ def _calc_taxa_liquido(pagamento, mp_cfg):
         liquido = Decimal("0.00")
     return taxa, liquido
 
+def _to_decimal_or_none(s: str | None) -> Decimal | None:
+    if not s:
+        return None
+    try:
+        return Decimal(s.replace(",", "."))
+    except Exception:
+        return None
+
 def relatorio_financeiro(request, evento_id):
+    """
+    Relatório financeiro do evento com visão Bruto/Líquido/Taxas e Repasse.
+    - Repasse via querystring (?repasse=XX.YY) só é aceito para admin_geral.
+    - Repasse padrão: evento.repasse_percentual_override -> paroquia.repasse_percentual -> 0
+    """
     evento = get_object_or_404(EventoAcampamento, pk=evento_id)
 
-    # 1) Pagamentos confirmados
-    pagos = (Pagamento.objects
-             .select_related("inscricao__evento__paroquia")
-             .filter(inscricao__evento=evento,
-                     status=Pagamento.StatusPagamento.CONFIRMADO)
-             .order_by("inscricao_id"))
+    # --- 0) Flags de permissão ---
+    is_admin_geral = bool(
+        getattr(request.user, "is_authenticated", False)
+        and getattr(request.user, "tipo_usuario", "") == "admin_geral"
+    )
+    is_admin_paroquia = bool(
+        getattr(request.user, "is_authenticated", False)
+        and getattr(request.user, "tipo_usuario", "") == "admin_paroquia"
+        and getattr(request.user, "paroquia_id", None) == evento.paroquia_id
+    )
 
-    # 2) Deduplicação (casais / inscrição vinculada):
-    #    conta apenas UM pagamento por par.
+    # --- 1) Percentual de repasse (prioridade + trava de permissão) ---
+    repasse_qs = _to_decimal_or_none(request.GET.get("repasse"))
+    if is_admin_geral and repasse_qs is not None:
+        repasse_percentual = repasse_qs
+    elif getattr(evento, "repasse_percentual_override", None) is not None:
+        repasse_percentual = Decimal(evento.repasse_percentual_override or 0)
+    else:
+        repasse_percentual = Decimal(getattr(evento.paroquia, "repasse_percentual", 0) or 0)
+    repasse_percentual = _q2(repasse_percentual)
+
+    # --- 2) Pagamentos confirmados ---
+    pagos = (
+        Pagamento.objects
+        .select_related("inscricao__evento__paroquia", "inscricao__paroquia")
+        .filter(
+            inscricao__evento=evento,
+            status=Pagamento.StatusPagamento.CONFIRMADO
+        )
+        .order_by("inscricao_id")
+    )
+
+    # --- 3) Deduplicação (casais/pagamento): conta 1 por par ---
     dedup = []
     vistos = set()
     tipo_lower = (evento.tipo or "").lower()
-    dedup_por_par = tipo_lower in {"casais", "pagamento"}  # ajuste aqui se quiser outra regra
+    dedup_por_par = tipo_lower in {"casais", "pagamento"}  # ajuste conforme sua regra
 
     for p in pagos:
         ins = p.inscricao
         if dedup_por_par:
             par_id = getattr(ins, "inscricao_pareada_id", None) or getattr(ins, "pareada_por_id", None)
             if par_id:
-                raiz = min(ins.id, par_id)  # mesmo id para o par
+                raiz = min(ins.id, par_id)
                 if raiz in vistos:
                     continue
                 vistos.add(raiz)
         dedup.append(p)
 
-    # 3) KPIs por método (bruto / líquido) + totais
+    # --- 4) KPIs por método (bruto / líquido) + totais ---
     mp_cfg = getattr(evento.paroquia, "mp_config", None)
-
     totals = {
-        "pix":      {"bruto": Decimal("0"), "liq": Decimal("0")},
-        "credito":  {"bruto": Decimal("0"), "liq": Decimal("0")},
-        "debito":   {"bruto": Decimal("0"), "liq": Decimal("0")},
-        "dinheiro": {"bruto": Decimal("0"), "liq": Decimal("0")},
+        "pix":      {"bruto": Decimal("0.00"), "liq": Decimal("0.00")},
+        "credito":  {"bruto": Decimal("0.00"), "liq": Decimal("0.00")},
+        "debito":   {"bruto": Decimal("0.00"), "liq": Decimal("0.00")},
+        "dinheiro": {"bruto": Decimal("0.00"), "liq": Decimal("0.00")},
     }
 
     for p in dedup:
@@ -1929,7 +1968,7 @@ def relatorio_financeiro(request, evento_id):
         if metodo not in totals:
             metodo = "dinheiro"  # fallback
         bruto = _q2(p.valor)
-        taxa, liquido = _calc_taxa_liquido(p, mp_cfg)
+        _taxa, liquido = _calc_taxa_liquido(p, mp_cfg)
         totals[metodo]["bruto"] += bruto
         totals[metodo]["liq"]   += liquido
 
@@ -1943,21 +1982,17 @@ def relatorio_financeiro(request, evento_id):
     total_debito_liq   = _q2(totals["debito"]["liq"])
     total_dinheiro_liq = _q2(totals["dinheiro"]["liq"])
 
-    total_arrecadado_bruto = _q2(
-        total_pix_bruto + total_credito_bruto + total_debito_bruto + total_dinheiro_bruto
-    )
-    total_arrecadado_liq = _q2(
-        total_pix_liq + total_credito_liq + total_debito_liq + total_dinheiro_liq
-    )
-    total_taxas = _q2(total_arrecadado_bruto - total_arrecadado_liq)
+    total_arrecadado_bruto = _q2(total_pix_bruto + total_credito_bruto + total_debito_bruto + total_dinheiro_bruto)
+    total_arrecadado_liq   = _q2(total_pix_liq + total_credito_liq + total_debito_liq + total_dinheiro_liq)
+    total_taxas            = _q2(total_arrecadado_bruto - total_arrecadado_liq)
 
-    # 4) Total esperado — conta 1 unidade por casal quando for casais/pagamento
+    # --- 5) Total esperado (conta 1 por casal quando for casais/pagamento) ---
     inscricoes = Inscricao.objects.filter(evento=evento).only("id", "inscricao_pareada")
     if dedup_por_par:
         unidades = 0
         for i in inscricoes:
             par_id = getattr(i, "inscricao_pareada_id", None) or getattr(i, "pareada_por_id", None)
-            if not par_id or i.id < par_id:  # só um dos dois da dupla conta
+            if not par_id or i.id < par_id:  # só um da dupla conta
                 unidades += 1
     else:
         unidades = inscricoes.count()
@@ -1966,10 +2001,30 @@ def relatorio_financeiro(request, evento_id):
     total_pendente_bruto = _q2(max(Decimal("0.00"), total_esperado - total_arrecadado_bruto))
     total_pendente_liq   = _q2(max(Decimal("0.00"), total_esperado - total_arrecadado_liq))
 
+    # --- 6) REPASSE — previsto (sobre o LÍQUIDO) e consolidação de pendentes/pagos ---
+    repasse_previsto_val = _q2(total_arrecadado_liq * (repasse_percentual / Decimal("100")))
+
+    repasses_pendentes = Repasse.objects.filter(
+        paroquia=evento.paroquia, evento=evento, status=Repasse.Status.PENDENTE
+    ).order_by("-criado_em")
+    repasses_pagos = Repasse.objects.filter(
+        paroquia=evento.paroquia, evento=evento, status=Repasse.Status.PAGO
+    ).order_by("-atualizado_em")
+
+    pend_base = _q2(repasses_pendentes.aggregate(s=Sum("valor_base"))["s"] or Decimal("0.00"))
+    pend_val  = _q2(repasses_pendentes.aggregate(s=Sum("valor_repasse"))["s"] or Decimal("0.00"))
+    pago_base = _q2(repasses_pagos.aggregate(s=Sum("valor_base"))["s"] or Decimal("0.00"))
+    pago_val  = _q2(repasses_pagos.aggregate(s=Sum("valor_repasse"))["s"] or Decimal("0.00"))
+
+    # Visões úteis p/ a paróquia
+    liquido_pos_repasse_previsto = _q2(total_arrecadado_liq - repasse_previsto_val)
+    liquido_pos_repasse_pendente = _q2(total_arrecadado_liq - pend_val)
+    liquido_pos_repasse_pago     = _q2(total_arrecadado_liq - pago_val)
+
     context = {
         "evento": evento,
 
-        # já usados no template antigo (bruto)
+        # bruto (compatibilidade com template)
         "total_arrecadado": total_arrecadado_bruto,
         "total_esperado":   total_esperado,
         "total_pendente":   total_pendente_bruto,
@@ -1978,10 +2033,10 @@ def relatorio_financeiro(request, evento_id):
         "total_debito":     total_debito_bruto,
         "total_dinheiro":   total_dinheiro_bruto,
 
-        # pagos que aparecem na tabela (já deduplicados)
+        # tabela (deduplicada)
         "pagamentos_confirmados": dedup,
 
-        # NOVOS (líquido e taxas)
+        # líquido e taxas
         "total_liquido":          total_arrecadado_liq,
         "total_taxas":            total_taxas,
         "total_pendente_liquido": total_pendente_liq,
@@ -1989,6 +2044,27 @@ def relatorio_financeiro(request, evento_id):
         "total_credito_liquido":  total_credito_liq,
         "total_debito_liquido":   total_debito_liq,
         "total_dinheiro_liquido": total_dinheiro_liq,
+
+        # repasse
+        "repasse_percentual_usado": repasse_percentual,
+        "repasse_previsto":         repasse_previsto_val,
+
+        "repasses_pendentes": repasses_pendentes,
+        "repasses_pagos":     repasses_pagos,
+
+        "repasses_pendentes_base_total": pend_base,
+        "repasses_pendentes_valor_total": pend_val,
+        "repasses_pagos_base_total":      pago_base,
+        "repasses_pagos_valor_total":     pago_val,
+
+        "liquido_pos_repasse_previsto":  liquido_pos_repasse_previsto,
+        "liquido_pos_repasse_pendente":  liquido_pos_repasse_pendente,
+        "liquido_pos_repasse_pago":      liquido_pos_repasse_pago,
+
+        # extras p/ template (habilita botão Gerar/Ver QR para admin da paróquia)
+        "is_admin_geral": is_admin_geral,
+        "is_admin_paroquia": is_admin_paroquia,
+        "current_year": timezone.localdate().year,
     }
     return render(request, "inscricoes/relatorio_financeiro.html", context)
 
@@ -6656,3 +6732,180 @@ def grupos_evento_relatorio_print(request, evento_id):
     }
     return render(request, "inscricoes/grupos_evento_relatorio_print.html", context)
 
+def _is_admin_geral(user) -> bool:
+    return bool(getattr(user, "is_authenticated", False) and getattr(user, "tipo_usuario", "") == "admin_geral")
+
+Q2 = Decimal("0.01")
+def _q2(v) -> Decimal:
+    """Arredonda com 2 casas, aceitando str/Decimal/float."""
+    if v is None:
+        return Decimal("0.00")
+    if not isinstance(v, Decimal):
+        v = Decimal(str(v))
+    return v.quantize(Q2, rounding=ROUND_HALF_UP)
+
+def _is_admin_geral(user) -> bool:
+    return getattr(user, "tipo_usuario", "") == "admin_geral"
+
+def _is_admin_paroquia_do_repasse(user, rep: Repasse) -> bool:
+    return getattr(user, "tipo_usuario", "") == "admin_paroquia" and getattr(user, "paroquia_id", None) == rep.paroquia_id
+
+
+def _is_admin_geral(user) -> bool:
+    return getattr(user, "is_authenticated", False) and getattr(user, "tipo_usuario", "") == "admin_geral"
+
+def _is_admin_paroquia_of(user, paroquia) -> bool:
+    return (
+        getattr(user, "is_authenticated", False)
+        and getattr(user, "tipo_usuario", "") == "admin_paroquia"
+        and getattr(user, "paroquia_id", None) == getattr(paroquia, "id", None)
+    )
+
+# ---------- helper de quantização ----------
+def _q2(x) -> Decimal:
+    """Converte para Decimal(2 casas) de forma tolerante (str/float/Decimal)."""
+    d = Decimal(str(x)).quantize(Decimal("0.01"))
+    return d
+
+@require_POST
+def gerar_repasse(request, evento_id):
+    if not _is_admin_geral(request.user):
+        return HttpResponseForbidden("Apenas Admin Geral.")
+
+    evento = get_object_or_404(EventoAcampamento, pk=evento_id)
+
+    owner_cfg = MercadoPagoOwnerConfig.objects.filter(ativo=True).first()
+    if not owner_cfg:
+        messages.error(request, "Configuração do Mercado Pago (dono) não encontrada/ativa.")
+        return redirect("inscricoes:relatorio_financeiro", evento_id=evento.id)
+
+    # Entradas do form
+    try:
+        base = _q2(request.POST.get("repasse_base") or "0")
+        taxa_percentual = _q2(request.POST.get("repasse_percentual") or "0")
+        override = _q2(request.POST.get("repasse_valor_override") or "0")
+        if base <= 0 or taxa_percentual < 0 or taxa_percentual > 100:
+            raise InvalidOperation
+    except Exception:
+        messages.error(request, "Valores inválidos para base ou percentual.")
+        return redirect("inscricoes:relatorio_financeiro", evento_id=evento.id)
+
+    # Cálculo do repasse: usa override (>0) se veio do form; senão calcula
+    valor_calc = _q2(base * (taxa_percentual / Decimal("100")))
+    valor_repasse = override if override > 0 else valor_calc
+    if valor_repasse <= 0:
+        messages.error(request, "Valor de repasse deve ser maior que zero.")
+        return redirect("inscricoes:relatorio_financeiro", evento_id=evento.id)
+
+    # Garante não haver PENDENTE duplicado (constraint + lock)
+    try:
+        with transaction.atomic():
+            existe_pendente = Repasse.objects.select_for_update().filter(
+                paroquia=evento.paroquia,
+                evento=evento,
+                status=Repasse.Status.PENDENTE,
+            ).exists()
+            if existe_pendente:
+                messages.warning(request, "Já existe um repasse PENDENTE para este evento/paróquia.")
+                return redirect("inscricoes:relatorio_financeiro", evento_id=evento.id)
+
+            # Gera cobrança PIX na CONTA DO DONO (mock seguro por enquanto)
+            svc = MercadoPagoOwnerService(
+                access_token=owner_cfg.access_token,
+                notif_url=owner_cfg.notificacao_webhook_url,  # campo do seu model
+            )
+            pix = svc.create_pix_charge(
+                descricao=f"Repasse {evento.nome} ({taxa_percentual}%)",
+                valor_decimal=valor_repasse,
+            )
+
+            rep = Repasse.objects.create(
+                paroquia=evento.paroquia,
+                evento=evento,
+                valor_base=_q2(base),
+                taxa_percentual=_q2(taxa_percentual),
+                valor_repasse=_q2(valor_repasse),
+                status=Repasse.Status.PENDENTE,
+                transacao_id=getattr(pix, "id", None),
+                qr_code_text=getattr(pix, "qr_code_text", None),
+                qr_code_base64=getattr(pix, "qr_code_base64", None),
+            )
+
+    except IntegrityError:
+        messages.error(request, "Não foi possível criar: já existe um repasse pendente para este evento/paróquia.")
+        return redirect("inscricoes:relatorio_financeiro", evento_id=evento.id)
+    except Exception as e:
+        messages.error(request, f"Falha ao gerar PIX do repasse: {e}")
+        return redirect("inscricoes:relatorio_financeiro", evento_id=evento.id)
+
+    messages.success(request, "Repasse gerado com sucesso. Exiba o QR para a paróquia realizar o pagamento.")
+    return redirect("inscricoes:relatorio_financeiro", evento_id=evento.id)
+
+
+@require_GET
+def repasse_qr(request, repasse_id):
+    rep = get_object_or_404(Repasse, pk=repasse_id)
+
+    # Admin Geral OU Admin da MESMA paróquia
+    if not (_is_admin_geral(request.user) or _is_admin_paroquia_of(request.user, rep.paroquia)):
+        return HttpResponseForbidden("Apenas Admin Geral ou Admin da Paróquia.")
+
+    if rep.status != Repasse.Status.PENDENTE:
+        raise Http404("Repasse não está pendente.")
+
+    # 1) Se já temos imagem base64, só renderiza.
+    if rep.qr_code_base64:
+        return render(request, "inscricoes/repasse_qr_modal.html", {"repasse": rep, "qr_warning": None})
+
+    # 2) Se temos "texto", precisamos garantir que é o payload EMV.
+    txt = (rep.qr_code_text or "").strip()
+    qr_warning = None
+
+    if not txt:
+        qr_warning = "Provedor não retornou o payload do QR (qr_code_text vazio)."
+    else:
+        # Caso comum de erro: colocam a IMAGEM base64 em qr_code_text
+        if txt.startswith("data:image/"):
+            # extrai o puro base64
+            try:
+                b64 = txt.split(",", 1)[1]
+                # valida base64
+                base64.b64decode(b64, validate=True)
+                rep.qr_code_base64 = b64
+                rep.save(update_fields=["qr_code_base64"])
+                return render(request, "inscricoes/repasse_qr_modal.html", {"repasse": rep, "qr_warning": None})
+            except Exception:
+                qr_warning = "Conteúdo em qr_code_text parece uma imagem base64 inválida."
+
+        # Remove espaços e quebras (alguns gateways mandam com \n)
+        txt_clean = re.sub(r"\s+", "", txt)
+
+        # Validação leve de EMV PIX: começa 000201 e contém CRC tag 63
+        looks_like_emv = txt_clean.startswith("000201") and "6304" in txt_clean
+        if not looks_like_emv:
+            qr_warning = (
+                "O texto recebido não parece um payload EMV do PIX. "
+                "Verifique se está usando o campo correto do provedor."
+            )
+        else:
+            # 3) Gerar PNG a partir do payload EMV
+            if not qrcode:
+                qr_warning = (
+                    "Biblioteca 'qrcode' não instalada. Execute: pip install 'qrcode[pil]' "
+                    "ou use o copia-e-cola abaixo."
+                )
+            else:
+                try:
+                    buf = io.BytesIO()
+                    qrcode.make(txt_clean).save(buf, format="PNG")
+                    rep.qr_code_base64 = base64.b64encode(buf.getvalue()).decode("ascii")
+                    # IMPORTANTE: salve o texto saneado também
+                    if txt_clean != rep.qr_code_text:
+                        rep.qr_code_text = txt_clean
+                        rep.save(update_fields=["qr_code_base64", "qr_code_text"])
+                    else:
+                        rep.save(update_fields=["qr_code_base64"])
+                except Exception as e:
+                    qr_warning = f"Falha ao gerar a imagem do QR: {e}"
+
+    return render(request, "inscricoes/repasse_qr_modal.html", {"repasse": rep, "qr_warning": qr_warning})

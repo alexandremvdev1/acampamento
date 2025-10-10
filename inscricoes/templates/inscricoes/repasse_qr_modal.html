@@ -1,0 +1,39 @@
+<div class="modal-header">
+  <h5 class="modal-title">PIX do Repasse</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+</div>
+
+<div class="modal-body">
+  {% if qr_warning %}
+    <div class="alert alert-warning small">{{ qr_warning }}</div>
+  {% endif %}
+
+  {% if repasse.qr_code_base64 %}
+    <div class="text-center mb-3">
+      <img src="data:image/png;base64,{{ repasse.qr_code_base64 }}" alt="QR PIX" style="max-width:280px;width:100%;height:auto;border:1px solid #eee;border-radius:.5rem;padding:.5rem;background:#fff;" />
+    </div>
+  {% endif %}
+
+  {% if repasse.qr_code_text %}
+    <label class="form-label small text-muted">Copia e cola (PIX)</label>
+    <div class="input-group">
+      <textarea id="pixCopy" class="form-control" rows="3" readonly>{{ repasse.qr_code_text }}</textarea>
+      <button class="btn btn-outline-secondary" type="button" onclick="copyPix()">Copiar</button>
+    </div>
+    <small class="text-muted">Se o QR não ler, cole esse código no app do banco em “Pix Copia e Cola”.</small>
+  {% else %}
+    <p class="text-muted">Nenhum conteúdo de QR disponível.</p>
+  {% endif %}
+</div>
+
+<div class="modal-footer">
+  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+</div>
+
+<script>
+function copyPix(){
+  const el = document.getElementById('pixCopy');
+  el.select(); el.setSelectionRange(0, 99999);
+  document.execCommand('copy');
+}
+</script>
