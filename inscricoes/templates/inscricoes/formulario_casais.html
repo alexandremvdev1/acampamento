@@ -111,6 +111,8 @@
     }
 
     .input-group-text i{ opacity:.8; }
+
+    .init-cap { text-transform: capitalize; }
   </style>
 </head>
 <body>
@@ -136,18 +138,25 @@
     <fieldset>
       <legend>Cônjuge {{ etapa }}</legend>
 
-      <!-- IDENTIFICAÇÃO: Nome + CPF/E-mail/Telefone/Nascimento + Tema do acampamento -->
+      <!-- Nome + CPF + Data de nascimento -->
       <div class="row g-3">
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label for="{{ form.nome.id_for_label }}">Nome completo</label>
           {{ form.nome }} <div class="text-danger">{{ form.nome.errors }}</div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label for="{{ form.cpf.id_for_label }}">CPF</label>
           {{ form.cpf }} <div class="text-danger">{{ form.cpf.errors }}</div>
         </div>
+        <div class="col-md-4">
+          {% if form.data_nascimento %}
+            <label for="{{ form.data_nascimento.id_for_label }}">Data de nascimento</label>
+            {{ form.data_nascimento }} <div class="text-danger">{{ form.data_nascimento.errors }}</div>
+          {% endif %}
+        </div>
       </div>
 
+      <!-- E-mail + Telefone + Tema do acampamento -->
       <div class="row g-3 align-items-end" id="linha-identidade-2">
         <div class="col-md-6">
           <label for="{{ form.email.id_for_label }}">E-mail</label>
@@ -158,22 +167,13 @@
           {{ form.telefone }} <div class="text-danger">{{ form.telefone.errors }}</div>
         </div>
 
-        <!-- estes dois serão reposicionados via JS se os IDs já existirem no form -->
-        <div class="col-md-6" id="slot-data-nascimento">
-          {% if form.data_nascimento %}
-            <label for="{{ form.data_nascimento.id_for_label }}">Data de nascimento</label>
-            {{ form.data_nascimento }} <div class="text-danger">{{ form.data_nascimento.errors }}</div>
-          {% endif %}
-        </div>
-
         <div class="col-md-6" id="slot-tema-acampamento">
-          <!-- Campo “Qual tema do acampamento que participou?” MOVIDO pra cá -->
           <label for="id_tema_acampamento">Qual tema do acampamento que participou?</label>
           <input
             type="text"
             id="id_tema_acampamento"
             name="tema_acampamento"
-            class="form-control"
+            class="form-control init-cap"
             placeholder="Ex.: Acampamento de Jovens 2023"
             value="{{ request.POST.tema_acampamento|default_if_none:'' }}"
           >
@@ -194,7 +194,7 @@
           </div>
           <div class="col-md-8">
             <label class="form-label" for="id_endereco">Logradouro</label>
-            <input type="text" id="id_endereco" name="endereco" class="form-control" placeholder="Rua, Av., Travessa..." required>
+            <input type="text" id="id_endereco" name="endereco" class="form-control init-cap" placeholder="Rua, Av., Travessa..." required>
           </div>
           <div class="col-md-4">
             <label class="form-label" for="id_numero">Número</label>
@@ -202,11 +202,11 @@
           </div>
           <div class="col-md-6">
             <label class="form-label" for="id_bairro">Bairro</label>
-            <input type="text" id="id_bairro" name="bairro" class="form-control" required>
+            <input type="text" id="id_bairro" name="bairro" class="form-control init-cap" required>
           </div>
           <div class="col-md-6">
             <label class="form-label" for="id_cidade">Cidade</label>
-            <input type="text" id="id_cidade" name="cidade" class="form-control" required>
+            <input type="text" id="id_cidade" name="cidade" class="form-control init-cap" required>
           </div>
           <div class="col-md-3">
             <label class="form-label" for="id_estado">Estado (UF)</label>
@@ -236,7 +236,7 @@
       <fieldset class="mt-3">
         <legend>Contato de emergência</legend>
         <label>Nome</label>
-        <input type="text" name="contato_emergencia_nome" class="form-control">
+        <input type="text" name="contato_emergencia_nome" class="form-control init-cap">
         <label>Telefone</label>
         <input type="text" name="contato_emergencia_telefone" class="form-control">
       </fieldset>
@@ -244,15 +244,15 @@
       <fieldset class="mt-3">
         <legend>Contato adicional</legend>
         <label>Nome</label>
-        <input type="text" name="responsavel_2_nome" class="form-control">
+        <input type="text" name="responsavel_2_nome" class="form-control init-cap">
         <label>Telefone</label>
         <input type="text" name="responsavel_2_telefone" class="form-control">
       </fieldset>
       {% endif %}
 
-      <!-- ===== Demais campos do form de casais (exceto foto_casal) ===== -->
+      {# ===== Demais campos do form de casais (exclui foto_casal, tema_acampamento e "Outra pastoral ou movimento") ===== #}
       {% for field in form_insc %}
-        {% if field.name != "foto_casal" %}
+        {% if field.name != "foto_casal" and field.name != "tema_acampamento" and field.name != "outra_pastoral_ou_movimento" and field.name != "outra_pastoral" and field.name != "outro_movimento" and field.name != "pastoral_movimento_outro" %}
           <div class="mb-2 form-insc-field" data-field-name="{{ field.name }}">
             {{ field.label_tag }}
             {{ field }}
@@ -329,7 +329,7 @@
       $btn.prop("disabled", true).text("Enviando...");
     });
 
-    // Tornar inputs/selects menores
+    // Inputs menores
     $('input, select, textarea').addClass('form-control form-control-sm rounded-3');
     $('select').removeClass('form-control').addClass('form-select');
 
@@ -359,33 +359,34 @@
       if (e.key === 'Escape') $('.modal.show').each(function(){ closeModal(this.id); });
     });
 
-    // Ícone nos telefones
+    // Ícones nos telefones
     function decorateWithIcon($input, iconClass){
       if(!$input.length || $input.closest('.input-group').length) return;
-      const $wrap = $(
-        '<div class="input-group input-group-sm"><span class="input-group-text"><i class="'+iconClass+'"></i></span></div>'
-      );
+      const $wrap = $('<div class="input-group input-group-sm"><span class="input-group-text"><i class="'+iconClass+'"></i></span></div>');
       $input.addClass('form-control');
       $input.after($wrap);
       $wrap.append($input);
     }
     decorateWithIcon($('#id_telefone'), 'fa-solid fa-phone');
-    decorateWithIcon($("input[name='contato_emergencia_telefone']"), 'fa-solid fa-phone-volume');
-    decorateWithIcon($("input[name='responsavel_2_telefone']"), 'fa-solid fa-user-plus');
 
     function maskTelefone($els){
       if (window.Inputmask) {
         Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true }).mask($els);
       }
     }
-    maskTelefone($("input[name='contato_emergencia_telefone'], input[name='responsavel_2_telefone']"));
 
-    // ======= REMOVER campos que você não quer exibir =======
-    // Se existirem no form_insc, escondemos/removemos:
+    // ======= REMOVER (garantia) campos não desejados =======
     const camposRemover = [
       '#id_ja_e_campista',
       '#id_nome_conjuge',
-      '#id_conjuge_inscrito'
+      '#id_conjuge_inscrito',
+      // variações de "Outra pastoral ou movimento"
+      '#id_outra_pastoral_ou_movimento',
+      '#id_outra_pastoral',
+      '#id_outro_movimento',
+      '#id_pastoral_movimento_outro',
+      '#id_pastoral_outro',
+      '#id_movimento_outro'
     ];
     camposRemover.forEach(sel=>{
       const $el = $(sel);
@@ -395,7 +396,15 @@
       }
     });
 
-    // ======= SAÚDE: protocolo aparece quando "medicamento_controlado" = "sim" =======
+    // Fallback: remover pelo texto do label (se vier com outro name)
+    $('.form-insc-field').each(function(){
+      const txt = $(this).text().toLowerCase();
+      if (txt.includes('outra pastoral') || txt.includes('outro movimento') || txt.includes('pastoral (outro)') || txt.includes('movimento (outro)')) {
+        $(this).remove();
+      }
+    });
+
+    // ======= Saúde: condicionais =======
     function toggleCondicionais() {
       const is = (sel, val) => $(sel).val && $(sel).val() === val;
 
@@ -420,8 +429,7 @@
     // ======= Campos de filhos dinâmicos =======
     $("#id_qtd_filhos").on("change", function() {
       const qtd = parseInt($(this).val(), 10) || 0;
-      const container = $("#filhos_campos");
-      container.empty();
+      const container = $("#filhos_campos").empty();
 
       for (let i = 1; i <= qtd; i++) {
         const bloco = $(`
@@ -430,7 +438,7 @@
             <div class="row g-2">
               <div class="col-md-6">
                 <label>Nome</label>
-                <input type="text" name="filho_${i}_nome" class="form-control nome-like">
+                <input type="text" name="filho_${i}_nome" class="form-control init-cap nome-like">
               </div>
               <div class="col-md-3">
                 <label>Idade</label>
@@ -448,7 +456,8 @@
 
       $(".telefone-filho").each(function(){ decorateWithIcon($(this), 'fa-solid fa-phone'); });
       maskTelefone($("#filhos_campos .telefone-filho"));
-      aplicarTitleCase(); // reanexa listeners aos novos inputs
+      aplicarTitleCase(); // reanexa listeners
+      aplicarInitCap();   // inicial maiúscula nos novos
     });
 
     // ======= CEP / ViaCEP =======
@@ -470,52 +479,38 @@
         limpaEndereco();
       }
     }
-    function limpaEndereco() {
-      $("#id_endereco, #id_bairro, #id_cidade, #id_estado").val("");
-    }
+    function limpaEndereco() { $("#id_endereco, #id_bairro, #id_cidade, #id_estado").val(""); }
     let cepTimer = null;
-    function debounceCEP(handler) {
-      clearTimeout(cepTimer);
-      cepTimer = setTimeout(handler, 300);
-    }
     $("#id_cep")
       .on("blur", function () { preencherEnderecoPorCEP(this.value); })
       .on("keyup", function () {
         const val = this.value;
-        debounceCEP(() => {
+        clearTimeout(cepTimer);
+        cepTimer = setTimeout(() => {
           const digits = (val || "").replace(/\D/g, "");
           if (digits.length === 8) preencherEnderecoPorCEP(val);
-        });
+        }, 300);
       });
-    const cepInicial = $("#id_cep").val && $("#id_cep").val();
-    if (cepInicial && cepInicial.replace(/\D/g, "").length === 8) {
-      preencherEnderecoPorCEP(cepInicial);
-    }
 
-    // ======= TITLE CASE + impedir tudo MAIÚSCULO =======
+    // ======= TITLE CASE (nomes) + impedir tudo MAIÚSCULO =======
     const excecoes = new Set(["da","de","do","das","dos","e","a","o","as","os","di","du"]);
     function toTitleCasePTBR(s){
       s = (s||"").toLowerCase().replace(/\s+/g," ").trim();
-      return s.split(" ").map((w,i)=>{
-        if(i>0 && excecoes.has(w)) return w;
-        return w.charAt(0).toUpperCase() + w.slice(1);
-      }).join(" ");
+      return s.split(" ").map((w,i)=> i>0 && excecoes.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
     }
     function normalizaNome(el){
       const v = el.value || "";
       if(!v) return;
-      const allCaps = v.length >= 3 && v === v.toUpperCase();
-      // se veio tudo maiúsculo, derrubo para minúsculo antes do title
-      const base = allCaps ? v.toLowerCase() : v;
+      const base = (v.length >= 3 && v === v.toUpperCase()) ? v.toLowerCase() : v;
       const novo = toTitleCasePTBR(base);
       if(novo !== v) el.value = novo;
     }
     function aplicarTitleCase(){
       const seletores = [
-        "#id_nome",                                 // cônjuge
+        "#id_nome",
         "input[name='contato_emergencia_nome']",
         "input[name='responsavel_2_nome']",
-        "[name^='filho_'][name$='_nome']"           // nomes dos filhos
+        "[name^='filho_'][name$='_nome']"
       ];
       $(seletores.join(",")).off(".tc").on("input.tc blur.tc", function(){
         normalizaNome(this);
@@ -523,7 +518,7 @@
     }
     aplicarTitleCase();
 
-    // Também protege colar texto TODO CAPS:
+    // Protege colagem TODO CAPS em nomes
     $(document).on("paste", "#id_nome, input[name='contato_emergencia_nome'], input[name='responsavel_2_nome'], [name^='filho_'][name$='_nome']",
       function(e){
         e.preventDefault();
@@ -532,6 +527,21 @@
         document.execCommand('insertText', false, norm);
       }
     );
+
+    // ======= Inicial Maiúscula (demais campos textuais) =======
+    function aplicarInitCap(){
+      $('input[type="text"], textarea')
+        .not('#id_email, [name="email"], #id_cpf, [name="cpf"], #id_telefone, [name="telefone"], #id_estado, [name="estado"], #id_numero, [name="numero"]')
+        .addClass('init-cap')
+        .off('.icap')
+        .on('input.icap blur.icap', function(){
+          const v = this.value || '';
+          if (!v) return;
+          const novo = v.charAt(0).toUpperCase() + v.slice(1);
+          if (novo !== v) this.value = novo;
+        });
+    }
+    aplicarInitCap();
 
     // ====== FOTO DO CASAL (somente etapa 2) ======
     (function(){
@@ -561,7 +571,6 @@
     const $form = $("form[data-etapa]");
     if (!$form.length) return;
 
-    // (mantido como antes; se preferir remover esse bloco, pode)
     if (!$("#fieldset-saude").length) {
       $form.append(`
         <fieldset id="fieldset-saude" class="mt-3">
@@ -602,7 +611,7 @@
       };
       showIf("#id_problema_saude","sim","#id_qual_problema_saude");
       showIf("#id_medicamento_controlado","sim","#id_qual_medicamento_controlado");
-      showIf("#id_medicamento_controlado","sim","#id_protocolo_administracao"); // protocolo só quando SIM
+      showIf("#id_medicamento_controlado","sim","#id_protocolo_administracao");
       showIf("#id_mobilidade_reduzida","sim","#id_qual_mobilidade_reduzida");
       showIf("#id_alergia_alimento","sim","#id_qual_alergia_alimento");
       showIf("#id_alergia_medicamento","sim","#id_qual_alergia_medicamento");
