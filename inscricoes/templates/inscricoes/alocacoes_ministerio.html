@@ -10,42 +10,77 @@
 
   <style>
     :root{ --ink:#0f172a; --muted:#64748b; --g1:#0b1020; --g2:#111a3a; --line:#e5e7eb; --base-font:14px }
-    html{ font-size:var(--base-font) } body{ background:#f6f8fb; color:var(--ink) }
+    html{ font-size:var(--base-font) }
+    body{ background:#f6f8fb; color:var(--ink) }
+
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)) }
-    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem } .navbar-brand{ font-size:1rem }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem }
+    .navbar-brand{ font-size:1rem }
+    /* logo pequena no navbar */
+    .navbar-brand-logo{
+      height:28px; max-height:34px; width:auto; display:block; object-fit:contain;
+    }
 
     .sticky-topbar{ position:sticky; top:0; z-index:20; background:#ffffffd6; backdrop-filter:blur(6px); border:1px solid var(--line); border-radius:.9rem }
     .card-clean{ border:1px solid var(--line); border-radius:.95rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.08) }
-    .text-muted-2{ color:var(--muted) } .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700 }
+    .text-muted-2{ color:var(--muted) }
+    .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700 }
+
     .table-wrap{ border:1px solid #e5e7eb; border-radius:.8rem; overflow:hidden; background:#fff }
     .table-sticky thead th{ position:sticky; top:0; z-index:5; background:#f8fafc!important; border-bottom:1px solid #e5e7eb!important; text-transform:uppercase; letter-spacing:.04em; font-size:.78rem; color:#64748b }
     .table{ font-size:.875rem }
+
     .btn-sm,.btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem }
 
-    /* Deixa o select do campo 'inscricao' com cara de .form-select do Bootstrap */
+    /* Deixa o select do campo 'inscricao' com cara de form-select */
     select[name="inscricao"]{
       display:block; width:100%; padding:.375rem 2.25rem .375rem .75rem;
       -moz-padding-start:calc(0.75rem - 3px);
-      font-size:1rem; font-weight:400; line-height:1.5; color:#212529; background-color:#fff;
-      background-repeat:no-repeat; background-position:right .75rem center;
-      background-size:16px 12px; border:1px solid var(--line); border-radius:.375rem;
+      font-size:1rem; line-height:1.5; color:#212529; background:#fff;
+      border:1px solid var(--line); border-radius:.375rem;
       transition:border-color .15s ease-in-out, box-shadow .15s ease-in-out;
     }
     select[name="inscricao"]:focus{
       border-color:#86b7fe; outline:0; box-shadow:0 0 0 .25rem rgba(13,110,253,.25);
     }
+
+    .form-label{ margin-bottom:.35rem; }
+    .form-text{ margin-top:.25rem; }
   </style>
 </head>
 <body>
+
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:ministerios_evento' evento.id %}">
-      <i class="fa-solid fa-arrow-left me-2"></i> Ministérios
-    </a>
+    <div class="d-flex align-items-center gap-2">
+      <!-- Botão voltar -->
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:ministerios_evento' evento.id %}">
+        <i class="fa-solid fa-arrow-left"></i>
+      </a>
+
+      <!-- Brand com logo -->
+      <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'inscricoes:ministerios_evento' evento.id %}">
+        {% if politica and politica.logo_1 %}
+          <img src="{{ politica.logo_1.url }}" alt="Ministérios" class="navbar-brand-logo">
+          <span class="visually-hidden">Ministérios</span>
+        {% elif politica and politica.logo %}
+          <img src="{{ politica.logo.url }}" alt="Ministérios" class="navbar-brand-logo">
+          <span class="visually-hidden">Ministérios</span>
+        {% else %}
+          <span class="fw-bold">Ministérios</span>
+        {% endif %}
+      </a>
+    </div>
+
     <span class="navbar-text text-white-50 d-none d-md-inline">{{ evento.nome }}</span>
+
     <div class="d-flex ms-auto gap-2">
-      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:ministerio_editar' ministerio.id %}?evento={{ evento.id }}"><i class="fa-solid fa-pen"></i> Editar</a>
-      <a class="btn btn-sm btn-secondary" href="{% url 'inscricoes:evento_participantes' evento.id %}"><i class="fa-solid fa-users"></i> Participantes</a>
+      <a class="btn btn-sm btn-light" href="{% url 'inscricoes:ministerio_editar' ministerio.id %}?evento={{ evento.id }}">
+        <i class="fa-solid fa-pen"></i> Editar
+      </a>
+      <a class="btn btn-sm btn-secondary" href="{% url 'inscricoes:evento_participantes' evento.id %}">
+        <i class="fa-solid fa-users"></i> Participantes
+      </a>
     </div>
   </div>
 </nav>
@@ -76,16 +111,27 @@
   <!-- Adicionar alocação -->
   <section class="card-clean p-3 p-md-4 mb-3">
     <h2 class="sec-title"><i class="fa-solid fa-user-plus me-1"></i> Incluir participante no ministério</h2>
-    <form method="post" action="{% url 'inscricoes:alocar_inscricao_ministerio' pk=ministerio.id evento_id=evento.id %}" class="row g-2">
+
+    <form method="post"
+          action="{% url 'inscricoes:alocar_inscricao_ministerio' pk=ministerio.id evento_id=evento.id %}"
+          class="row g-2 align-items-end">
       {% csrf_token %}
+
       <div class="col-12 col-md-8">
-        <label class="form-label fw-bold text-muted-2">{{ form.inscricao.label }}</label>
+        <label class="form-label fw-bold text-muted-2 mb-1">{{ form.inscricao.label }}</label>
         {{ form.inscricao }}
-        {% if form.inscricao.help_text %}<div class="form-text">{{ form.inscricao.help_text }}</div>{% endif %}
-        {% if form.inscricao.errors %}<div class="text-danger small mt-1">{{ form.inscricao.errors.0 }}</div>{% endif %}
+        {% if form.inscricao.help_text %}
+          <div class="form-text">{{ form.inscricao.help_text }}</div>
+        {% endif %}
+        {% if form.inscricao.errors %}
+          <div class="text-danger small mt-1">{{ form.inscricao.errors.0 }}</div>
+        {% endif %}
       </div>
-      <div class="col-12 col-md-4 d-flex align-items-end">
-        <button class="btn btn-primary w-100"><i class="fa-solid fa-plus me-1"></i> Alocar</button>
+
+      <div class="col-12 col-md-4 d-grid">
+        <button class="btn btn-primary">
+          <i class="fa-solid fa-plus me-1"></i> Alocar
+        </button>
       </div>
     </form>
   </section>

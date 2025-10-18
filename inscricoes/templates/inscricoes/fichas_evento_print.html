@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fichas — {{ evento.nome|default:"—" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* A4 landscape com margem menor */
+    @page { size: A4 landscape; margin: 6mm; }
+
+    :root{
+      --ink:#0f172a; --muted:#6b7280; --line:#e5e7eb; --bg:#ffffff; --panel:#ffffff;
+      --chip:#eef2ff; --chip-ink:#3730a3; --accent:#2563eb;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{ --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2937; --bg:#0b1220; --panel:#0f1526; --chip:#0b1a4a; --chip-ink:#a5b4fc; }
+    }
+
+    *{ box-sizing:border-box }
+    html,body{ margin:0 }
+    body{
+      background:var(--bg); color:var(--ink);
+      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-size:10.25px;
+      line-height:1.25;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+
+    .wrap{ max-width:297mm; margin:0 auto; padding:4.5mm }
+    .sheet{
+      background:var(--panel); border:1px solid var(--line); border-radius:8px;
+      padding:6mm; page-break-inside:avoid; page-break-after:always;
+      break-inside: avoid-page;
+    }
+
+    /* Barra (não imprime) */
+    .toolbar{ display:flex; justify-content:center; gap:6px; padding:6px }
+    .btn{ appearance:none; border:1px solid var(--line); background:#fff; color:#111827;
+      padding:6px 10px; border-radius:8px; font-weight:800; cursor:pointer; text-decoration:none; font-size:10px }
+    .btn-primary{ background:var(--accent); color:#fff; border-color:transparent }
+
+    /* Topo */
+    .top{
+      display:grid; grid-template-columns:1fr auto; gap:8px; align-items:flex-start;
+      padding-bottom:6px; border-bottom:1px solid var(--line); margin-bottom:8px;
+      page-break-inside: avoid; break-inside: avoid-page;
+    }
+    .brandline{ display:flex; align-items:center; gap:8px; margin-bottom:6px }
+    .brandline img{ height:20px; object-fit:contain }
+    .header-grid{ display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:flex-start; }
+    .eyebrow{ color:var(--muted); font-size:9px; margin:0 0 2px }
+    .t-title{ margin:0; font-weight:800; font-size:14px; line-height:1.05; letter-spacing:.2px }
+    .t-sub{ margin:3px 0 0; color:var(--muted); font-size:9px }
+
+    /* Foto + QRs */
+    .hero-media{ display:flex; align-items:flex-start; justify-content:flex-start; gap:8px }
+    .photo-wide{ width:170px; height:96px; border-radius:10px; object-fit:cover; border:1px solid var(--line); background:#f3f4f6; display:block }
+    .photo{ width:66px; height:66px; border-radius:10px; object-fit:cover; border:1px solid var(--line); background:#f3f4f6; display:block }
+    .photo.-empty{ display:grid; place-items:center; color:#9ca3af; font-size:8px; width:66px; height:66px; border-radius:10px; border:1px solid var(--line); background:#f3f4f6 }
+    .qr-box-row{ display:flex; gap:6px; align-items:center; flex-wrap:wrap }
+    .qr-box{ display:grid; gap:2px; justify-items:center }
+    .qr{ width:44px; height:44px; border:1px solid var(--line); border-radius:6px; padding:2px; background:#fff }
+    .qr-cap{ font-size:8.5px; color:var(--muted); max-width:58mm; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+
+    /* Colunas */
+    .cols{ display:grid; grid-template-columns:1fr 1fr; gap:10px; page-break-inside: avoid; break-inside: avoid-page; }
+    .col{ border:1px solid var(--line); border-radius:8px; padding:6px; min-width:0 }
+    .who{ margin:0 0 6px; font-weight:800; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+
+    /* Seções e campos */
+    .sec{ margin:6px 0 8px; page-break-inside: avoid; break-inside: avoid-page; }
+    .sec h3{ margin:0 0 5px; font-size:10px; letter-spacing:.3px; text-transform:uppercase }
+    .grid{ display:grid; grid-template-columns:repeat(12,1fr); gap:4px }
+    .f{ display:flex; flex-direction:column; min-width:0 }
+    .f label{ font-size:8.5px; color:var(--muted); margin-bottom:2px; line-height:1; letter-spacing:.2px }
+    .v{
+      border:1px solid var(--line); border-radius:6px; padding:4px 6px; min-height:18px;
+      display:flex; align-items:center; background:#fff;
+      white-space:normal; overflow:visible; word-break:break-word;
+    }
+    .v.-mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+
+    .s-12{grid-column:span 12}.s-10{grid-column:span 10}.s-8{grid-column:span 8}.s-7{grid-column:span 7}
+    .s-6{grid-column:span 6}.s-5{grid-column:span 5}.s-4{grid-column:span 4}.s-3{grid-column:span 3}.s-2{grid-column:span 2}
+
+    .footer{ margin-top:6px; text-align:center; font-size:8.5px; color:var(--muted) }
+
+    /* --- Ficha 1 por folha, sem separar cabeçalho --- */
+    .sheet{ page-break-inside: avoid; break-inside: avoid-page; }
+    .top, .cols, .sec{ page-break-inside: avoid; break-inside: avoid-page; }
+
+    /* Versão mais compacta na impressão */
+    @media print{
+      body{ font-size: 9px; line-height: 1.18; }
+      @page { size: A4 landscape; margin: 5mm; }
+      .wrap{ padding: 3.5mm; }
+      .sheet{
+        border:none; border-radius:0; padding:4.5mm;
+        transform: scale(0.93);
+        transform-origin: top left;
+        width: calc(297mm / 0.93);
+        page-break-after: always;
+      }
+      .t-title{ font-size: 13px }
+      .grid{ gap: 3px }
+      .v{ padding: 3px 5px; min-height: 16px }
+      .photo-wide{ width: 160px; height: 90px }
+      .photo{ width: 60px; height: 60px }
+      .qr{ width: 40px; height: 40px }
+      .toolbar{ display:none !important }
+    }
+
+    @media screen{
+      .photo-wide{ width:160px; height:90px }
+      .photo{ width:60px; height:60px }
+      .qr{ width:40px; height:40px }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra (não imprime) -->
+  <div class="toolbar">
+    <a class="btn btn-primary" href="?{{ request.GET.urlencode }}">Atualizar</a>
+    <button class="btn" onclick="window.print()">Imprimir</button>
+  </div>
+
+  <div class="wrap">
+    {% for ctx in sheets %}
+      <div class="sheet">
+        {% include "inscricoes/_ficha_casal_sheet.html" with a=ctx.a b=ctx.b base_a=ctx.base_a base_b=ctx.base_b evento=ctx.evento only %}
+      </div>
+    {% empty %}
+      <div class="sheet">
+        <p>Nenhuma inscrição encontrada para o filtro <strong>{{ filtro }}</strong>.</p>
+      </div>
+    {% endfor %}
+  </div>
+
+</body>
+</html>

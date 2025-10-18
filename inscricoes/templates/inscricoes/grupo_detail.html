@@ -25,6 +25,40 @@
     .card-clean{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.08); }
     .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700; }
     .list-hover li:hover{ background:#f8fafc; }
+
+    /* ====== AÇÕES COMPACTAS ====== */
+    .actions{
+      display:flex; align-items:center; gap:6px;
+      white-space:nowrap; /* evita quebrar linha e deformar */
+      justify-content:flex-end;
+      min-width: 230px;
+    }
+    .btn-icon{
+      --pad-y: .28rem; --pad-x: .45rem; --fs: .8rem;
+      padding: var(--pad-y) var(--pad-x);
+      font-size: var(--fs);
+      line-height: 1;
+      display:inline-flex; align-items:center; gap:.35rem;
+    }
+    .btn-icon i{ font-size:.9em; }
+    .btn-move-select{
+      width: 160px; min-width:160px; max-width:160px;
+    }
+    @media (max-width: 576px){
+      .actions{ flex-wrap:wrap; white-space:normal; gap:8px }
+      .btn-move-select{ width:100%; min-width:0; max-width:none; }
+    }
+
+    /* cores legíveis nos estados */
+    .btn-add{ --bs-btn-bg:#16a34a; --bs-btn-border-color:#16a34a; --bs-btn-hover-bg:#15803d; --bs-btn-hover-border-color:#15803d; --bs-btn-color:#fff; }
+    .btn-remove{ --bs-btn-bg:#ef4444; --bs-btn-border-color:#ef4444; --bs-btn-hover-bg:#dc2626; --bs-btn-hover-border-color:#dc2626; --bs-btn-color:#fff; }
+    .btn-move{ --bs-btn-bg:#2563eb; --bs-btn-border-color:#2563eb; --bs-btn-hover-bg:#1d4ed8; --bs-btn-hover-border-color:#1d4ed8; --bs-btn-color:#fff; }
+
+    /* evita “pular” vertical do item ao trocar botões */
+    .list-group-item{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .list-group-item > div:first-child{ min-width: 0; } /* permite truncar texto */
+    .list-group-item .fw-semibold{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 42vw; }
+    @media (min-width: 992px){ .list-group-item .fw-semibold{ max-width: 420px; } }
   </style>
 </head>
 <body>
@@ -97,22 +131,22 @@
             <h2 class="sec-title"><i class="fa-solid fa-user-group me-1"></i> Membros do grupo</h2>
             <ul id="lista-membros" class="list-group list-hover">
               {% for a in membros %}
-              <li class="list-group-item d-flex align-items-center justify-content-between">
+              <li class="list-group-item">
                 <div>
                   <div class="fw-semibold">{{ a.inscricao.participante.nome }}</div>
-                  <div class="small text-muted">{{ a.inscricao.participante.email }} • {{ a.inscricao.participante.cpf }}</div>
+                  <div class="small text-muted text-truncate">{{ a.inscricao.participante.email }} • {{ a.inscricao.participante.cpf }}</div>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                  <select class="form-select form-select-sm mover-select" data-inscricao="{{ a.inscricao.id }}" style="width:180px;">
+                <div class="actions">
+                  <select class="form-select form-select-sm btn-move-select mover-select" data-inscricao="{{ a.inscricao.id }}">
                     <option value="">Mover para...</option>
                     {% for g in outros_grupos %}
                       <option value="{{ g.id }}">{{ g.nome }}</option>
                     {% endfor %}
                   </select>
-                  <button class="btn btn-outline-danger btn-sm btn-toggle"
-                          data-inscricao="{{ a.inscricao.id }}"
-                          data-action="remove">
-                    <i class="fa-solid fa-xmark"></i> Remover
+                  <button class="btn btn-remove btn-icon btn-toggle"
+                          data-bs-toggle="tooltip" data-bs-title="Remover do grupo"
+                          data-inscricao="{{ a.inscricao.id }}" data-action="remove">
+                    <i class="fa-solid fa-user-minus"></i>
                   </button>
                 </div>
               </li>
@@ -127,7 +161,7 @@
           <div class="card-clean p-3 h-100">
             <h2 class="sec-title"><i class="fa-solid fa-person-circle-plus me-1"></i> Adicionar pessoas</h2>
             <input id="busca" class="form-control form-control-sm mb-2" placeholder="Digite nome, e-mail ou CPF...">
-            <div class="small text-muted mb-2">Resultados (até 50): clique em <em>Adicionar</em> para incluir no grupo.</div>
+            <div class="small text-muted mb-2">Resultados (até 50)</div>
             <ul id="lista-busca" class="list-group list-hover"></ul>
           </div>
         </div>
@@ -171,20 +205,28 @@
       li.className = "list-group-item d-flex align-items-center justify-content-between";
       li.innerHTML = `
         <div>
-          <div class="fw-semibold">${it.nome}</div>
-          <div class="small text-muted">${it.email} • ${it.cpf}</div>
+          <div class="fw-semibold text-truncate" style="max-width:42vw">${it.nome}</div>
+          <div class="small text-muted text-truncate">${it.email} • ${it.cpf}</div>
         </div>
-        <div>
-          <button class="btn btn-sm ${it.grupo_id ? 'btn-outline-secondary' : 'btn-outline-success'} btn-toggle"
+        <div class="actions">
+          <button class="btn ${it.grupo_id ? 'btn-remove' : 'btn-add'} btn-icon btn-toggle"
+                  data-bs-toggle="tooltip"
+                  data-bs-title="${it.grupo_id ? 'Remover do grupo atual' : 'Adicionar ao grupo'}"
                   data-inscricao="${it.inscricao_id}"
                   data-action="${it.grupo_id ? 'remove' : 'add'}">
-            <i class="fa-solid ${it.grupo_id ? 'fa-rotate-left' : 'fa-plus'}"></i>
-            ${it.grupo_id ? 'Remover do grupo atual' : 'Adicionar'}
+            <i class="fa-solid ${it.grupo_id ? 'fa-user-minus' : 'fa-user-plus'}"></i>
           </button>
+          <select class="form-select form-select-sm btn-move-select mover-select" data-inscricao="${it.inscricao_id}">
+            <option value="">Mover para...</option>
+            {% for g in outros_grupos %}
+              <option value="{{ g.id }}">{{ g.nome }}</option>
+            {% endfor %}
+          </select>
         </div>
       `;
       listaBusca.appendChild(li);
     });
+    enableTooltips();
   }
 
   function buscar(q) {
@@ -213,21 +255,16 @@
     .then(r => r.json())
     .then(data => {
       if (!data.ok) return;
-      // Atualiza botão local (lista busca)
+      // atualiza ícone/estilo no resultado de busca
       if (btn) {
-        if (data.action === "added") {
-          btn.classList.remove("btn-outline-success");
-          btn.classList.add("btn-outline-secondary");
-          btn.dataset.action = "remove";
-          btn.innerHTML = '<i class="fa-solid fa-rotate-left"></i> Remover do grupo atual';
-        } else {
-          btn.classList.remove("btn-outline-secondary");
-          btn.classList.add("btn-outline-success");
-          btn.dataset.action = "add";
-          btn.innerHTML = '<i class="fa-solid fa-plus"></i> Adicionar';
-        }
+        const adding = data.action === "added";
+        btn.classList.toggle("btn-add", !adding);
+        btn.classList.toggle("btn-remove", adding);
+        btn.dataset.action = adding ? "remove" : "add";
+        btn.innerHTML = `<i class="fa-solid ${adding ? 'fa-user-minus' : 'fa-user-plus'}"></i>`;
+        btn.setAttribute("data-bs-title", adding ? "Remover do grupo atual" : "Adicionar ao grupo");
+        enableTooltips();
       }
-      // Recarrega lista de membros do grupo (mais simples: buscar novamente)
       recarregarMembros();
     });
   }
@@ -243,7 +280,6 @@
 
   // -------- MOVER ----------
   function recarregarMembros() {
-    // solução simples: reload parcial via fetch a página e trocar UL.
     fetch(window.location.href, {headers: {"X-Requested-With": "XMLHttpRequest"}})
       .then(r => r.text())
       .then(html => {
@@ -251,6 +287,7 @@
         tmp.innerHTML = html;
         const novaLista = tmp.querySelector("#lista-membros");
         if (novaLista) document.getElementById("lista-membros").innerHTML = novaLista.innerHTML;
+        enableTooltips();
       });
   }
 
@@ -270,15 +307,21 @@
         body: fd
       })
       .then(r => r.json())
-      .then(data => {
+      .then(() => {
         sel.value = "";
         recarregarMembros();
       });
     }
   });
 
-  // Inicial: mostra algo
+  function enableTooltips(){
+    const list = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    list.forEach(el => new bootstrap.Tooltip(el, {container:'body'}));
+  }
+
+  // Inicial
   buscar("");
+  document.addEventListener("DOMContentLoaded", enableTooltips);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

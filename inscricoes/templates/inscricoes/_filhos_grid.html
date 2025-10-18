@@ -1,0 +1,11 @@
+{# Espera: filhos (QuerySet/iterável) #}
+{% for f in filhos %}
+  <div class="f s-6"><label>Nome</label><div class="v">{{ f.nome|default:"—" }}</div></div>
+  <div class="f s-2"><label>Idade</label><div class="v">{{ f.idade|default:"—" }}</div></div>
+  <div class="f s-4"><label>Telefone</label><div class="v">{{ f.telefone|default:"—" }}</div></div>
+  {% if f.endereco %}
+    <div class="f s-12"><label>Endereço</label><div class="v">{{ f.endereco }}</div></div>
+  {% endif %}
+{% empty %}
+  <div class="f s-12"><div class="v" style="color:#6b7280">Sem filhos declarados.</div></div>
+{% endfor %}

@@ -189,11 +189,6 @@
         {% if evento.banner %}
           <img class="banner" src="{{ evento.banner.url }}" alt="Banner do evento {{ evento.nome }}" loading="lazy">
         {% endif %}
-        <img
-          class="img-insc"
-          src="{% if politica and politica.imagem_insc %}{{ politica.imagem_insc.url }}{% else %}{% static 'img/inscricao_default.jpg' %}{% endif %}"
-          alt="Informações da inscrição"
-          loading="lazy">
       </div>
 
       <div class="body">

@@ -17,41 +17,33 @@
   <style>
     :root{
       --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
-      --g1:#0b1020; --g2:#111a3a;
-      --base-font:14px;
+      --g1:#0b1020; --g2:#111a3a; --base-font:14px; --line:#e5e7eb;
+      --toggle-on:#7c3aed; --toggle-off:#e6eef6;
+      --toggle-knob-size:22px; --toggle-height:34px; --toggle-width:64px;
     }
     html{ font-size: var(--base-font); }
     body{ background:#f6f8fb; color:var(--ink); }
 
-    /* Navbar */
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .navbar-brand{ font-size:1rem; }
+    .navbar-brand-logo{ height:28px; max-height:34px; width:auto; display:block; object-fit:contain; }
 
-    /* Sidebar */
-    .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
+    .sidebar-card{ border:1px solid var(--line); border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
     .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
     .nav-list{ list-style:none; padding:6px; margin:0; }
     .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none; }
     .nav-list a:hover{ background:#eef2f7; }
     .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
 
-    /* KPIs */
-    .kpi{ background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem; }
-    .kpi .small{ color:var(--muted); font-size:.8rem; }
-    .kpi .fs-4{ font-size:1.15rem !important; }
-    .kpi .fw-bold{ font-weight:700 !important; }
-
-    /* Header sticky */
     .sticky-topbar{
       position: sticky; top: 0; z-index: 20;
       background:#ffffffd6; backdrop-filter: blur(6px);
-      border:1px solid #e5e7eb; border-radius:.9rem;
+      border:1px solid var(--line); border-radius:.9rem;
     }
 
-    /* Cards limpos */
     .card-clean{
-      border:1px solid #e5e7eb; border-radius:.9rem; background:#fff;
+      border:1px solid var(--line); border-radius:.9rem; background:#fff;
       box-shadow:0 10px 24px rgba(17,24,39,.08);
       transition:transform .12s ease, box-shadow .12s ease;
     }
@@ -63,60 +55,103 @@
       margin:0 0 .75rem; font-weight:700;
     }
 
-    /* Chips */
-    .chip{
-      display:inline-flex; align-items:center; gap:.5rem;
-      padding:.35rem .7rem; border-radius:999px; border:1px solid #e5e7eb; background:#fff;
-      font-weight:700; font-size:.85rem;
+    .kpisbar{
+      display:flex; flex-wrap:nowrap; gap:.5rem;
+      overflow-x:auto; -webkit-overflow-scrolling: touch;
+      padding:.25rem .25rem .35rem;
     }
+    .kpisbar .kpi{ min-width: 145px; }
 
-    /* ===== Tabela / Layout para não ter scroll horizontal ===== */
-    .table-wrap{
-      border:1px solid #e5e7eb; border-radius:.8rem; overflow:hidden; background:#fff;
+    .kpi{
+      border-radius:.9rem; padding:.7rem .85rem; color:#fff; position:relative; overflow:hidden;
+      box-shadow:0 10px 24px rgba(17,24,39,.10); border:1px solid rgba(255,255,255,.12);
     }
-    .table-responsive{ overflow-x: hidden !important; max-height: 72vh; }
+    .kpi .small{ opacity:.9; font-size:.75rem; }
+    .kpi .value{ font-size:1.15rem; font-weight:800; line-height:1; }
+    .kpi i{ opacity:.25; position:absolute; right:.55rem; bottom:.30rem; font-size:1.9rem; }
+
+    .kpi--blue   { background:linear-gradient(135deg,#1d4ed8,#3b82f6); }
+    .kpi--green  { background:linear-gradient(135deg,#047857,#22c55e); }
+    .kpi--amber  { background:linear-gradient(135deg,#a16207,#f59e0b); }
+    .kpi--red    { background:linear-gradient(135deg,#b91c1c,#ef4444); }
+    .kpi--violet { background:linear-gradient(135deg,#6d28d9,#8b5cf6); }
+    .kpi--rose   { background:linear-gradient(135deg,#be123c,#f43f5e); }
+    .kpi--teal   { background:linear-gradient(135deg,#0d9488,#2dd4bf); }
+
+    .table-wrap{ border:1px solid var(--line); border-radius:.8rem; overflow:hidden; background:#fff; }
+    .table-responsive{ overflow-x:hidden !important; max-height:72vh; }
     .table-sticky thead th{
       position: sticky; top: 0; z-index: 5;
-      background: #f8fafc !important;
-      border-bottom: 1px solid #e5e7eb !important;
+      background:#f8fafc !important; border-bottom:1px solid var(--line) !important;
       text-transform:uppercase; letter-spacing:.04em; font-size:.78rem; color:#64748b;
     }
-    .table{ font-size:.875rem; table-layout: fixed; width: 100%; }
-    th.th-nome, td.col-nome   { width: 34%; }
-    th.th-idade, td.col-idade { width: 8%;  }
-    th.th-status, td.col-status { width: 18%; }
-    th.th-pag, td.col-pag     { width: 12%; }
-    th.th-sel, td.col-sel     { width: 12%; }
-    th.th-acoes, td.col-acoes { width: 16%; }
-    .table td, .table th{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .table{ font-size:.875rem; table-layout:fixed; width:100%; }
+    th.th-nome,  td.col-nome   { width: 34%; text-align:left; }
+    th.th-idade, td.col-idade  { width: 12%; }
+    th.th-status,td.col-status { width: 18%; }
+    th.th-pag,   td.col-pag    { width: 12%; }
+    th.th-sel,   td.col-sel    { width: 12%; }
+    th.th-acoes, td.col-acoes  { width: 12%; }
+    .table td, .table th{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
     .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.3rem .5rem; }
     .btn-icon{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; }
-
-    .actions-wrap{ display:flex; align-items:center; justify-content:center; flex-wrap: wrap; gap: .4rem; }
+    .actions-wrap{ display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:.4rem; }
     .btn-group-tight .btn{ border-radius:.5rem; }
 
-    .form-check-input{ transform: scale(1.1); cursor:pointer; }
-
-    .nome-single-line{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%; vertical-align: bottom; }
-
+    .nome-single-line{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block; max-width:100%; vertical-align:bottom; }
     a.link-ink{ color:var(--ink); text-decoration:none; }
     a.link-ink:hover{ text-decoration:underline; }
 
-    main.container, body, html{ overflow-x: hidden; }
+    main.container, body, html{ overflow-x:hidden; }
 
-    @media (min-width: 992px){
-      .col-lg-10-custom{ flex: 0 0 auto; width: 83.333333%; }
-      .col-lg-2-custom{ flex: 0 0 auto; width: 16.666667%; }
+    @media (min-width:1600px){
+      .px-xxl-4-5{ padding-left:2rem!important; padding-right:2rem!important; }
     }
+
+    .txn-badge { font-weight:700; font-size:.72rem; padding:.20rem .45rem; border-radius:.45rem; vertical-align:middle; display:inline-block; margin-right:.45rem; }
+
+    .toggle-checkbox { position: absolute; width:1px; height:1px; margin:-1px; padding:0; border:0; clip:rect(0 0 0 0); overflow:hidden; white-space:nowrap; }
+    .toggle-pill {
+      display:inline-block; width: var(--toggle-width); height: var(--toggle-height);
+      border-radius: 999px; background: var(--toggle-off); border: 3px solid var(--toggle-off);
+      position: relative; vertical-align: middle;
+      transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+      box-shadow: 0 3px 8px rgba(2,6,23,0.06); cursor: pointer; margin: 0;
+    }
+    .toggle-pill::after {
+      content: ""; position: absolute; top: 50%; left: 6px; transform: translateY(-50%);
+      width: var(--toggle-knob-size); height: var(--toggle-knob-size); border-radius: 50%;
+      background: #fff; box-shadow: 0 3px 8px rgba(2,6,23,0.12);
+      transition: left .18s cubic-bezier(.2,.9,.3,1), transform .18s;
+    }
+    .toggle-checkbox:checked + .toggle-pill { background: var(--toggle-on); border-color: var(--toggle-on); }
+    .toggle-checkbox:checked + .toggle-pill::after { left: calc(100% - 6px - var(--toggle-knob-size)); }
+    .toggle-pill--sm { --toggle-width:48px; --toggle-height:28px; --toggle-knob-size:20px; height: var(--toggle-height); width: var(--toggle-width); }
+    .toggle-cell { display:flex; align-items:center; justify-content:center; gap:.5rem; }
+    .toggle-label-text { display: none; }
+    .toggle-wrapper { display:inline-flex; align-items:center; gap:.45rem; }
+    .toggle-mini-text { font-size:.82rem; color:var(--muted); margin-left:.25rem; }
   </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'inscricoes:admin_paroquia_painel' %}">
+      {% if politica and politica.logo_1 %}
+        <img src="{{ politica.logo_1.url }}" alt="Painel da Paróquia" class="navbar-brand-logo">
+        <span class="visually-hidden">Painel da Paróquia</span>
+      {% elif politica and politica.logo %}
+        <img src="{{ politica.logo.url }}" alt="Painel da Paróquia" class="navbar-brand-logo">
+        <span class="visually-hidden">Painel da Paróquia</span>
+      {% elif evento.paroquia.logo %}
+        <img src="{{ evento.paroquia.logo.url }}" alt="{{ evento.paroquia.nome }}" class="navbar-brand-logo">
+        <span class="visually-hidden">{{ evento.paroquia.nome }}</span>
+      {% else %}
+        <span class="fw-bold">Painel da Paróquia</span>
+      {% endif %}
+    </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <a class="btn btn-sm btn-light" href="{% url 'inscricoes:admin_paroquia_eventos' evento.paroquia.id %}">← Eventos</a>
       <a class="btn btn-sm btn-info" href="{% url 'inscricoes:relatorios_evento' evento.id %}">📊 Relatórios</a>
@@ -124,59 +159,81 @@
   </div>
 </nav>
 
-<main class="container py-3 py-lg-4">
+<main class="container-fluid py-3 py-lg-4 px-3 px-md-4 px-xxl-4-5">
   <div id="flashArea" class="position-sticky" style="top:10px; z-index:1050;"></div>
 
   <div class="row g-3">
-
-    <!-- SIDEBAR -->
-    <aside class="col-lg-2-custom">
+    <aside class="col-12 col-lg-3 col-xl-2 col-xxl-2">
       <div class="sidebar-card p-2">
         <div class="nav-title">Evento</div>
         <ul class="nav-list">
           <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_eventos' evento.paroquia.id %}">🗂️ <span>Lista de eventos</span></a></li>
           <li class="nav-item is-active"><a href="{{ request.path }}" aria-current="page">👥 <span>Participantes</span></a></li>
-
-          <!-- 👇 botão Grupos/Famílias -->
-          <li class="nav-item">
-            <a href="{% url 'inscricoes:grupos_evento_home' evento.id %}">👨‍👩‍👧‍👦 <span>Grupos/Famílias</span></a>
-          </li>
-
+          <li class="nav-item"><a href="{% url 'inscricoes:grupos_evento_home' evento.id %}">👨‍👩‍👧‍👦 <span>Grupos/Famílias</span></a></li>
           <li class="nav-item"><a href="{% url 'inscricoes:relatorios_evento' evento.id %}">📊 <span>Relatórios</span></a></li>
         </ul>
-
-        <div class="nav-title">Resumo</div>
-        <div class="row g-2 m-0">
-          <div class="col-12">
-            <div class="kpi">
-              <div class="small">Participantes</div>
-              <div class="fs-4 fw-bold">{{ total_participantes|default:0 }}</div>
-            </div>
-          </div>
-          <div class="col-12">
-            <div class="kpi">
-              <div class="small">Confirmados</div>
-              <div class="fs-4 fw-bold">{{ total_confirmados|default:0 }}</div>
-            </div>
-          </div>
-          <div class="col-12">
-            <div class="kpi">
-              <div class="small">Selecionados</div>
-              <div class="fs-4 fw-bold">{{ total_selecionados|default:0 }}</div>
-            </div>
-          </div>
-          <div class="col-12">
-            <div class="kpi">
-              <div class="small">Pendentes</div>
-              <div class="fs-4 fw-bold">{{ total_pendentes|default:0 }}</div>
-            </div>
-          </div>
-        </div>
       </div>
     </aside>
 
-    <!-- CONTEÚDO -->
-    <section class="col-lg-10-custom">
+    <section class="col-12 col-lg-9 col-xl-10 col-xxl-10">
+
+      <!-- KPIs -->
+      <section class="mb-2">
+        <div class="kpisbar" role="region" aria-label="Indicadores do evento">
+          <div class="col-auto">
+            <div class="kpi kpi--blue">
+              <div class="small">Participantes</div>
+              <div class="value">{{ total_participantes|default:0 }}</div>
+              <i class="fa-solid fa-users"></i>
+            </div>
+          </div>
+          <div class="col-auto">
+            <div class="kpi kpi--green">
+              <div class="small">Confirmados</div>
+              <div class="value">{{ total_confirmados|default:0 }}</div>
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </div>
+          <div class="col-auto">
+            <div class="kpi kpi--violet">
+              <div class="small">Selecionados</div>
+              <div class="value">{{ total_selecionados|default:0 }}</div>
+              <i class="fa-solid fa-person-circle-check"></i>
+            </div>
+          </div>
+          <div class="col-auto">
+            <div class="kpi kpi--amber">
+              <div class="small">Pendentes</div>
+              <div class="value">{{ total_pendentes|default:0 }}</div>
+              <i class="fa-solid fa-clock"></i>
+            </div>
+          </div>
+
+          {% if is_evento_casais or is_servos_de_casal %}
+          <div class="col-auto">
+            <div class="kpi kpi--rose">
+              <div class="small">Casais inscritos</div>
+              <div class="value">{{ total_casais|default:0 }}</div>
+              <i class="fa-solid fa-heart"></i>
+            </div>
+          </div>
+          <div class="col-auto">
+            <div class="kpi kpi--red">
+              <div class="small">Casais confirmados</div>
+              <div class="value">{{ total_casais_confirmados|default:0 }}</div>
+              <i class="fa-solid fa-hand-holding-heart"></i>
+            </div>
+          </div>
+          <div class="col-auto">
+            <div class="kpi kpi--teal">
+              <div class="small">Casais selecionados</div>
+              <div class="value">{{ total_casais_selecionados|default:0 }}</div>
+              <i class="fa-solid fa-heart-circle-check"></i>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
 
       <!-- HEADER -->
       <div class="sticky-topbar p-3 mb-3 bg-white">
@@ -236,25 +293,17 @@
               </thead>
               <tbody id="tbodyRows">
                 {% for inscricao in participantes %}
-
-                  {# ====== SKIP da "segunda" inscrição do casal (evita linha duplicada) ====== #}
                   {% if inscricao.par and inscricao.par.id < inscricao.id %}
-                    {% comment %} pulando a duplicata {% endcomment %}
                   {% elif inscricao.par_inscrito and inscricao.par_inscrito.id < inscricao.id %}
-                    {% comment %} pulando a duplicata {% endcomment %}
                   {% elif inscricao.inscricao_casal and inscricao.inscricao_casal.id < inscricao.id %}
-                    {% comment %} pulando a duplicata {% endcomment %}
                   {% elif inscricao.casal_vinculado and inscricao.casal_vinculado.id < inscricao.id %}
-                    {% comment %} pulando a duplicata {% endcomment %}
                   {% else %}
-
                     <tr id="row_{{ inscricao.id }}">
                       <td class="col-nome">
                         <a href="{% url 'inscricoes:inscricao_ficha_geral' inscricao.id %}"
                            class="link-ink fw-semibold nome-single-line"
                            title="Abrir inscrição">
-
-                          {# ===== Nome em UMA linha: "A — B" quando houver vínculo ===== #}
+                          <span class="text-muted-2 small me-2">#{{ inscricao.id }}</span>
                           {% if inscricao.par %}
                             {{ inscricao.participante.nome }} — {{ inscricao.par.participante.nome }}
                           {% elif inscricao.par_inscrito %}
@@ -278,16 +327,46 @@
 
                         {% if inscricao.participante.cidade or inscricao.participante.estado %}
                           <div class="small text-muted-2">
+                            {% if not inscricao.pagamento_confirmado %}
+                              {% if inscricao.transacao_id %}
+                                <span class="txn-badge bg-warning text-dark">Txn: {{ inscricao.transacao_id }}</span>
+                              {% elif inscricao.pagamento and inscricao.pagamento.transacao_id %}
+                                <span class="txn-badge bg-warning text-dark">Txn: {{ inscricao.pagamento.transacao_id }}</span>
+                              {% elif inscricao.pagamento_id %}
+                                <span class="txn-badge bg-warning text-dark">Txn: {{ inscricao.pagamento_id }}</span>
+                              {% endif %}
+                            {% endif %}
                             {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
                           </div>
                         {% endif %}
                       </td>
 
                       <td class="text-center col-idade">
-                        {% if inscricao.idade is not None %}{{ inscricao.idade }}{% else %}-{% endif %}
+                        {% if is_evento_casais or is_servos_de_casal %}
+                          {% if inscricao.par %}
+                            {{ inscricao.idade|default:"-" }} — {{ inscricao.par.idade|default:"-" }}
+                          {% elif inscricao.par_inscrito %}
+                            {{ inscricao.idade|default:"-" }} — {{ inscricao.par_inscrito.idade|default:"-" }}
+                          {% elif inscricao.inscricao_casal %}
+                            {% if inscricao.inscricao_casal.par_inscrito %}
+                              {{ inscricao.idade|default:"-" }} — {{ inscricao.inscricao_casal.par_inscrito.idade|default:"-" }}
+                            {% else %}
+                              {{ inscricao.idade|default:"-" }} — {{ inscricao.inscricao_casal.idade|default:"-" }}
+                            {% endif %}
+                          {% elif inscricao.casal_vinculado %}
+                            {% if inscricao.casal_vinculado.par_inscrito %}
+                              {{ inscricao.idade|default:"-" }} — {{ inscricao.casal_vinculado.par_inscrito.idade|default:"-" }}
+                            {% else %}
+                              {{ inscricao.idade|default:"-" }} — {{ inscricao.casal_vinculado.idade|default:"-" }}
+                            {% endif %}
+                          {% else %}
+                            {{ inscricao.idade|default:"-" }}
+                          {% endif %}
+                        {% else %}
+                          {{ inscricao.idade|default:"-" }}
+                        {% endif %}
                       </td>
 
-                      <!-- STATUS (select) -->
                       <td class="text-center col-status">
                         <select class="form-select form-select-sm d-inline-block w-100"
                                 id="status_{{ inscricao.id }}"
@@ -299,34 +378,43 @@
                         </select>
                       </td>
 
-                      <!-- Pagamento (badge) -->
                       <td class="text-center col-pag" id="paycell_{{ inscricao.id }}">
-                        {% if inscricao.pagamento_confirmado %}
-                          <span class="badge rounded-pill text-bg-success"><i class="fa-solid fa-check me-1"></i> Pago</span>
-                        {% else %}
-                          <span class="badge rounded-pill text-bg-danger"><i class="fa-solid fa-xmark me-1"></i> Pendente</span>
-                        {% endif %}
+                        <div class="toggle-cell">
+                          <span id="paybadge_{{ inscricao.id }}">
+                            {% if inscricao.pagamento_confirmado %}
+                              <span class="badge rounded-pill text-bg-success"><i class="fa-solid fa-check me-1"></i> Pago</span>
+                            {% else %}
+                              <span class="badge rounded-pill text-bg-danger"><i class="fa-solid fa-xmark me-1"></i> Pendente</span>
+                            {% endif %}
+                          </span>
+
+                          <div class="toggle-wrapper">
+                            <input type="checkbox"
+                                   class="toggle-checkbox"
+                                   id="pay_toggle_{{ inscricao.id }}"
+                                   {% if inscricao.pagamento_confirmado %}checked{% endif %}
+                                   onchange="togglePagamento({{ inscricao.id }}, this.checked)">
+                            <label class="toggle-pill toggle-pill--sm" for="pay_toggle_{{ inscricao.id }}" aria-hidden="true"></label>
+                          </div>
+                        </div>
                       </td>
 
-                      <!-- Switch Selecionado -->
                       <td class="text-center col-sel">
-                        <div class="form-check form-switch d-inline-flex align-items-center gap-2 m-0">
-                          <input class="form-check-input"
-                                 type="checkbox"
-                                 id="sel_{{ inscricao.id }}"
-                                 {% if inscricao.foi_selecionado %}checked{% endif %}
-                                 onchange="toggleSelecao({{ inscricao.id }}, this.checked)">
-                          <label class="form-check-label small" for="sel_{{ inscricao.id }}">Sim</label>
+                        <div class="toggle-cell">
+                          <div class="toggle-wrapper">
+                            <input type="checkbox"
+                                   class="toggle-checkbox"
+                                   id="sel_{{ inscricao.id }}"
+                                   {% if inscricao.foi_selecionado %}checked{% endif %}
+                                   onchange="toggleSelecao({{ inscricao.id }}, this.checked)">
+                            <label class="toggle-pill toggle-pill--sm" for="sel_{{ inscricao.id }}" aria-hidden="true"></label>
+                          </div>
                         </div>
                       </td>
 
                       <td class="text-center col-acoes">
                         <div class="actions-wrap">
                           <div class="btn-group btn-group-tight" role="group" aria-label="Ações principais">
-                            <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}"
-                               class="btn btn-primary btn-sm btn-icon" title="Editar inscrição">
-                              <i class="fa-solid fa-pen"></i>
-                            </a>
                             <a href="{% url 'inscricoes:deletar_inscricao' inscricao.id %}"
                                class="btn btn-danger btn-sm btn-icon" title="Excluir inscrição"
                                onclick="return confirm('Tem certeza que deseja excluir?');">
@@ -348,9 +436,7 @@
                         </div>
                       </td>
                     </tr>
-
-                  {% endif %} {# /skip duplicata #}
-
+                  {% endif %}
                 {% empty %}
                 <tr>
                   <td colspan="6" class="text-center text-muted py-4">Nenhum participante inscrito.</td>
@@ -363,9 +449,25 @@
       </section>
 
       <footer class="py-3">
-        <div class="d-flex flex-wrap justify-content-between align-items-center">
-          <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
-          <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+        <div class="d-flex flex-wrap justify-content-between align-items-center w-100">
+          <small>© 2025 eismeaqui.app — Todos os direitos reservados</small>
+
+          {% if suporte_email or suporte_whatsapp_link %}
+            <div class="d-flex align-items-center gap-2">
+              <span class="small text-muted">Suporte</span>
+              {% if suporte_email %}
+                <a href="mailto:{{ suporte_email }}" class="text-muted" aria-label="Suporte por e-mail" title="Suporte por e-mail">
+                  <i class="fa-solid fa-envelope fa-lg"></i>
+                </a>
+              {% endif %}
+              {% if suporte_whatsapp_link %}
+                <a href="{{ suporte_whatsapp_link }}" class="text-success" target="_blank" rel="noopener"
+                   aria-label="Suporte via WhatsApp" title="Suporte via WhatsApp">
+                  <i class="fa-brands fa-whatsapp fa-lg"></i>
+                </a>
+              {% endif %}
+            </div>
+          {% endif %}
         </div>
       </footer>
 
@@ -373,11 +475,9 @@
   </div>
 </main>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-/* Busca por nome (client-side) */
 (function(){
   const input = document.getElementById('searchInput');
   const rows  = Array.from(document.querySelectorAll('#tbodyRows tr'));
@@ -392,7 +492,6 @@
   });
 })();
 
-/* Copiar link do Telão */
 function copyTelaoLink(e){
   e?.preventDefault?.();
   const url = "{{ request.scheme }}://{{ request.get_host }}{% url 'inscricoes:painel_sorteio' slug=evento.slug %}";
@@ -412,11 +511,10 @@ function flashBtn(btn){
   setTimeout(()=> btn.innerHTML = old, 1400);
 }
 
-/* ====== CSRF + flash ====== */
 function getCookie(name) {
   const v = `; ${document.cookie}`;
   const p = v.split(`; ${name}=`);
-  if (p.length === 2) return p.pop().split(';').shift();
+  if (p.length === 2) return decodeURIComponent(p.pop().split(';').shift());
 }
 const CSRF_TOKEN = getCookie('csrftoken');
 
@@ -442,7 +540,11 @@ function flash(msg, variant='success') {
   setTimeout(() => { try { el.remove(); } catch(e){} }, 2600);
 }
 
-/* ====== AJAX: Seleção ====== */
+/* ====== AJAX: Seleção ======
+   Regra:
+   - checked=true  -> status = SELECIONADO_CONVOCADO (sem pagamento)
+   - checked=false -> status = EM_ANALISE
+*/
 function toggleSelecao(inscricaoId, checked) {
   const url = `{% url 'inscricoes:toggle_selecao_inscricao' 0 %}`.replace('/0/', `/${inscricaoId}/`);
   const body = new URLSearchParams();
@@ -463,18 +565,32 @@ function toggleSelecao(inscricaoId, checked) {
   })
   .then(data => {
     if (!data.ok) throw new Error('Falha ao salvar.');
-    flash(data.msg || (data.selected ? 'Participante selecionado' : 'Participante desmarcado'),
-          data.selected ? 'success' : 'warning');
+
+    // Atualiza o <select> de status conforme o backend definiu
+    const sel = document.getElementById(`status_${inscricaoId}`);
+    if (sel && data.status) {
+      sel.value = data.status;
+      sel.dataset.prev = data.status;
+    }
+
+    // NÃO mexe no pagamento aqui.
+    flash(
+      data.msg || (data.selected ? 'Participante selecionado (status: ' + (data.label || '') + ')'
+                                 : 'Participante desmarcado (status: ' + (data.label || '') + ')'),
+      data.selected ? 'success' : 'warning'
+    );
   })
   .catch(err => {
     const cb = document.getElementById(`sel_${inscricaoId}`);
-    if (cb) cb.checked = !checked;
+    if (cb) cb.checked = !checked; // desfaz o toggle visualmente
     flash('Não foi possível salvar a seleção.', 'danger');
     console.error(err);
   });
 }
 
-/* ====== AJAX: Alterar status ====== */
+/* ====== AJAX: Alterar status ======
+   Backend só gera cobrança quando status == PAGAMENTO_PENDENTE.
+*/
 function alterarStatus(inscricaoId, novoStatus, selectEl){
   const url = `{% url 'inscricoes:alterar_status_inscricao' 0 %}`.replace('/0/', `/${inscricaoId}/`);
   const body = new URLSearchParams();
@@ -525,6 +641,58 @@ function alterarStatus(inscricaoId, novoStatus, selectEl){
   });
 }
 
+/* ====== AJAX: Marcar/Gerar Pagamento ======
+   Só confirma/gera quando status é Pagamento pendente (validado no backend).
+*/
+function togglePagamento(inscricaoId, checked) {
+  const toggleEl = document.getElementById(`pay_toggle_${inscricaoId}`);
+  if (!toggleEl) return;
+
+  const prevDisabled = toggleEl.disabled;
+  toggleEl.disabled = true;
+
+  const url = `{% url 'inscricoes:toggle_pagamento_inscricao' 0 %}`.replace('/0/', `/${inscricaoId}/`);
+
+  const body = new URLSearchParams();
+  body.append('mark_paid', checked ? 'true' : 'false');
+
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': CSRF_TOKEN,
+      'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    },
+    body: body.toString()
+  })
+  .then(async r => {
+    const data = await r.json().catch(()=>({}));
+    if (!r.ok || !data.ok) {
+      // Reverte visual caso regra não permita
+      try { toggleEl.checked = !checked; } catch(e){}
+      const msg = data?.error || ('Falha ao marcar pagamento (HTTP ' + r.status + ')');
+      throw new Error(msg);
+    }
+    return data;
+  })
+  .then(data => {
+    const payBadge = document.getElementById(`paybadge_${inscricaoId}`);
+    if (payBadge) {
+      payBadge.innerHTML = data.pagamento_confirmado
+        ? '<span class="badge rounded-pill text-bg-success"><i class="fa-solid fa-check me-1"></i> Pago</span>'
+        : '<span class="badge rounded-pill text-bg-danger"><i class="fa-solid fa-xmark me-1"></i> Pendente</span>';
+    }
+    flash(data.msg || (data.pagamento_confirmado ? 'Pagamento confirmado.' : 'Pagamento removido.'), 'success');
+  })
+  .catch(err => {
+    flash(err.message || 'Erro ao processar pagamento.', 'danger');
+    console.error(err);
+  })
+  .finally(() => {
+    toggleEl.disabled = prevDisabled;
+  });
+}
+
 /* ====== WHATSAPP ====== */
 function normalizePhone(phone){ return (phone || "").replace(/[^\d]/g, ""); }
 function toBrazilE164(phone){
@@ -543,7 +711,7 @@ function openWhatsApp(el){
   const num = toBrazilE164(raw);
   if (!num){ alert("Telefone do participante está vazio ou inválido."); return; }
   const primeiroNome = nome.split(" ")[0] || "";
-  const msg = `Olá ${primeiroNome}, tudo bem? Aqui é da paróquia sobre o evento "${evento}".`;
+  const msg = `Olá ${primeiroNome}, tudo bem? Aqui é da paróquia sobre o evento "{{ evento.nome }}".`;
   const url = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
   window.open(url, "_blank", "noopener");
 }

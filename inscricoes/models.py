@@ -23,7 +23,7 @@ from django.utils.functional import cached_property
 
 from cloudinary.models import CloudinaryField
 
-# utils de telefone do próprio app
+# utils de telefone do prÃ³prio app
 from .utils.phones import normalizar_e164_br, validar_e164_br
 
 # tenta importar o cliente do WhatsApp (sem quebrar em dev)
@@ -40,7 +40,7 @@ except Exception:
 
 
 # ---------------------------------------------------------------------
-# Paróquia
+# ParÃ³quia
 # ---------------------------------------------------------------------
 class Paroquia(models.Model):
     STATUS_CHOICES = [
@@ -48,7 +48,7 @@ class Paroquia(models.Model):
         ('inativa', 'Inativa'),
     ]
 
-    nome = models.CharField(max_length=255)  # único obrigatório
+    nome = models.CharField(max_length=255)  # Ãºnico obrigatÃ³rio
 
     cidade = models.CharField(max_length=100, blank=True)
     estado = models.CharField(max_length=2, blank=True)
@@ -58,11 +58,11 @@ class Paroquia(models.Model):
     telefone = models.CharField(
         max_length=20,
         blank=True,  # <- opcional
-        help_text="Telefone no formato E.164 BR: +55DDDNÚMERO (ex.: +5563920013103)",
+        help_text="Telefone no formato E.164 BR: +55DDDNÃšMERO (ex.: +5563920013103)",
         validators=[
             RegexValidator(
                 regex=r'^\+55\d{10,11}$',
-                message="Formato inválido. Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103).",
+                message="Formato invÃ¡lido. Use +55 seguido de 10 ou 11 dÃ­gitos (ex.: +5563920013103).",
             )
         ],
     )
@@ -71,7 +71,7 @@ class Paroquia(models.Model):
         max_length=10,
         choices=STATUS_CHOICES,
         default='ativa',
-        blank=True,   # opcional no formulário; o default cobre no banco
+        blank=True,   # opcional no formulÃ¡rio; o default cobre no banco
     )
 
     repasse_percentual = models.DecimalField(
@@ -79,25 +79,25 @@ class Paroquia(models.Model):
         max_digits=5, decimal_places=2,
         default=Decimal("2.00"),
         validators=[MinValueValidator(0), MaxValueValidator(100)],
-        help_text="Percentual aplicado por padrão sobre o líquido arrecadado."
+        help_text="Percentual aplicado por padrÃ£o sobre o lÃ­quido arrecadado."
     )
     
-    logo = CloudinaryField(null=True, blank=True, verbose_name="Logo da Paróquia")
+    logo = CloudinaryField(null=True, blank=True, verbose_name="Logo da ParÃ³quia")
 
     def __str__(self):
         return self.nome
 
     def clean(self):
-        """Normaliza o telefone digitado para E.164; se falhar, erro amigável."""
+        """Normaliza o telefone digitado para E.164; se falhar, erro amigÃ¡vel."""
         super().clean()
         if self.telefone:
             norm = normalizar_e164_br(self.telefone)
             if not norm or not validar_e164_br(norm):
-                raise ValidationError({'telefone': "Informe um telefone BR válido. Ex.: +5563920013103"})
+                raise ValidationError({'telefone': "Informe um telefone BR vÃ¡lido. Ex.: +5563920013103"})
             self.telefone = norm
 
     def save(self, *args, **kwargs):
-        # garante normalização também em saves diretos
+        # garante normalizaÃ§Ã£o tambÃ©m em saves diretos
         if self.telefone:
             norm = normalizar_e164_br(self.telefone)
             if norm:
@@ -123,8 +123,8 @@ class Participante(models.Model):
     foto      = CloudinaryField(null=True, blank=True, verbose_name="Foto do Participante")
 
     CEP       = models.CharField("CEP", max_length=10)
-    endereco  = models.CharField("Endereço", max_length=255)
-    numero    = models.CharField("Número", max_length=10)
+    endereco  = models.CharField("EndereÃ§o", max_length=255)
+    numero    = models.CharField("NÃºmero", max_length=30)
     bairro    = models.CharField("Bairro", max_length=100)
     cidade    = models.CharField("Cidade", max_length=100)
     estado    = models.CharField(
@@ -137,7 +137,7 @@ class Participante(models.Model):
                  ('SE','SE'),('TO','TO')]
     )
 
-    # Token único para QR Code
+    # Token Ãºnico para QR Code
     qr_token = models.UUIDField(
         default=uuid.uuid4,
         editable=False,
@@ -159,11 +159,11 @@ class Participante(models.Model):
 # ---------------------------------------------------------------------
 class EventoAcampamento(models.Model):
     TIPO_ACAMPAMENTO = [
-        ('senior',  'Acampamento Sênior'),
+        ('senior',  'Acampamento SÃªnior'),
         ('juvenil', 'Acampamento Juvenil'),
         ('mirim',   'Acampamento Mirim'),
         ('servos',  'Acampamento de Servos'),
-        # ——— NOVOS TIPOS ———
+        # â€”â€”â€” NOVOS TIPOS â€”â€”â€”
         ('casais',  'Encontro de Casais'),
         ('evento',  'Evento'),
         ('retiro',  'Retiro'),
@@ -181,31 +181,31 @@ class EventoAcampamento(models.Model):
         max_digits=8,
         decimal_places=2,
         default=0.00,
-        verbose_name="Valor da Inscrição"
+        verbose_name="Valor da InscriÃ§Ã£o"
     )
     slug = models.SlugField(unique=True, blank=True)
     paroquia = models.ForeignKey("Paroquia", on_delete=models.CASCADE, related_name="eventos")
 
     banner = CloudinaryField(null=True, blank=True, verbose_name="Banner do Evento")
 
-    # 🔹 Novo campo: flag no PRINCIPAL que libera inscrições do Servos
+    # Ã°Å¸â€Â¹ Novo campo: flag no PRINCIPAL que libera inscriÃ§Ãµes do Servos
     permitir_inscricao_servos = models.BooleanField(
         default=False,
-        help_text="Se marcado, o evento de Servos vinculado pode receber inscrições."
+        help_text="Se marcado, o evento de Servos vinculado pode receber inscriÃ§Ãµes."
     )
 
-    # vínculo de evento para Servos
+    # vÃ­nculo de evento para Servos
     evento_relacionado = models.ForeignKey(
         "self",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="eventos_servos",
-        help_text="Se este for um evento de Servos, vincule ao evento principal em que irão servir."
+        help_text="Se este for um evento de Servos, vincule ao evento principal em que irÃ£o servir."
     )
 
     def save(self, *args, **kwargs):
-        # slug único e resiliente
+        # slug Ãºnico e resiliente
         if not self.slug:
             base = slugify(f"{self.tipo}-{self.nome}-{self.data_inicio}")
             slug = base
@@ -225,12 +225,12 @@ class EventoAcampamento(models.Model):
 
     @property
     def principal(self):
-        """Se for servos, retorna o evento principal; caso contrário, None."""
+        """Se for servos, retorna o evento principal; caso contrÃ¡rio, None."""
         return self.evento_relacionado if self.is_servos else None
 
     @property
     def servos_evento(self):
-        """Retorna o único evento de servos vinculado (se existir)."""
+        """Retorna o Ãºnico evento de servos vinculado (se existir)."""
         return self.eventos_servos.filter(tipo="servos").first()
 
     @property
@@ -241,14 +241,14 @@ class EventoAcampamento(models.Model):
     def status_inscricao(self):
         hoje = date.today()
         if self.inicio_inscricoes <= hoje <= self.fim_inscricoes:
-            return "Inscrições Abertas"
+            return "InscriÃ§Ãµes Abertas"
         elif hoje < self.inicio_inscricoes:
-            return "Inscrições ainda não iniciadas"
-        return "Inscrições Encerradas"
+            return "InscriÃ§Ãµes ainda nÃ£o iniciadas"
+        return "InscriÃ§Ãµes Encerradas"
 
     class Meta:
         constraints = [
-            # Garante no máximo UM evento de servos por principal
+            # Garante no mÃ¡ximo UM evento de servos por principal
             models.UniqueConstraint(
                 fields=["evento_relacionado"],
                 condition=Q(tipo="servos"),
@@ -261,8 +261,8 @@ class EventoAcampamento(models.Model):
 def criar_evento_servos_automatico(sender, instance: "EventoAcampamento", created, **kwargs):
     """
     Sempre que um evento PRINCIPAL for criado (qualquer tipo != 'servos'),
-    cria automaticamente um evento de 'servos' vinculado, com mesmas datas e paróquia.
-    Não habilita inscrições por padrão — depende de 'permitir_inscricao_servos' no principal.
+    cria automaticamente um evento de 'servos' vinculado, com mesmas datas e parÃ³quia.
+    NÃ£o habilita inscriÃ§Ãµes por padrÃ£o â€” depende de 'permitir_inscricao_servos' no principal.
     """
     if not created:
         return
@@ -270,7 +270,7 @@ def criar_evento_servos_automatico(sender, instance: "EventoAcampamento", create
         return
 
     try:
-        # Evita duplicar caso alguém já tenha criado manualmente
+        # Evita duplicar caso alguÃ©m jÃ¡ tenha criado manualmente
         ja_existe = EventoAcampamento.objects.filter(
             tipo="servos",
             evento_relacionado=instance
@@ -279,7 +279,7 @@ def criar_evento_servos_automatico(sender, instance: "EventoAcampamento", create
             return
 
         EventoAcampamento.objects.create(
-            nome=f"Servos – {instance.nome}",
+            nome=f"Servos â€“ {instance.nome}",
             tipo="servos",
             data_inicio=instance.data_inicio,
             data_fim=instance.data_fim,
@@ -291,20 +291,20 @@ def criar_evento_servos_automatico(sender, instance: "EventoAcampamento", create
             banner=getattr(instance, "banner", None),
         )
     except IntegrityError:
-        # Em caso de corrida, ignore — a constraint já garante unicidade
+        # Em caso de corrida, ignore â€” a constraint jÃ¡ garante unicidade
         pass
     except Exception:
-        # Não quebra a criação do principal
+        # NÃ£o quebra a criaÃ§Ã£o do principal
         pass
 
 
 # ---------------------------------------------------------------------
-# Inscrição
+# InscriÃ§Ã£o
 # ---------------------------------------------------------------------
 class InscricaoStatus(models.TextChoices):
     RASCUNHO        = "draft",         "Rascunho"
     ENVIADA         = "submitted",     "Enviada"
-    EM_ANALISE      = "under_review",  "Em análise"
+    EM_ANALISE      = "under_review",  "Em anÃ¡lise"
     APROVADA        = "approved",      "Aprovada"            # triagem OK
     LISTA_ESPERA    = "waitlist",      "Lista de espera"
     REJEITADA       = "rejected",      "Rejeitada"
@@ -313,8 +313,8 @@ class InscricaoStatus(models.TextChoices):
     PAG_PENDENTE    = "pay_pending",   "Pagamento pendente"
     PAG_CONFIRMADO  = "pay_confirmed", "Pagamento confirmado"
 
-    CANCEL_USUARIO  = "cancel_user",   "Cancelada pelo usuário"
-    CANCEL_ADMIN    = "cancel_admin",  "Cancelada pela paróquia"
+    CANCEL_USUARIO  = "cancel_user",   "Cancelada pelo usuÃ¡rio"
+    CANCEL_ADMIN    = "cancel_admin",  "Cancelada pela parÃ³quia"
 
     REEMB_SOL       = "refund_req",    "Reembolso solicitado"
     REEMB_APROV     = "refund_ok",     "Reembolso aprovado"
@@ -328,7 +328,7 @@ class Inscricao(models.Model):
     paroquia     = models.ForeignKey('Paroquia', on_delete=models.CASCADE, related_name='inscricoes')
     data_inscricao = models.DateTimeField(auto_now_add=True)
 
-    # ----- status único -----
+    # ----- status Ãºnico -----
     status = models.CharField(
         max_length=32,
         choices=InscricaoStatus.choices,
@@ -342,20 +342,20 @@ class Inscricao(models.Model):
     inscricao_concluida   = models.BooleanField(default=False)
     inscricao_enviada     = models.BooleanField(default=False)
 
-    # ----- extras já existentes -----
-    ja_e_campista = models.BooleanField(default=False, verbose_name="Já é campista?")
+    # ----- extras jÃ¡ existentes -----
+    ja_e_campista = models.BooleanField(default=False, verbose_name="JÃ¡ Ã© campista?")
     tema_acampamento = models.CharField(max_length=200, blank=True, null=True,
                                         verbose_name="Se sim, qual tema do acampamento que participou?")
 
     cpf_conjuge = models.CharField(max_length=14, blank=True, null=True,
-                                   help_text="CPF do cônjuge (com ou sem máscara)")
+                                   help_text="CPF do cÃ´njuge (com ou sem mÃ¡scara)")
 
     inscricao_pareada = models.OneToOneField(
         'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='pareada_por',
-        help_text="Outra inscrição (cônjuge) vinculada"
+        help_text="Outra inscriÃ§Ã£o (cÃ´njuge) vinculada"
     )
 
-    # Responsáveis / Contato de Emergência (mantidos)
+    # ResponsÃ¡veis / Contato de EmergÃªncia (mantidos)
     responsavel_1_nome            = models.CharField(max_length=255, blank=True, null=True)
     responsavel_1_telefone        = models.CharField(max_length=20,  blank=True, null=True)
     responsavel_1_grau_parentesco = models.CharField(max_length=50,  blank=True, null=True)
@@ -375,10 +375,10 @@ class Inscricao(models.Model):
         unique_together = ('participante', 'evento')
 
     def __str__(self):
-        return f"{self.participante.nome} – {self.evento.nome} – {self.paroquia.nome}"
+        return f"{self.participante.nome} â€“ {self.evento.nome} â€“ {self.paroquia.nome}"
 
     # ------------------------------------------------------------
-    # URLs úteis
+    # URLs Ãºteis
     # ------------------------------------------------------------
     @property
     def inscricao_url(self) -> str:
@@ -408,7 +408,7 @@ class Inscricao(models.Model):
         return f"{base}{relative}" if base else relative
 
     # ------------------------------------------------------------
-    # Leitura rápida (derivados do status)
+    # Leitura rÃ¡pida (derivados do status)
     # ------------------------------------------------------------
     @property
     def is_rejeitada(self):       return self.status == InscricaoStatus.REJEITADA
@@ -467,9 +467,9 @@ class Inscricao(models.Model):
             self.desparear()
             return
         if outra == self:
-            raise ValidationError("Não pode parear consigo mesmo.")
+            raise ValidationError("NÃ£o pode parear consigo mesmo.")
         if outra.evento_id != self.evento_id:
-            raise ValidationError("A inscrição pareada deve ser do mesmo evento.")
+            raise ValidationError("A inscriÃ§Ã£o pareada deve ser do mesmo evento.")
 
         with transaction.atomic():
             self.inscricao_pareada = outra
@@ -478,9 +478,9 @@ class Inscricao(models.Model):
                 outra.inscricao_pareada = self
                 outra.save(update_fields=['inscricao_pareada'])
 
-            # Sincronias específicas de casais
+            # Sincronias especÃ­ficas de casais
             if self._is_evento_casais():
-                # Se um já está pago → os dois pagos
+                # Se um jÃ¡ estÃ¡ pago Ã¢â€ â€™ os dois pagos
                 if self.status == InscricaoStatus.PAG_CONFIRMADO and outra.status != InscricaoStatus.PAG_CONFIRMADO:
                     type(self).objects.filter(pk=outra.pk).update(
                         status=InscricaoStatus.PAG_CONFIRMADO,
@@ -496,7 +496,7 @@ class Inscricao(models.Model):
                         foi_selecionado=True,
                     )
                 else:
-                    # Se um está ao menos selecionado, garante o outro selecionado
+                    # Se um estÃ¡ ao menos selecionado, garante o outro selecionado
                     if self.status in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE} and \
                        outra.status not in {InscricaoStatus.CONVOCADA, InscricaoStatus.PAG_PENDENTE, InscricaoStatus.PAG_CONFIRMADO}:
                         type(self).objects.filter(pk=outra.pk).update(
@@ -520,7 +520,7 @@ class Inscricao(models.Model):
                     outra.inscricao_pareada = None
                     outra.save(update_fields=['inscricao_pareada'])
 
-    # utils para CPF do cônjuge
+    # utils para CPF do cÃ´njuge
     def _digits(self, s: Optional[str]) -> str:
         return re.sub(r'\D', '', s or '')
 
@@ -546,7 +546,7 @@ class Inscricao(models.Model):
         return True
 
     # ------------------------------------------------------------
-    # Helpers de casal (seleção/pagamento)
+    # Helpers de casal (seleÃ§Ã£o/pagamento)
     # ------------------------------------------------------------
     def _is_evento_casais(self) -> bool:
         return (getattr(self.evento, "tipo", "") or "").lower() == "casais"
@@ -554,9 +554,9 @@ class Inscricao(models.Model):
     def _propagar_selecao_para_par(self, novo_status: str):
         """
         Em eventos de casais, garante que o par fique ao menos selecionado.
-        - Se self foi para PAG_CONFIRMADO: par também vai para PAG_CONFIRMADO.
+        - Se self foi para PAG_CONFIRMADO: par tambÃ©m vai para PAG_CONFIRMADO.
         - Se self foi para PAG_PENDENTE/CONVOCADA: par vai pelo menos para CONVOCADA.
-        Usa update() para evitar recursão de sinais.
+        Usa update() para evitar recursÃ£o de sinais.
         """
         if not self._is_evento_casais():
             return
@@ -567,7 +567,7 @@ class Inscricao(models.Model):
         if novo_status == InscricaoStatus.PAG_CONFIRMADO:
             target = InscricaoStatus.PAG_CONFIRMADO
         elif novo_status in {InscricaoStatus.PAG_PENDENTE, InscricaoStatus.CONVOCADA}:
-            # Se o par já está em um destes, não baixa
+            # Se o par jÃ¡ estÃ¡ em um destes, nÃ£o baixa
             if par.status in {InscricaoStatus.PAG_CONFIRMADO, InscricaoStatus.PAG_PENDENTE, InscricaoStatus.CONVOCADA}:
                 return
             target = InscricaoStatus.CONVOCADA
@@ -607,16 +607,16 @@ class Inscricao(models.Model):
             )
 
     # ------------------------------------------------------------
-    # Validações
+    # ValidaÃ§Ãµes
     # ------------------------------------------------------------
     def clean(self):
         super().clean()
         # pareamento: mesmo evento
         if self.inscricao_pareada:
             if self.inscricao_pareada_id == self.id:
-                raise ValidationError({'inscricao_pareada': "Não é possível parear com a própria inscrição."})
+                raise ValidationError({'inscricao_pareada': "NÃ£o Ã© possÃ­vel parear com a prÃ³pria inscriÃ§Ã£o."})
             if self.inscricao_pareada.evento_id != self.evento_id:
-                raise ValidationError({'inscricao_pareada': "A inscrição pareada deve ser do mesmo evento."})
+                raise ValidationError({'inscricao_pareada': "A inscriÃ§Ã£o pareada deve ser do mesmo evento."})
 
         # campista: precisa do tema
         if self.ja_e_campista and not self.tema_acampamento:
@@ -626,12 +626,12 @@ class Inscricao(models.Model):
         if (self.evento.tipo or "").lower() == "servos":
             principal = getattr(self.evento, "evento_relacionado", None)
             if not principal:
-                raise ValidationError({"evento": "Evento de Servos sem vínculo com evento principal."})
+                raise ValidationError({"evento": "Evento de Servos sem vÃ­nculo com evento principal."})
             if not getattr(principal, "permitir_inscricao_servos", False):
-                raise ValidationError("Inscrições de Servos estão desabilitadas para este evento.")
+                raise ValidationError("InscriÃ§Ãµes de Servos estÃ£o desabilitadas para este evento.")
 
     # ------------------------------------------------------------
-    # Disparos (stubs — substitua pelas suas implementações)
+    # Disparos (stubs â€” substitua pelas suas implementaÃ§Ãµes)
     # ------------------------------------------------------------
     def _site_name(self) -> str:
         site_name = getattr(settings, "SITE_NAME", "") or (getattr(self.paroquia, "nome", "") or "")
@@ -665,7 +665,7 @@ class Inscricao(models.Model):
         except Exception:
             return None
 
-    # —— stubs (implemente conforme o seu projeto) ——
+    # â€”â€” stubs (implemente conforme o seu projeto) â€”â€”
     def enviar_email_selecao(self): pass
     def enviar_email_pagamento_confirmado(self): pass
     def enviar_email_recebida(self): pass
@@ -684,7 +684,7 @@ class Inscricao(models.Model):
         self.inscricao_concluida  = st == InscricaoStatus.PAG_CONFIRMADO
 
     # ------------------------------------------------------------
-    # Máquina de estados e transições
+    # MÃ¡quina de estados e transiÃ§Ãµes
     # ------------------------------------------------------------
     _NEXT = {
         InscricaoStatus.RASCUNHO:       {InscricaoStatus.ENVIADA, InscricaoStatus.CANCEL_USUARIO},
@@ -699,13 +699,13 @@ class Inscricao(models.Model):
     }
 
     def mudar_status(self, novo_status: str, *, motivo: Optional[str] = None, por_usuario=None) -> bool:
-        """Aplica transição validada e dispara eventos usuais + propagação para par."""
+        """Aplica transiÃ§Ã£o validada e dispara eventos usuais + propagaÃ§Ã£o para par."""
         if novo_status == self.status:
             return False
         permitidos = self._NEXT.get(self.status, set())
         if novo_status not in permitidos:
             raise ValidationError(
-                f"Transição inválida: {self.get_status_display()} → "
+                f"TransiÃ§Ã£o invÃ¡lida: {self.get_status_display()} Ã¢â€ â€™ "
                 f"{dict(InscricaoStatus.choices).get(novo_status, novo_status)}"
             )
         with transaction.atomic():
@@ -744,7 +744,7 @@ class Inscricao(models.Model):
                 self.enviar_email_recebida()
                 self.enviar_whatsapp_recebida()
 
-            # Propagar seleção/pagamento para o par (casais)
+            # Propagar seleÃ§Ã£o/pagamento para o par (casais)
             try:
                 self._propagar_selecao_para_par(novo_status)
             except Exception:
@@ -753,7 +753,7 @@ class Inscricao(models.Model):
         return True
 
     # ------------------------------------------------------------
-    # SAVE: reforça validações + mantém comportamento legado
+    # SAVE: reforÃ§a validaÃ§Ãµes + mantÃ©m comportamento legado
     # ------------------------------------------------------------
     def save(self, *args, **kwargs):
         is_new = self.pk is None
@@ -771,8 +771,8 @@ class Inscricao(models.Model):
 
         if status_alvo and status_alvo != self.status:
             try:
-                self.mudar_status(status_alvo, motivo="Autoajuste booleans→status")
-                return  # mudar_status já salvou
+                self.mudar_status(status_alvo, motivo="Autoajuste booleansÃ¢â€ â€™status")
+                return  # mudar_status jÃ¡ salvou
             except ValidationError:
                 self.status = status_alvo
 
@@ -781,7 +781,7 @@ class Inscricao(models.Model):
 
         super().save(*args, **kwargs)
 
-        # pós-criação: garante base + tenta parear por CPF do cônjuge
+        # pÃ³s-criaÃ§Ã£o: garante base + tenta parear por CPF do cÃ´njuge
         if is_new:
             try:
                 self.ensure_base_instance()
@@ -802,7 +802,7 @@ class Filho(models.Model):
     nome = models.CharField(max_length=255, verbose_name="Nome do Filho")
     idade = models.PositiveIntegerField(verbose_name="Idade")
     telefone = models.CharField(max_length=20, blank=True, null=True, verbose_name="Telefone")
-    endereco = models.CharField(max_length=255, blank=True, null=True, verbose_name="Endereço")
+    endereco = models.CharField(max_length=255, blank=True, null=True, verbose_name="EndereÃ§o")
 
     def __str__(self):
         return f"{self.nome} ({self.idade} anos)"
@@ -814,8 +814,8 @@ class Filho(models.Model):
 class Pagamento(models.Model):
     class MetodoPagamento(models.TextChoices):
         PIX = 'pix', _('Pix')
-        CREDITO = 'credito', _('Cartão de Crédito')
-        DEBITO = 'debito', _('Cartão de Débito')
+        CREDITO = 'credito', _('CartÃ£o de CrÃ©dito')
+        DEBITO = 'debito', _('CartÃ£o de DÃ©bito')
         DINHEIRO = 'dinheiro', _('Dinheiro')
 
     class StatusPagamento(models.TextChoices):
@@ -827,7 +827,7 @@ class Pagamento(models.Model):
     metodo = models.CharField(max_length=20, choices=MetodoPagamento.choices, default=MetodoPagamento.PIX)
     valor = models.DecimalField(max_digits=8, decimal_places=2)
 
-    # taxas e líquido (já existentes/ajustados)
+    # taxas e lÃ­quido (jÃ¡ existentes/ajustados)
     fee_mp = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     net_received = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
 
@@ -846,12 +846,12 @@ class Pagamento(models.Model):
         return f"Pagamento de {self.inscricao}"
 
 
-# 🔔 NOVO: sincroniza Pagamento → Inscricao e propaga para o cônjuge (casais)
+# Ã°Å¸â€â€ NOVO: sincroniza Pagamento Ã¢â€ â€™ Inscricao e propaga para o cÃ´njuge (casais)
 @receiver(post_save, sender=Pagamento)
 def _sincronizar_pagamento_inscricao(sender, instance: 'Pagamento', created, **kwargs):
     """
     Ao salvar Pagamento, reflete na Inscricao.pagamento_confirmado e dispara
-    a lógica de propagação para o cônjuge (via save() da Inscricao).
+    a lÃ³gica de propagaÃ§Ã£o para o cÃ´njuge (via save() da Inscricao).
     """
     try:
         ins = instance.inscricao
@@ -861,38 +861,38 @@ def _sincronizar_pagamento_inscricao(sender, instance: 'Pagamento', created, **k
     status = (instance.status or '').lower()
     deve_marcar = (status == 'confirmado')
 
-    # evita salvar se já está coerente
+    # evita salvar se jÃ¡ estÃ¡ coerente
     if bool(ins.pagamento_confirmado) == deve_marcar and bool(ins.inscricao_concluida) == deve_marcar:
         return
 
     ins.pagamento_confirmado = deve_marcar
     ins.inscricao_concluida = deve_marcar
     try:
-        ins.save()  # save() cuidará de propagar ao cônjuge quando for "casais"
+        ins.save()  # save() cuidarÃ¡ de propagar ao cÃ´njuge quando for "casais"
     except Exception:
         pass
 
 
 # ---------------------------------------------------------------------
-# Bases de inscrição por tipo
+# Bases de inscriÃ§Ã£o por tipo
 # ---------------------------------------------------------------------
 class BaseInscricao(models.Model):
-    """Campos comuns às Inscrições (Sênior, Juvenil, Mirim, Servos, Casais, Evento, Retiro)."""
-    inscricao = models.OneToOneField('Inscricao', on_delete=models.CASCADE, verbose_name="Inscrição")
+    """Campos comuns ÃƒÂ s InscriÃ§Ãµes (SÃªnior, Juvenil, Mirim, Servos, Casais, Evento, Retiro)."""
+    inscricao = models.OneToOneField('Inscricao', on_delete=models.CASCADE, verbose_name="InscriÃ§Ã£o")
     data_nascimento = models.DateField(verbose_name="Data de Nascimento")
     altura = models.FloatField(blank=True, null=True, verbose_name="Altura (m)")
     peso = models.FloatField(blank=True, null=True, verbose_name="Peso (kg)")
 
-    SIM_NAO_CHOICES = [('sim', 'Sim'), ('nao', 'Não')]
+    SIM_NAO_CHOICES = [('sim', 'Sim'), ('nao', 'NÃ£o')]
 
-    batizado = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="É batizado?")
+    batizado = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Ã‰ batizado?")
 
     ESTADO_CIVIL_CHOICES = [
         ('solteiro', 'Solteiro(a)'),
         ('casado', 'Casado(a)'),
         ('divorciado', 'Divorciado(a)'),
-        ('viuvo', 'Viúvo(a)'),
-        ('uniao_estavel', 'União Estável'),
+        ('viuvo', 'ViÃºvo(a)'),
+        ('uniao_estavel', 'UniÃ£o EstÃ¡vel'),
     ]
     estado_civil = models.CharField(max_length=20, choices=ESTADO_CIVIL_CHOICES, blank=True, null=True, verbose_name="Estado Civil")
 
@@ -902,14 +902,19 @@ class BaseInscricao(models.Model):
         max_length=50,
         blank=True,
         null=True,
-        verbose_name="Há quanto tempo são casados/estão em união estável?"
+        verbose_name="HÃ¡ quanto tempo sÃ£o casados/estÃ£o em uniÃ£o estÃ¡vel?"
     )
 
-    nome_conjuge = models.CharField(max_length=200, blank=True, null=True, verbose_name="Nome do Cônjuge")
-    conjuge_inscrito = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Cônjuge Inscrito?")
+    nome_conjuge = models.CharField(max_length=200, blank=True, null=True, verbose_name="Nome do CÃ´njuge")
+    conjuge_inscrito = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="CÃ´njuge Inscrito?")
 
-    paroquia = models.ForeignKey('Paroquia', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Paróquia")
-
+    paroquia = models.ForeignKey('Paroquia', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="ParÃ³quia")
+    outra_paroquia = models.CharField(
+        "Outra parÃ³quia (texto livre)",
+        max_length=120,
+        blank=True,
+        help_text="Preencha se nÃ£o encontrou sua parÃ³quia na lista."
+    )
     pastoral_movimento = models.ForeignKey('PastoralMovimento', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Pastoral/Movimento")
     outra_pastoral_movimento = models.CharField(max_length=200, blank=True, null=True, verbose_name="Outra Pastoral/Movimento")
 
@@ -919,16 +924,16 @@ class BaseInscricao(models.Model):
     TAMANHO_CAMISA_CHOICES = [('PP', 'PP'), ('P', 'P'), ('M', 'M'), ('G', 'G'), ('GG', 'GG'), ('XG', 'XG'), ('XGG', 'XGG')]
     tamanho_camisa = models.CharField(max_length=5, choices=TAMANHO_CAMISA_CHOICES, blank=True, null=True, verbose_name="Tamanho da Camisa")
 
-    # ----------------- SAÚDE -----------------
-    problema_saude = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui algum problema de saúde?")
-    qual_problema_saude = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual problema de saúde?")
+    # ----------------- SAÃšDE -----------------
+    problema_saude = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui algum problema de saÃºde?")
+    qual_problema_saude = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual problema de saÃºde?")
 
     medicamento_controlado = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Usa algum medicamento controlado?")
     qual_medicamento_controlado = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual medicamento controlado?")
-    protocolo_administracao = models.CharField(max_length=255, blank=True, null=True, verbose_name="Protocolo de administração")
+    protocolo_administracao = models.CharField(max_length=255, blank=True, null=True, verbose_name="Protocolo de administraÃ§Ã£o")
 
-    mobilidade_reduzida = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui limitações físicas ou mobilidade reduzida?")
-    qual_mobilidade_reduzida = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual limitação/mobilidade reduzida?")
+    mobilidade_reduzida = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui limitaÃ§Ãµes fÃ­sicas ou mobilidade reduzida?")
+    qual_mobilidade_reduzida = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual limitaÃ§Ã£o/mobilidade reduzida?")
 
     # Alergias
     alergia_alimento = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui alergia a algum alimento?")
@@ -936,18 +941,18 @@ class BaseInscricao(models.Model):
     alergia_medicamento = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui alergia a algum medicamento?")
     qual_alergia_medicamento = models.CharField(max_length=255, blank=True, null=True, verbose_name="Qual medicamento causa alergia?")
 
-    # NOVOS CAMPOS ESPECÍFICOS
+    # NOVOS CAMPOS ESPECÃƒÂFICOS
     diabetes = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui Diabetes?")
-    pressao_alta = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui Pressão Alta?")
+    pressao_alta = models.CharField(max_length=3, choices=SIM_NAO_CHOICES, blank=True, null=True, verbose_name="Possui PressÃ£o Alta?")
 
     TIPO_SANGUINEO_CHOICES = [
         ('A+', 'A+'), ('A-', 'A-'), ('B+', 'B+'), ('B-', 'B-'),
-        ('AB+', 'AB+'), ('AB-', 'AB-'), ('O+', 'O+'), ('O-', 'O-'), ('NS', 'Não sei')
+        ('AB+', 'AB+'), ('AB-', 'AB-'), ('O+', 'O+'), ('O-', 'O-'), ('NS', 'NÃ£o sei')
     ]
-    tipo_sanguineo = models.CharField(max_length=3, choices=TIPO_SANGUINEO_CHOICES, blank=True, null=True, verbose_name="Tipo Sanguíneo")
+    tipo_sanguineo = models.CharField(max_length=3, choices=TIPO_SANGUINEO_CHOICES, blank=True, null=True, verbose_name="Tipo SanguÃ­neo")
 
     indicado_por = models.CharField(max_length=200, blank=True, null=True, verbose_name="Indicado Por")
-    informacoes_extras = models.TextField(blank=True, null=True, verbose_name="Informações extras")
+    informacoes_extras = models.TextField(blank=True, null=True, verbose_name="InformaÃ§Ãµes extras")
 
     class Meta:
         abstract = True
@@ -955,69 +960,65 @@ class BaseInscricao(models.Model):
 
 class InscricaoSenior(BaseInscricao):
     def __str__(self):
-        return f"Inscrição Senior de {self.inscricao.participante.nome}"
+        return f"InscriÃ§Ã£o Senior de {self.inscricao.participante.nome}"
 
 
 class InscricaoJuvenil(BaseInscricao):
     def __str__(self):
-        return f"Inscrição Juvenil de {self.inscricao.participante.nome}"
+        return f"InscriÃ§Ã£o Juvenil de {self.inscricao.participante.nome}"
 
 
 class InscricaoMirim(BaseInscricao):
     def __str__(self):
-        return f"Inscrição Mirim de {self.inscricao.participante.nome}"
+        return f"InscriÃ§Ã£o Mirim de {self.inscricao.participante.nome}"
 
 
 class InscricaoServos(BaseInscricao):
     def __str__(self):
-        return f"Inscrição Servos de {self.inscricao.participante.nome}"
+        return f"InscriÃ§Ã£o Servos de {self.inscricao.participante.nome}"
 
 
-# ——— NOVOS TIPOS ———
+# â€”â€”â€” NOVOS TIPOS â€”â€”â€”
 class InscricaoCasais(BaseInscricao):
     """
-    Inscrição específica para eventos de casais.
-    Herda todos os campos de BaseInscricao e adiciona informações extras.
+    InscriÃ§Ã£o especÃ­fica para eventos de casais.
+    Herda todos os campos de BaseInscricao e adiciona informaÃ§Ãµes extras.
     """
-    foto_casal = models.ImageField(
-        upload_to="casais/fotos/",
-        null=True,
-        blank=True,
-        verbose_name="Foto do casal"
-    )
+    foto_casal = models.ImageField(upload_to="casais/fotos/", blank=True, null=True)
+
     tempo_casado_uniao = models.CharField(
         max_length=100,
         null=True,
         blank=True,
-        verbose_name="Tempo de união"
+        verbose_name="Tempo de uniÃ£o"
     )
     casado_na_igreja = models.CharField(
         max_length=10,
-        choices=[("sim", "Sim"), ("nao", "Não")],
+        choices=[("sim", "Sim"), ("nao", "NÃ£o")],
         null=True,
         blank=True,
         verbose_name="Casado no religioso?"
     )
 
     def __str__(self):
-        return f"Inscrição Casais de {self.inscricao.participante.nome}"
+        return f"InscriÃ§Ã£o Casais de {self.inscricao.participante.nome}"
 
 
 class InscricaoEvento(BaseInscricao):
     def __str__(self):
-        return f"Inscrição Evento de {self.inscricao.participante.nome}"
+        return f"InscriÃ§Ã£o Evento de {self.inscricao.participante.nome}"
 
 
 class InscricaoRetiro(BaseInscricao):
     def __str__(self):
-        return f"Inscrição Retiro de {self.inscricao.participante.nome}"
+        return f"InscriÃ§Ã£o Retiro de {self.inscricao.participante.nome}"
 
 
 class Contato(models.Model):
     ESCOLHAS_GRAU_PARENTESCO = [
-        ('mae', 'Mãe'),
+        ('mae', 'MÃ£e'),
         ('pai', 'Pai'),
-        ('irmao', 'Irmão'),
+        ('irmao', 'IrmÃ£o'),
         ('tio', 'Tio'),
         ('tia', 'Tia'),
         ('outro', 'Outro'),
@@ -1034,11 +1035,11 @@ class Contato(models.Model):
 
 
 # ---------------------------------------------------------------------
-# Usuário
+# UsuÃ¡rio
 # ---------------------------------------------------------------------
 TIPOS_USUARIO = [
     ('admin_geral', 'Administrador Geral'),
-    ('admin_paroquia', 'Administrador da Paróquia'),
+    ('admin_paroquia', 'Administrador da ParÃ³quia'),
 ]
 
 class User(AbstractUser):
@@ -1071,10 +1072,10 @@ class User(AbstractUser):
 
 
 # ---------------------------------------------------------------------
-# Política de Privacidade
+# PolÃ­tica de Privacidade
 # ---------------------------------------------------------------------
 class PoliticaPrivacidade(models.Model):
-    texto = models.TextField("Texto da Política de Privacidade")
+    texto = models.TextField("Texto da PolÃ­tica de Privacidade")
     logo = CloudinaryField(verbose_name="Logo", null=True, blank=True)
     imagem_camisa = CloudinaryField(verbose_name="Imagem da Camisa", null=True, blank=True)
     imagem_1 = CloudinaryField(verbose_name="Imagem 1 (opcional)", null=True, blank=True)
@@ -1082,19 +1083,19 @@ class PoliticaPrivacidade(models.Model):
 
     # NOVO
     imagem_ajuda = CloudinaryField(
-        verbose_name="Imagem da Ajuda (botão flutuante)",
+        verbose_name="Imagem da Ajuda (botÃ£o flutuante)",
         null=True, blank=True
     )
     
     imagem_pagto = CloudinaryField(
-        verbose_name="Imagem do Pagamento (PIX / instruções)",
+        verbose_name="Imagem do Pagamento (PIX / instruÃ§Ãµes)",
         null=True, blank=True
     )
 
     imagem_insc = CloudinaryField(
-        verbose_name="Imagem da Inscrição",
+        verbose_name="Imagem da InscriÃ§Ã£o",
         null=True, blank=True,
-        help_text="Imagem exibida nas telas de inscrição (opcional)."
+        help_text="Imagem exibida nas telas de inscriÃ§Ã£o (opcional)."
     )
 
     # Dados do dono do sistema...
@@ -1103,31 +1104,31 @@ class PoliticaPrivacidade(models.Model):
     telefone_contato = models.CharField(
         "Telefone de Contato (E.164 BR)",
         max_length=20, blank=True, null=True,
-        help_text="Use +55DDDNÚMERO (ex.: +5563920013103)",
+        help_text="Use +55DDDNÃšMERO (ex.: +5563920013103)",
         validators=[RegexValidator(
             regex=r'^\+55\d{10,11}$',
-            message="Formato inválido. Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103).",
+            message="Formato invÃ¡lido. Use +55 seguido de 10 ou 11 dÃ­gitos (ex.: +5563920013103).",
         )],
     )
-    endereco = models.CharField("Endereço", max_length=255, blank=True, null=True)
-    numero = models.CharField("Número", max_length=10, blank=True, null=True)
+    endereco = models.CharField("EndereÃ§o", max_length=255, blank=True, null=True)
+    numero = models.CharField("NÃºmero", max_length=10, blank=True, null=True)
     bairro = models.CharField("Bairro", max_length=100, blank=True, null=True)
     estado = models.CharField("Estado", max_length=2, blank=True, null=True)
 
     def __str__(self):
-        return "Política de Privacidade"
+        return "PolÃ­tica de Privacidade"
 
 
 # ---------------------------------------------------------------------
-# Vídeo do Evento (Cloudinary)
+# VÃ­deo do Evento (Cloudinary)
 # ---------------------------------------------------------------------
 class VideoEventoAcampamento(models.Model):
     evento = models.OneToOneField('EventoAcampamento', on_delete=models.CASCADE, related_name='video')
     titulo = models.CharField(max_length=255)
-    arquivo = CloudinaryField(resource_type='video', verbose_name="Vídeo do Evento", null=True, blank=True)
+    arquivo = CloudinaryField(resource_type='video', verbose_name="VÃ­deo do Evento", null=True, blank=True)
 
     def __str__(self):
-        return f"Vídeo de {self.evento.nome}"
+        return f"VÃ­deo de {self.evento.nome}"
 
     def get_url(self):
         try:
@@ -1137,10 +1138,10 @@ class VideoEventoAcampamento(models.Model):
 
 
 # ---------------------------------------------------------------------
-# Cônjuge
+# CÃ´njuge
 # ---------------------------------------------------------------------
 class Conjuge(models.Model):
-    SIM_NAO_CHOICES = [('sim', 'Sim'), ('nao', 'Não')]
+    SIM_NAO_CHOICES = [('sim', 'Sim'), ('nao', 'NÃ£o')]
 
     inscricao = models.OneToOneField(
         Inscricao, 
@@ -1151,19 +1152,19 @@ class Conjuge(models.Model):
         max_length=200, 
         blank=True, 
         null=True, 
-        verbose_name="Nome do Cônjuge"
+        verbose_name="Nome do CÃ´njuge"
     )
     conjuge_inscrito = models.CharField(
         max_length=3, 
         choices=SIM_NAO_CHOICES, 
         default='nao', 
-        verbose_name="Cônjuge Inscrito?"
+        verbose_name="CÃ´njuge Inscrito?"
     )
     ja_e_campista = models.CharField(
         max_length=3, 
         choices=SIM_NAO_CHOICES, 
         default='nao', 
-        verbose_name="Já é Campista?"
+        verbose_name="JÃ¡ Ã© Campista?"
     )
     acampamento = models.CharField(
         max_length=200,
@@ -1173,12 +1174,12 @@ class Conjuge(models.Model):
     )
 
     def __str__(self):
-        nome = self.nome or '—'
-        return f"Cônjuge de {self.inscricao.participante.nome}: {nome}"
+        nome = self.nome or 'â€”'
+        return f"CÃ´njuge de {self.inscricao.participante.nome}: {nome}"
 
 
 # ---------------------------------------------------------------------
-# Template de Crachá
+# Template de CrachÃ¡
 # ---------------------------------------------------------------------
 class CrachaTemplate(models.Model):
     nome = models.CharField("Nome do Template", max_length=100)
@@ -1202,7 +1203,7 @@ class MercadoPagoConfig(models.Model):
                            validators=[MinValueValidator(0), MaxValueValidator(100)],
                            help_text="Percentual sobre o valor do PIX (ex.: 0.99 para 0,99%)")
     taxa_pix_fixa         = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0.00"),
-                           help_text="Valor fixo por transação PIX")
+                           help_text="Valor fixo por transaÃ§Ã£o PIX")
     taxa_credito_percent  = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"),
                            validators=[MinValueValidator(0), MaxValueValidator(100)])
     taxa_credito_fixa     = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0.00"))
@@ -1215,13 +1216,13 @@ class MercadoPagoConfig(models.Model):
 
 
 # ---------------------------------------------------------------------
-# Preferências de Comunicação
+# PreferÃªncias de ComunicaÃ§Ã£o
 # ---------------------------------------------------------------------
 class PreferenciasComunicacao(models.Model):
     FONTE_CHOICES = [
-        ('form', 'Formulário/Portal'),
+        ('form', 'FormulÃ¡rio/Portal'),
         ('admin', 'Admin'),
-        ('import', 'Importação'),
+        ('import', 'ImportaÃ§Ã£o'),
     ]
 
     participante = models.OneToOneField('Participante', on_delete=models.CASCADE, related_name='prefs')
@@ -1232,7 +1233,7 @@ class PreferenciasComunicacao(models.Model):
     politica_versao = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
-        return f"Preferências de {self.participante.nome}"
+        return f"PreferÃªncias de {self.participante.nome}"
 
     def marcar_optin_marketing(self, fonte='admin', prova=None, versao=None):
         self.whatsapp_marketing_opt_in = True
@@ -1252,24 +1253,24 @@ def criar_prefs(sender, instance, created, **kwargs):
 
 
 # ---------------------------------------------------------------------
-# Política de Reembolso
+# PolÃ­tica de Reembolso
 # ---------------------------------------------------------------------
 class PoliticaReembolso(models.Model):
     evento = models.OneToOneField(
         EventoAcampamento,
         on_delete=models.CASCADE,
         related_name='politica_reembolso',
-        help_text="Cada evento pode ter (no máximo) uma política de reembolso."
+        help_text="Cada evento pode ter (no mÃ¡ximo) uma polÃ­tica de reembolso."
     )
     ativo = models.BooleanField(default=True)
     permite_reembolso = models.BooleanField(
         default=True,
-        help_text="Se desmarcado, o evento não aceitará solicitações de reembolso."
+        help_text="Se desmarcado, o evento nÃ£o aceitarÃ¡ solicitaÃ§Ãµes de reembolso."
     )
 
     prazo_solicitacao_dias = models.PositiveIntegerField(
         default=7,
-        help_text="Dias ANTES do início do evento para solicitar reembolso."
+        help_text="Dias ANTES do inÃ­cio do evento para solicitar reembolso."
     )
     taxa_administrativa_percent = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal('0.00'),
@@ -1279,7 +1280,7 @@ class PoliticaReembolso(models.Model):
 
     descricao = models.TextField(
         blank=True,
-        help_text="Detalhe as regras (ex.: Integral até 7 dias antes; após isso, 70%)."
+        help_text="Detalhe as regras (ex.: Integral atÃ© 7 dias antes; apÃ³s isso, 70%)."
     )
 
     contato_email = models.EmailField(blank=True, null=True)
@@ -1287,25 +1288,25 @@ class PoliticaReembolso(models.Model):
         max_length=20, blank=True, null=True,
         help_text="WhatsApp em E.164 (ex.: +5563920013103).",
         validators=[RegexValidator(regex=r'^\+55\d{10,11}$',
-                                   message="Use +55 seguido de 10 ou 11 dígitos.")]
+                                   message="Use +55 seguido de 10 ou 11 dÃ­gitos.")]
     )
 
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Política de Reembolso"
-        verbose_name_plural = "Políticas de Reembolso"
+        verbose_name = "PolÃ­tica de Reembolso"
+        verbose_name_plural = "PolÃ­ticas de Reembolso"
 
     def __str__(self):
-        return f"Política de Reembolso – {self.evento.nome}"
+        return f"PolÃ­tica de Reembolso â€“ {self.evento.nome}"
 
     def clean(self):
         super().clean()
         if self.contato_whatsapp:
             norm = normalizar_e164_br(self.contato_whatsapp)
             if not norm or not validar_e164_br(norm):
-                raise ValidationError({'contato_whatsapp': "Informe um telefone BR válido. Ex.: +5563920013103"})
+                raise ValidationError({'contato_whatsapp': "Informe um telefone BR vÃ¡lido. Ex.: +5563920013103"})
             self.contato_whatsapp = norm
 
     def save(self, *args, **kwargs):
@@ -1328,18 +1329,18 @@ class MercadoPagoOwnerConfig(models.Model):
     access_token = models.CharField("Access Token", max_length=255)
     public_key   = models.CharField("Public Key", max_length=255, blank=True, null=True)
 
-    # >>> dados da CHAVE PIX e identificação do recebedor
-    chave_pix       = models.CharField("Chave PIX do dono", max_length=140)  # e-mail, CPF/CNPJ, telefone ou aleatória
+    # >>> dados da CHAVE PIX e identificaÃ§Ã£o do recebedor
+    chave_pix       = models.CharField("Chave PIX do dono", max_length=140)  # e-mail, CPF/CNPJ, telefone ou aleatÃ³ria
     nome_recebedor  = models.CharField("Nome (recebedor PIX)", max_length=25)  # limite Pix/EMV recomenda <=25
     cidade_recebedor= models.CharField("Cidade (recebedor PIX)", max_length=15, default="SAO PAULO")  # recomenda <=15
 
-    notificacao_webhook_url = models.URLField(blank=True, null=True, help_text="Opcional: URL pública do webhook de repasses")
-    email_cobranca = models.EmailField(blank=True, null=True, help_text="E-mail que aparecerá como pagador padrão")
+    notificacao_webhook_url = models.URLField(blank=True, null=True, help_text="Opcional: URL pÃºblica do webhook de repasses")
+    email_cobranca = models.EmailField(blank=True, null=True, help_text="E-mail que aparecerÃ¡ como pagador padrÃ£o")
     ativo = models.BooleanField(default=True)
 
     class Meta:
-        verbose_name = "Configuração MP (Dono)"
-        verbose_name_plural = "Configurações MP (Dono)"
+        verbose_name = "ConfiguraÃ§Ã£o MP (Dono)"
+        verbose_name_plural = "ConfiguraÃ§Ãµes MP (Dono)"
 
     def __str__(self):
         return f"MP Dono ({'ativo' if self.ativo else 'inativo'})"
@@ -1354,7 +1355,7 @@ class Repasse(models.Model):
 
     paroquia = models.ForeignKey("inscricoes.Paroquia", on_delete=models.CASCADE, related_name="repasses")
     evento = models.ForeignKey("inscricoes.EventoAcampamento", on_delete=models.CASCADE, related_name="repasses")
-    # base = arrecadado confirmado - taxas MP (dos pagamentos das inscrições)
+    # base = arrecadado confirmado - taxas MP (dos pagamentos das inscriÃ§Ãµes)
     valor_base = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     taxa_percentual = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("2.00"))
     valor_repasse = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
@@ -1375,35 +1376,35 @@ class Repasse(models.Model):
         ]
 
     def __str__(self):
-        return f"Repasse {self.paroquia} / {self.evento} — {self.valor_repasse} ({self.status})"
+        return f"Repasse {self.paroquia} / {self.evento} â€” {self.valor_repasse} ({self.status})"
 
 
 # ---------------------------------------------------------------------
-# Mídias do Site (landing / institucional)
+# MÃ­dias do Site (landing / institucional)
 # ---------------------------------------------------------------------
 class SiteImage(models.Model):
     """
-    Repositório central de imagens usadas no site (landing, páginas institucionais).
+    RepositÃ³rio central de imagens usadas no site (landing, pÃ¡ginas institucionais).
     Use 'key' para referenciar nas templates.
     """
     CATEGORIA_CHOICES = [
         ("hero", "Hero / Capa"),
         ("screenshot", "Screenshot"),
         ("logo", "Logo/Marca"),
-        ("ilustracao", "Ilustração"),
-        ("icone", "Ícone"),
+        ("ilustracao", "IlustraÃ§Ã£o"),
+        ("icone", "ÃƒÂcone"),
         ("banner", "Banner"),
         ("outro", "Outro"),
     ]
 
-    key = models.SlugField("Chave única", max_length=80, unique=True,
+    key = models.SlugField("Chave Ãºnica", max_length=80, unique=True,
                            help_text="Ex.: dashboard, pagamentos, questionario-pronto")
-    titulo = models.CharField("Título", max_length=120, blank=True)
+    titulo = models.CharField("TÃ­tulo", max_length=120, blank=True)
     categoria = models.CharField("Categoria", max_length=20, choices=CATEGORIA_CHOICES, default="screenshot")
     imagem = CloudinaryField(verbose_name="Imagem", null=True, blank=True)
     alt_text = models.CharField("Texto alternativo (acessibilidade)", max_length=200, blank=True)
     legenda = models.CharField("Legenda (opcional)", max_length=200, blank=True)
-    creditos = models.CharField("Créditos (opcional)", max_length=200, blank=True)
+    creditos = models.CharField("CrÃ©ditos (opcional)", max_length=200, blank=True)
     ativa = models.BooleanField("Ativa?", default=True)
     largura = models.PositiveIntegerField("Largura (px)", null=True, blank=True)
     altura = models.PositiveIntegerField("Altura (px)", null=True, blank=True)
@@ -1424,26 +1425,26 @@ class SiteImage(models.Model):
 # ---------------------------------------------------------------------
 class LeadLanding(models.Model):
     """
-    Leads do formulário 'Entre em contato' (landing).
+    Leads do formulÃ¡rio 'Entre em contato' (landing).
     """
     nome = models.CharField(max_length=120)
     email = models.EmailField(db_index=True)
     whatsapp = models.CharField(
         max_length=20,
-        help_text="WhatsApp em E.164 BR: +55DDDNÚMERO (ex.: +5563920013103)",
+        help_text="WhatsApp em E.164 BR: +55DDDNÃšMERO (ex.: +5563920013103)",
         validators=[RegexValidator(
             regex=r'^\+55\d{10,11}$',
-            message="Use +55 seguido de 10 ou 11 dígitos (ex.: +5563920013103).",
+            message="Use +55 seguido de 10 ou 11 dÃ­gitos (ex.: +5563920013103).",
         )],
     )
     mensagem = models.TextField(blank=True)
 
-    # ATENÇÃO: mantenha o MESMO nome usado no form/template (use 'consent_lgpd').
+    # ATENÃ‡ÃƒO: mantenha o MESMO nome usado no form/template (use 'consent_lgpd').
     consent_lgpd = models.BooleanField(default=False)
 
     origem = models.CharField(max_length=120, default="landing")
 
-    # Auditoria (úteis p/ analytics básicos)
+    # Auditoria (Ãºteis p/ analytics bÃ¡sicos)
     ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
 
@@ -1462,10 +1463,10 @@ class LeadLanding(models.Model):
 
     @property
     def whatsapp_mascarado(self) -> str:
-        """Exibe os 2 últimos dígitos apenas."""
+        """Exibe os 2 Ãºltimos dÃ­gitos apenas."""
         if not self.whatsapp:
             return ""
-        return self.whatsapp[:-2] + "••"
+        return self.whatsapp[:-2] + "â€Â¢â€Â¢"
 
     def clean(self):
         super().clean()
@@ -1473,7 +1474,7 @@ class LeadLanding(models.Model):
         if self.whatsapp:
             norm = normalizar_e164_br(self.whatsapp)
             if not norm or not validar_e164_br(norm):
-                raise ValidationError({'whatsapp': "Informe um telefone BR válido. Ex.: +5563920013103"})
+                raise ValidationError({'whatsapp': "Informe um telefone BR vÃ¡lido. Ex.: +5563920013103"})
             self.whatsapp = norm
 
 
@@ -1483,17 +1484,17 @@ def _leadlanding_enviar_emails(sender, instance: 'LeadLanding', created, **kwarg
         return
 
     # E-mail para a pessoa
-    assunto_user = "Recebemos sua mensagem — eismeaqui.app"
+    assunto_user = "Recebemos sua mensagem â€” eismeaqui.app"
     texto_user = (
-        f"Olá {instance.nome},\n\n"
+        f"OlÃ¡ {instance.nome},\n\n"
         "Recebemos sua mensagem no eismeaqui.app. Em breve retornaremos via e-mail ou WhatsApp.\n\n"
-        "Deus abençoe!\nEquipe eismeaqui.app"
+        "Deus abenÃ§oe!\nEquipe eismeaqui.app"
     )
     html_user = f"""
     <html><body style="font-family:Arial,sans-serif;color:#0f172a">
-      <p>Olá <strong>{instance.nome}</strong>,</p>
+      <p>OlÃ¡ <strong>{instance.nome}</strong>,</p>
       <p>Recebemos sua mensagem no <strong>eismeaqui.app</strong>. Em breve retornaremos via e-mail ou WhatsApp.</p>
-      <p>Deus abençoe!<br/>Equipe eismeaqui.app</p>
+      <p>Deus abenÃ§oe!<br/>Equipe eismeaqui.app</p>
     </body></html>
     """
     try:
@@ -1503,7 +1504,7 @@ def _leadlanding_enviar_emails(sender, instance: 'LeadLanding', created, **kwarg
     except Exception:
         pass
 
-    # E-mail interno (para você/equipe)
+    # E-mail interno (para vocÃª/equipe)
     destino_admin = getattr(settings, "SALES_INBOX", settings.DEFAULT_FROM_EMAIL)
     assunto_admin = f"[Landing] Novo contato: {instance.nome}"
     html_admin = f"""
@@ -1512,8 +1513,8 @@ def _leadlanding_enviar_emails(sender, instance: 'LeadLanding', created, **kwarg
       <p><strong>Nome:</strong> {instance.nome}</p>
       <p><strong>E-mail:</strong> {instance.email}</p>
       <p><strong>WhatsApp:</strong> {instance.whatsapp}</p>
-      <p><strong>Mensagem:</strong><br/>{instance.mensagem or '—'}</p>
-      <p><small>Origem: {instance.origem} • Data: {timezone.localtime(instance.created_at).strftime('%d/%m/%Y %H:%M')}</small></p>
+      <p><strong>Mensagem:</strong><br/>{instance.mensagem or 'â€”'}</p>
+      <p><small>Origem: {instance.origem} â€Â¢ Data: {timezone.localtime(instance.created_at).strftime('%d/%m/%Y %H:%M')}</small></p>
     </body></html>
     """
     try:
@@ -1554,13 +1555,13 @@ class Comunicado(models.Model):
         ordering = ["-data_publicacao", "-created_at"]
 
     def __str__(self):
-        return f"{self.paroquia.nome} • {self.titulo}"
+        return f"{self.paroquia.nome} â€Â¢ {self.titulo}"
 
 
 class EventoComunitario(models.Model):
     paroquia = models.ForeignKey("inscricoes.Paroquia", on_delete=models.CASCADE, related_name="eventos_comunidade")
     nome = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=200, blank=True)  # único dentro da paróquia
+    slug = models.SlugField(max_length=200, blank=True)  # Ãºnico dentro da parÃ³quia
     data_inicio = models.DateField()
     data_fim = models.DateField(null=True, blank=True)
     visivel_site = models.BooleanField(default=True)
@@ -1578,15 +1579,15 @@ class EventoComunitario(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.paroquia.nome} • {self.nome}"
+        return f"{self.paroquia.nome} â€Â¢ {self.nome}"
 
 
 # ---------------------------------------------------------------------
-# Catálogo fixo de Grupos (com cores) e Ministérios + Alocações por evento
+# CatÃ¡logo fixo de Grupos (com cores) e MinistÃ©rios + AlocaÃ§Ãµes por evento
 # ---------------------------------------------------------------------
 from django.core.validators import RegexValidator
 
-# Paleta padrão (nome → hex). Pode ampliar quando quiser.
+# Paleta padrÃ£o (nome Ã¢â€ â€™ hex). Pode ampliar quando quiser.
 CORES_PADRAO = {
     "Amarelo":   "#F59E0B",
     "Vermelho":  "#EF4444",
@@ -1607,15 +1608,15 @@ HEX_VALIDATOR = RegexValidator(
 
 class Grupo(models.Model):
     """
-    Catálogo global de grupos. NÃO depende do evento.
-    A cor é escolhida do catálogo e guardamos o HEX para exibir nos relatórios/fichas.
+    CatÃ¡logo global de grupos. NÃƒO depende do evento.
+    A cor Ã© escolhida do catÃ¡logo e guardamos o HEX para exibir nos relatÃ³rios/fichas.
     """
     nome = models.CharField(max_length=100, unique=True)
     cor_nome = models.CharField(
         max_length=20,
         choices=[(n, n) for n in CORES_PADRAO.keys()],
         default="Amarelo",
-        help_text="Nome da cor do catálogo (ex.: Amarelo, Vermelho, Azul...)",
+        help_text="Nome da cor do catÃ¡logo (ex.: Amarelo, Vermelho, Azul...)",
     )
     cor_hex = models.CharField(
         max_length=7,  # #RRGGBB
@@ -1630,7 +1631,7 @@ class Grupo(models.Model):
 
     def clean(self):
         super().clean()
-        # mantém hex coerente com o nome da cor
+        # mantÃ©m hex coerente com o nome da cor
         if self.cor_nome in CORES_PADRAO:
             self.cor_hex = CORES_PADRAO[self.cor_nome]
 
@@ -1645,7 +1646,7 @@ class Grupo(models.Model):
 
 class Ministerio(models.Model):
     """
-    Catálogo global de ministérios. NÃO depende do evento.
+    CatÃ¡logo global de ministÃ©rios. NÃƒO depende do evento.
     """
     nome = models.CharField(max_length=100, unique=True)
     descricao = models.TextField(blank=True, null=True)
@@ -1658,20 +1659,20 @@ class Ministerio(models.Model):
         return self.nome
 
 
-# ======================= ALOCAÇÕES por evento =======================
+# ======================= ALOCAÃ‡Ã•ES por evento =======================
 
 class AlocacaoMinisterio(models.Model):
     """
-    Liga uma inscrição (evento Servos/Servos de Casais) a um Ministério no EVENTO da inscrição.
-    Garante no máximo 1 coordenador por (evento, ministério).
+    Liga uma inscriÃ§Ã£o (evento Servos/Servos de Casais) a um MinistÃ©rio no EVENTO da inscriÃ§Ã£o.
+    Garante no mÃ¡ximo 1 coordenador por (evento, ministÃ©rio).
     """
     inscricao = models.OneToOneField(
         "Inscricao",
         on_delete=models.CASCADE,
         related_name="alocacao_ministerio",
-        help_text="A inscrição deste servo (no evento de Servos).",
+        help_text="A inscriÃ§Ã£o deste servo (no evento de Servos).",
     )
-    # Mantemos para filtros/relatórios; é sempre igual a inscricao.evento
+    # Mantemos para filtros/relatÃ³rios; Ã© sempre igual a inscricao.evento
     evento = models.ForeignKey(
         "EventoAcampamento",
         on_delete=models.CASCADE,
@@ -1686,17 +1687,17 @@ class AlocacaoMinisterio(models.Model):
     funcao = models.CharField(
         max_length=100,
         blank=True, null=True,
-        help_text="Ex.: Coordenação, Liturgia, Música..."
+        help_text="Ex.: CoordenaÃ§Ã£o, Liturgia, MÃºsica..."
     )
     is_coordenador = models.BooleanField(
         default=False,
-        verbose_name="É coordenador(a) do ministério?"
+        verbose_name="Ã‰ coordenador(a) do ministÃ©rio?"
     )
     data_alocacao = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
-            # Um coordenador por ministério em cada evento
+            # Um coordenador por ministÃ©rio em cada evento
             models.UniqueConstraint(
                 fields=["evento", "ministerio"],
                 condition=Q(is_coordenador=True),
@@ -1709,7 +1710,7 @@ class AlocacaoMinisterio(models.Model):
             models.Index(fields=["is_coordenador"]),
         ]
 
-    # --- Validação de domínio ---
+    # --- ValidaÃ§Ã£o de domÃ­nio ---
     def clean(self):
         super().clean()
 
@@ -1723,15 +1724,15 @@ class AlocacaoMinisterio(models.Model):
         # 1) evento deve bater com inscricao.evento (quando ambos presentes)
         if self.inscricao_id and self.evento_id:
             if self.inscricao.evento_id != self.evento_id:
-                # Erro geral (não prenda a 'evento' para evitar ValueError no form)
-                raise ValidationError("O evento da alocação deve ser o mesmo da inscrição.")
+                # Erro geral (nÃ£o prenda a 'evento' para evitar ValueError no form)
+                raise ValidationError("O evento da alocaÃ§Ã£o deve ser o mesmo da inscriÃ§Ã£o.")
 
-        # 2) Só permitir em eventos de Servos (inclui 'servos de casais')
+        # 2) SÃ³ permitir em eventos de Servos (inclui 'servos de casais')
         tipo = (getattr(ev, "tipo", "") or "").lower()
         if tipo and ("servos" not in tipo):
-            raise ValidationError("Atribuição de ministério só é permitida para eventos de Servos.")
+            raise ValidationError("AtribuiÃ§Ã£o de ministÃ©rio sÃ³ Ã© permitida para eventos de Servos.")
 
-        # 3) Impedir 2 coordenadores (checa além do UniqueConstraint para erro amigável)
+        # 3) Impedir 2 coordenadores (checa alÃ©m do UniqueConstraint para erro amigÃ¡vel)
         if self.is_coordenador and self.ministerio_id and ev:
             qs = type(self).objects.filter(
                 evento_id=ev.id,
@@ -1741,36 +1742,36 @@ class AlocacaoMinisterio(models.Model):
             if self.pk:
                 qs = qs.exclude(pk=self.pk)
             if qs.exists():
-                raise ValidationError("Este ministério já possui um(a) coordenador(a) neste evento.")
+                raise ValidationError("Este ministÃ©rio jÃ¡ possui um(a) coordenador(a) neste evento.")
 
-        # (Opcional) Se Ministério for escopo do evento, valide coerência:
+        # (Opcional) Se MinistÃ©rio for escopo do evento, valide coerÃªncia:
         # if self.ministerio and hasattr(self.ministerio, "evento_id") and self.ministerio.evento_id != ev.id:
-        #     raise ValidationError("Este ministério não pertence a este evento.")
+        #     raise ValidationError("Este ministÃ©rio nÃ£o pertence a este evento.")
 
-    # --- Sincronismo e validação antes de persistir ---
+    # --- Sincronismo e validaÃ§Ã£o antes de persistir ---
     def save(self, *args, **kwargs):
         # Sempre sincroniza evento <- inscricao.evento
         if self.inscricao_id:
             ev_id = getattr(self.inscricao, "evento_id", None)
             if ev_id and self.evento_id != ev_id:
                 self.evento_id = ev_id
-        # Valida tudo já com o evento sincronizado
+        # Valida tudo jÃ¡ com o evento sincronizado
         self.full_clean()
         return super().save(*args, **kwargs)
 
     def __str__(self):
         p = getattr(self.inscricao, "participante", None)
         nome = getattr(p, "nome", "Participante")
-        m = getattr(self.ministerio, "nome", None) or "Sem ministério"
+        m = getattr(self.ministerio, "nome", None) or "Sem ministÃ©rio"
         ev_nome = getattr(self.evento, "nome", "Evento")
         tag = " (Coord.)" if self.is_coordenador else ""
-        return f"{nome}{tag} → {m} @ {ev_nome}"
+        return f"{nome}{tag} Ã¢â€ â€™ {m} @ {ev_nome}"
 
 class AlocacaoGrupo(models.Model):
     """
-    Liga uma inscrição a um Grupo (global).
+    Liga uma inscriÃ§Ã£o a um Grupo (global).
     Pode ser usada em QUALQUER tipo de evento.
-    O campo `evento` é sempre sincronizado com `inscricao.evento`.
+    O campo `evento` Ã© sempre sincronizado com `inscricao.evento`.
     """
     inscricao = models.OneToOneField(
         "Inscricao",
@@ -1801,16 +1802,16 @@ class AlocacaoGrupo(models.Model):
     def clean(self):
         super().clean()
 
-        # 1) Coerência: evento da alocação TEM que ser o mesmo da inscrição
+        # 1) CoerÃªncia: evento da alocaÃ§Ã£o TEM que ser o mesmo da inscriÃ§Ã£o
         if self.inscricao_id and self.evento_id:
             if self.evento_id != self.inscricao.evento_id:
-                # erro geral (não amarra em campo específico do form)
-                raise ValidationError("O evento da alocação deve ser o mesmo da inscrição.")
+                # erro geral (nÃ£o amarra em campo especÃ­fico do form)
+                raise ValidationError("O evento da alocaÃ§Ã£o deve ser o mesmo da inscriÃ§Ã£o.")
 
         # 2) (Intencionalmente REMOVIDO)
-        #    Não há mais restrição por tipo de evento (antes exigia 'servos').
+        #    NÃ£o hÃ¡ mais restriÃ§Ã£o por tipo de evento (antes exigia 'servos').
 
-        # 3) Se um dia Grupo fosse por evento, validar aqui (não é o caso atual).
+        # 3) Se um dia Grupo fosse por evento, validar aqui (nÃ£o Ã© o caso atual).
 
     def save(self, *args, **kwargs):
         # Sincroniza sempre: evento <- inscricao.evento
@@ -1827,4 +1828,4 @@ class AlocacaoGrupo(models.Model):
         nome = getattr(p, "nome", "Participante")
         g = getattr(self.grupo, "nome", None) or "Sem grupo"
         ev_nome = getattr(self.evento, "nome", "Evento")
-        return f"{nome} → {g} @ {ev_nome}"
+        return f"{nome} Ã¢â€ â€™ {g} @ {ev_nome}"

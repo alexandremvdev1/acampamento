@@ -1,0 +1,368 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ficha (Casal) • {{ evento.nome|default:"—" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* Página compacta: 1 folha */
+    @page { size: A4 landscape; margin: 6mm; }
+    :root{
+      --ink:#0f172a; --muted:#6b7280; --line:#e5e7eb; --bg:#ffffff; --panel:#ffffff;
+      --accent:#2563eb;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{ --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2937; --bg:#0b1220; --panel:#0f1526; }
+    }
+    *{ box-sizing:border-box }
+    html,body{ margin:0 }
+    body{
+      background:var(--bg); color:var(--ink);
+      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-size:10.75px; line-height:1.35;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+
+    .wrap{ max-width:297mm; margin:0 auto; padding:5mm }
+    .sheet{
+      background:var(--panel); border:1px solid var(--line); border-radius:10px;
+      padding:6.5mm; page-break-inside:avoid; page-break-after:always;
+    }
+
+    /* Barra (não imprime) */
+    .toolbar{ display:flex; justify-content:center; gap:8px; padding:8px }
+    .btn{ appearance:none; border:1px solid var(--line); background:#fff; color:#111827;
+      padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer; text-decoration:none; font-size:11px }
+    .btn-primary{ background:var(--accent); color:#fff; border-color:transparent }
+
+    /* TOPO: foto à esquerda, infos no meio, QRs à direita (lado a lado) */
+    .top{
+      display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:start;
+      padding-bottom:8px; border-bottom:1px solid var(--line); margin-bottom:9px;
+    }
+
+    /* Foto (esquerda/topo) */
+    .hero-media{ display:flex; flex-direction:column; gap:6px; align-items:flex-start; justify-content:flex-start }
+    .photo-wide{
+      width:140px; height:84px; border-radius:10px; object-fit:cover;
+      border:1px solid var(--line); background:#f3f4f6; display:block;
+    }
+    .photo{
+      width:52px; height:52px; border-radius:0px; object-fit:cover;
+      border:1px solid var(--line); background:#f3f4f6; display:block;
+    }
+    .photo-row{ display:flex; gap:6px }
+
+    /* Centro (marca + título + nomes + status) */
+    .brandline{ display:flex; align-items:center; gap:8px; margin-bottom:2px }
+    .brandline img{ height:20px; object-fit:contain }
+    .eyebrow{ color:var(--muted); font-size:9.5px; margin:0 0 2px }
+    .t-title{ margin:0; font-weight:800; font-size:15px; line-height:1.1; letter-spacing:.2px }
+    .t-sub{ margin:3px 0 0; color:var(--muted); font-size:9.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160mm }
+    .status{ margin-top:5px; font-size:9.5px; color:var(--muted) }
+    .status b{ color:var(--ink) }
+
+    /* QRs lado a lado (direita) */
+    .qr-row{ display:flex; gap:8px; align-items:flex-start; justify-content:flex-end }
+    .qr-box{ display:grid; gap:2px; justify-items:center }
+    .qr{ width:40px; height:40px; border:1px solid var(--line); border-radius:6px; padding:2px; background:#fff }
+    .qr-cap{ font-size:9px; color:var(--muted); text-align:center; max-width:42mm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+
+    /* Colunas A/B */
+    .cols{ display:grid; grid-template-columns:1fr 1fr; gap:9px }
+    .col{ border:1px solid var(--line); border-radius:8px; padding:7px; min-width:0 }
+    .who{ margin:0 0 7px; font-weight:800; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+
+    /* Seções e campos */
+    .sec{ margin:6px 0 8px }
+    .sec h3{ margin:0 0 5px; font-size:10px; letter-spacing:.3px; text-transform:uppercase }
+    .grid{ display:grid; grid-template-columns:repeat(12,1fr); gap:5px; align-items:start }
+    .f{ display:flex; flex-direction:column; min-width:0 }
+    .f label{ font-size:8.8px; color:var(--muted); margin-bottom:2px; line-height:1; letter-spacing:.2px }
+
+    /* Campo visual (sem reticências; quebra natural) */
+    .v{
+      border:1px solid var(--line); border-radius:6px; padding:4px 6px; min-height:18px;
+      display:block; background:#fff; white-space:normal; overflow-wrap:anywhere; word-break:normal;
+    }
+    .v.one{ white-space:nowrap; overflow:visible; }
+
+    /* spans */
+    .s-12{grid-column:span 12}.s-11{grid-column:span 11}.s-10{grid-column:span 10}.s-9{grid-column:span 9}
+    .s-8{grid-column:span 8}.s-7{grid-column:span 7}.s-6{grid-column:span 6}.s-5{grid-column:span 5}
+    .s-4{grid-column:span 4}.s-3{grid-column:span 3}.s-2{grid-column:span 2}.s-1{grid-column:span 1}
+
+    .footer{ margin-top:6px; text-align:center; font-size:9px; color:var(--muted) }
+
+    @media print{
+      body{ font-size:10.25px }
+      .sheet{ border:none; border-radius:0; padding:5.5mm }
+      .t-title{ font-size:14px }
+      .photo-wide{ width:130px; height:78px } 
+      .photo{ width:50px; height:50px }
+      .qr{ width:36px; height:36px }
+      .v{ min-height:17px; padding:3.5px 5px }
+      .grid{ gap:4px }
+      .toolbar{ display:none !important }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra (não imprime) -->
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+  </div>
+
+  {% with a=inscricao b=inscricao.par base_a=base_a base_b=base_b %}
+  <div class="wrap">
+    <div class="sheet">
+
+      <!-- Topo: foto (esq) • infos (centro) • QRs (dir, lado a lado) -->
+      <div class="top">
+        <!-- Foto -->
+        <div class="hero-media">
+          {% if a.inscricaocasais and a.inscricaocasais.foto_casal %}
+            <img class="photo-wide" src="{{ a.inscricaocasais.foto_casal.url }}" alt="Foto do casal">
+          {% elif b and b.inscricaocasais and b.inscricaocasais.foto_casal %}
+            <img class="photo-wide" src="{{ b.inscricaocasais.foto_casal.url }}" alt="Foto do casal">
+          {% else %}
+            <div class="photo-row">
+              {% if a.participante.foto %}
+                <img class="photo" src="{{ a.participante.foto.url }}" alt="Foto A">
+              {% else %}<div class="photo" style="display:grid;place-items:center;color:#9ca3af">sem foto</div>{% endif %}
+              {% if b and b.participante.foto %}
+                <img class="photo" src="{{ b.participante.foto.url }}" alt="Foto B">
+              {% elif b %}<div class="photo" style="display:grid;place-items:center;color:#9ca3af">sem foto</div>{% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Infos centrais -->
+        <div>
+          <div class="brandline">
+            <img src="{% static 'img/logo.png' %}" alt="Logo">
+            {% if evento.banner %}<img src="{{ evento.banner.url }}" alt="Banner">{% endif %}
+          </div>
+          <p class="eyebrow">Ficha de inscrição — casais</p>
+          <h1 class="t-title">{{ evento.nome }}</h1>
+          <div class="t-sub">
+            {{ a.participante.nome|default:"—" }}{% if b %} &nbsp;&amp;&nbsp; {{ b.participante.nome|default:"—" }}{% endif %}
+          </div>
+          <div class="status">
+            <b>Inscrições:</b> A #{{ a.id }}{% if b %} • B #{{ b.id }}{% endif %} &nbsp;|&nbsp;
+            <b>Pagamento A:</b> {% if a.pagamento_confirmado %}Confirmado{% else %}Pendente{% endif %}
+            {% if b %}&nbsp;•&nbsp;<b>Pagamento B:</b> {% if b.pagamento_confirmado %}Confirmado{% else %}Pendente{% endif %}{% endif %}
+          </div>
+        </div>
+
+        <!-- QRs (lado a lado) -->
+        <div class="qr-row">
+          <div class="qr-box">
+            <img class="qr" src="{% url 'inscricoes:qr_code_png' a.participante.qr_token %}" alt="QR A">
+            <div class="qr-cap">{{ a.participante.nome|default:"—" }}</div>
+          </div>
+
+          {% if b %}
+          <div class="qr-box">
+            <img class="qr" src="{% url 'inscricoes:qr_code_png' b.participante.qr_token %}" alt="QR B">
+            <div class="qr-cap">{{ b.participante.nome|default:"—" }}</div>
+          </div>
+          {% else %}
+          <div class="qr-box">
+            <div class="qr" style="display:grid;place-items:center;color:#9ca3af">—</div>
+            <div class="qr-cap">Sem par</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- COLUNAS A/B -->
+      <div class="cols">
+        <!-- BLOCO A -->
+        <div class="col">
+          <h2 class="who">A) {{ a.participante.nome|default:"—" }}</h2>
+
+          <div class="sec">
+            <h3>Identificação</h3>
+            <div class="grid">
+              <!-- Nome menor para não quebrar CPF -->
+              <div class="f s-7"><label>Nome</label><div class="v">{{ a.participante.nome|default:"—" }}</div></div>
+              <div class="f s-3"><label>Nasc.</label><div class="v one">{{ base_a.data_nascimento|date:"d/m/Y"|default:"—" }}</div></div>
+              <div class="f s-2"><label>CPF</label><div class="v one">{{ a.participante.cpf|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Telefone</label><div class="v one">{{ a.participante.telefone|default:"—" }}</div></div>
+              <div class="f s-8"><label>E-mail</label><div class="v">{{ a.participante.email|default:"—" }}</div></div>
+
+              <div class="f s-2"><label>CEP</label><div class="v one">{{ a.participante.CEP|default:"—" }}</div></div>
+              <div class="f s-9"><label>Endereço</label><div class="v">{{ a.participante.endereco|default:"—" }}</div></div>
+              <div class="f s-1"><label>Nº</label><div class="v one">{{ a.participante.numero|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Bairro</label><div class="v">{{ a.participante.bairro|default:"—" }}</div></div>
+              <div class="f s-6"><label>Cidade</label><div class="v">{{ a.participante.cidade|default:"—" }}</div></div>
+              <div class="f s-2"><label>UF</label><div class="v one">{{ a.participante.estado|default:"—" }}</div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Dados adicionais</h3>
+            <div class="grid">
+              <div class="f s-2"><label>Altura</label><div class="v one">{{ base_a.altura|default:"—" }}</div></div>
+              <div class="f s-2"><label>Peso</label><div class="v one">{{ base_a.peso|default:"—" }}</div></div>
+              <div class="f s-2"><label>Camisa</label><div class="v one">{{ base_a.tamanho_camisa|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Batizado?</label><div class="v one">{{ base_a.get_batizado_display|default:"—" }}</div></div>
+              <div class="f s-3"><label>Crismado?</label><div class="v one">{{ base_a.get_crismado_display|default:"—" }}</div></div>
+
+              <div class="f s-6"><label>Estado civil</label><div class="v">{{ base_a.get_estado_civil_display|default:"—" }}</div></div>
+              <div class="f s-6"><label>Casado(a) na Igreja?</label><div class="v">{{ base_a.get_casado_na_igreja_display|default:"—" }}</div></div>
+
+              <!-- Pastoral/Movimento E Outra, lado a lado -->
+              <div class="f s-6">
+                <label>Pastoral/Movimento</label>
+                <div class="v">{% if base_a.pastoral_movimento %}{{ base_a.pastoral_movimento.nome }}{% else %}—{% endif %}</div>
+              </div>
+              <div class="f s-6">
+                <label>Outra Pastoral/Movimento</label>
+                <div class="v">{{ base_a.outra_pastoral_movimento|default:"—" }}</div>
+              </div>
+
+              <!-- Tema do acampamento E Tempo de união, lado a lado -->
+              <div class="f s-6">
+                <label>Tema do acampamento</label>
+                <div class="v">{{ a.tema_acampamento|default:"—" }}</div>
+              </div>
+              <div class="f s-6">
+                <label>Tempo de união</label>
+                <div class="v">
+                  {% if a.inscricaocasais and a.inscricaocasais.tempo_casado_uniao %}
+                    {{ a.inscricaocasais.tempo_casado_uniao }}
+                  {% elif base_a and base_a.tempo_casado_uniao %}
+                    {{ base_a.tempo_casado_uniao }}
+                  {% else %}—{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Paróquia da inscrição</h3>
+            <div class="grid">
+              <div class="f s-8"><label>Paróquia</label><div class="v">{{ a.paroquia.nome|default:"—" }}</div></div>
+              <div class="f s-3"><label>Cidade</label><div class="v">{{ a.paroquia.cidade|default:"—" }}</div></div>
+              <div class="f s-1"><label>UF</label><div class="v one">{{ a.paroquia.estado|default:"—" }}</div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Contato de emergência</h3>
+            <div class="grid">
+              <div class="f s-7"><label>Nome</label><div class="v">{{ a.contato_emergencia_nome|default:"—" }}</div></div>
+              <div class="f s-3"><label>Telefone</label><div class="v one">{{ a.contato_emergencia_telefone|default:"—" }}</div></div>
+              <div class="f s-2"><label>Grau</label><div class="v one">{{ a.contato_emergencia_grau_parentesco|default:"—" }}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOCO B (par) -->
+        <div class="col">
+          <h2 class="who">B) {% if b %}{{ b.participante.nome|default:"—" }}{% else %}—{% endif %}</h2>
+
+          {% if b and base_b %}
+          <div class="sec">
+            <h3>Identificação</h3>
+            <div class="grid">
+              <div class="f s-7"><label>Nome</label><div class="v">{{ b.participante.nome|default:"—" }}</div></div>
+              <div class="f s-3"><label>Nasc.</label><div class="v one">{{ base_b.data_nascimento|date:"d/m/Y"|default:"—" }}</div></div>
+              <div class="f s-2"><label>CPF</label><div class="v one">{{ b.participante.cpf|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Telefone</label><div class="v one">{{ b.participante.telefone|default:"—" }}</div></div>
+              <div class="f s-8"><label>E-mail</label><div class="v">{{ b.participante.email|default:"—" }}</div></div>
+
+              <div class="f s-2"><label>CEP</label><div class="v one">{{ b.participante.CEP|default:"—" }}</div></div>
+              <div class="f s-9"><label>Endereço</label><div class="v">{{ b.participante.endereco|default:"—" }}</div></div>
+              <div class="f s-1"><label>Nº</label><div class="v one">{{ b.participante.numero|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Bairro</label><div class="v">{{ b.participante.bairro|default:"—" }}</div></div>
+              <div class="f s-6"><label>Cidade</label><div class="v">{{ b.participante.cidade|default:"—" }}</div></div>
+              <div class="f s-2"><label>UF</label><div class="v one">{{ b.participante.estado|default:"—" }}</div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Dados adicionais</h3>
+            <div class="grid">
+              <div class="f s-2"><label>Altura</label><div class="v one">{{ base_b.altura|default:"—" }}</div></div>
+              <div class="f s-2"><label>Peso</label><div class="v one">{{ base_b.peso|default:"—" }}</div></div>
+              <div class="f s-2"><label>Camisa</label><div class="v one">{{ base_b.tamanho_camisa|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Batizado?</label><div class="v one">{{ base_b.get_batizado_display|default:"—" }}</div></div>
+              <div class="f s-3"><label>Crismado?</label><div class="v one">{{ base_b.get_crismado_display|default:"—" }}</div></div>
+
+              <div class="f s-6"><label>Estado civil</label><div class="v">{{ base_b.get_estado_civil_display|default:"—" }}</div></div>
+              <div class="f s-6"><label>Casado(a) na Igreja?</label><div class="v">{{ base_b.get_casado_na_igreja_display|default:"—" }}</div></div>
+
+              <!-- Pastoral/Movimento E Outra, lado a lado -->
+              <div class="f s-6">
+                <label>Pastoral/Movimento</label>
+                <div class="v">{% if base_b.pastoral_movimento %}{{ base_b.pastoral_movimento.nome }}{% else %}—{% endif %}</div>
+              </div>
+              <div class="f s-6">
+                <label>Outra Pastoral/Movimento</label>
+                <div class="v">{{ base_b.outra_pastoral_movimento|default:"—" }}</div>
+              </div>
+
+              <!-- Tema do acampamento E Tempo de união, lado a lado -->
+              <div class="f s-6">
+                <label>Tema do acampamento</label>
+                <div class="v">{{ b.tema_acampamento|default:"—" }}</div>
+              </div>
+              <div class="f s-6">
+                <label>Tempo de união</label>
+                <div class="v">
+                  {% if b.inscricaocasais and b.inscricaocasais.tempo_casado_uniao %}
+                    {{ b.inscricaocasais.tempo_casado_uniao }}
+                  {% elif base_b and base_b.tempo_casado_uniao %}
+                    {{ base_b.tempo_casado_uniao }}
+                  {% else %}—{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Paróquia da inscrição</h3>
+            <div class="grid">
+              <div class="f s-8"><label>Paróquia</label><div class="v">{{ b.paroquia.nome|default:"—" }}</div></div>
+              <div class="f s-3"><label>Cidade</label><div class="v">{{ b.paroquia.cidade|default:"—" }}</div></div>
+              <div class="f s-1"><label>UF</label><div class="v one">{{ b.paroquia.estado|default:"—" }}</div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Contato de emergência</h3>
+            <div class="grid">
+              <div class="f s-7"><label>Nome</label><div class="v">{{ b.contato_emergencia_nome|default:"—" }}</div></div>
+              <div class="f s-3"><label>Telefone</label><div class="v one">{{ b.contato_emergencia_telefone|default:"—" }}</div></div>
+              <div class="f s-2"><label>Grau</label><div class="v one">{{ b.contato_emergencia_grau_parentesco|default:"—" }}</div></div>
+            </div>
+          </div>
+          {% else %}
+            <div class="v" style="border:1px dashed var(--line); padding:8px; color:var(--muted); text-align:center">
+              Sem par vinculado a esta inscrição.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="footer">
+        {% now 'd/m/Y H:i' %}
+      </div>
+    </div>
+  </div>
+  {% endwith %}
+</body>
+</html>

@@ -1,0 +1,112 @@
+{% load static %}
+
+{% with a=inscricao %}
+  {% with part=a.participante grp=a.alocacao_grupo.grupo min=a.alocacao_ministerio %}
+    {% with grp_color=grp.cor_hex|default:"#1e3a8a" tipo=a.evento.tipo|default_if_none:""|lower %}
+
+      {# se couple_mode veio da view e há 'par', usa nomes + foto do casal #}
+      {% if couple_mode and par %}
+        {% with foto_casal=a.inscricaocasais.foto_casal|default:par.inscricaocasais.foto_casal %}
+          <div class="cracha" style="--grp: {{ grp_color }};">
+            {% if min and min.is_coordenador %}<div class="ribbon">COORDENADOR</div>{% endif %}
+
+            <div class="topo">
+              {% if a.evento.banner %}
+                <img src="{{ a.evento.banner.url }}" alt="Banner do evento {{ a.evento.nome }}">
+              {% endif %}
+            </div>
+
+            <div class="miolo">
+              {% if foto_casal %}
+                <img class="avatar" src="{{ foto_casal.url }}" alt="Foto do casal">
+              {% elif part.foto %}
+                <img class="avatar" src="{{ part.foto.url }}" alt="Foto de {{ part.nome }}">
+              {% else %}
+                <img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">
+              {% endif %}
+
+              <div class="nome">
+                {{ part.nome }} — {{ par.participante.nome }}
+              </div>
+
+              <div class="linha-info">
+                {% if grp %}
+                  <div class="gline" title="Grupo Família">
+                    <span class="gdot" style="background: {{ grp_color }}"></span>
+                    <span class="gname">{{ grp.nome }}</span>
+                  </div>
+                {% endif %}
+                {% if tipo == 'servos' and min and min.ministerio %}
+                  <div class="tag" title="Ministério">
+                    {{ min.ministerio.nome }}
+                    {% if min.is_coordenador %}<span class="coord">Coord.</span>{% endif %}
+                  </div>
+                {% endif %}
+                {% if part.cidade %}
+                  <div class="cidade">
+                    {{ part.cidade }}{% if part.estado %} — {{ part.estado }}{% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="rodape">
+              <div class="qr-wrap">
+                <img class="qr" src="{% url 'inscricoes:qr_code_png' part.qr_token %}" alt="QR de {{ part.nome }}">
+              </div>
+            </div>
+          </div>
+        {% endwith %}
+
+      {% else %}
+        {# modo individual #}
+        <div class="cracha" style="--grp: {{ grp_color }};">
+          {% if min and min.is_coordenador %}<div class="ribbon">COORDENADOR</div>{% endif %}
+
+          <div class="topo">
+            {% if a.evento.banner %}
+              <img src="{{ a.evento.banner.url }}" alt="Banner do evento {{ a.evento.nome }}">
+            {% endif %}
+          </div>
+
+          <div class="miolo">
+            {% if part.foto %}
+              <img class="avatar" src="{{ part.foto.url }}" alt="Foto de {{ part.nome }}">
+            {% else %}
+              <img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">
+            {% endif %}
+
+            <div class="nome">{{ part.nome }}</div>
+
+            <div class="linha-info">
+              {% if grp %}
+                <div class="gline" title="Grupo Família">
+                  <span class="gdot" style="background: {{ grp_color }}"></span>
+                  <span class="gname">{{ grp.nome }}</span>
+                </div>
+              {% endif %}
+              {% if tipo == 'servos' and min and min.ministerio %}
+                <div class="tag" title="Ministério">
+                  {{ min.ministerio.nome }}
+                  {% if min.is_coordenador %}<span class="coord">Coord.</span>{% endif %}
+                </div>
+              {% endif %}
+              {% if part.cidade %}
+                <div class="cidade">
+                  {{ part.cidade }}{% if part.estado %} — {{ part.estado }}{% endif %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="rodape">
+            <div class="qr-wrap">
+              <img class="qr" src="{% url 'inscricoes:qr_code_png' part.qr_token %}" alt="QR de {{ part.nome }}">
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+    {% endwith %}
+  {% endwith %}
+{% endwith %}

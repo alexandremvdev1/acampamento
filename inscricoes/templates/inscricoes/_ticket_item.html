@@ -1,0 +1,43 @@
+{% load static %}
+{# Espera: inscricao, tipo_evento, par (opcional) #}
+
+<article class="ticket">
+  {% if inscricao.participante.foto %}
+    <img class="avatar" src="{{ inscricao.participante.foto.url }}" alt="Foto de {{ inscricao.participante.nome }}">
+  {% else %}
+    <img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">
+  {% endif %}
+
+  <div class="evt">{{ inscricao.evento.nome }}</div>
+
+  {# Regras de nomes #}
+  {% if tipo_evento == 'casais' %}
+    <h2>
+      {{ inscricao.participante.nome }}
+      {% if par %} — {{ par.participante.nome }}{% endif %}
+    </h2>
+  {% elif tipo_evento == 'servos' and par %}
+    <h2>{{ inscricao.participante.nome }} — {{ par.participante.nome }}</h2>
+  {% else %}
+    <h2>{{ inscricao.participante.nome }}</h2>
+  {% endif %}
+
+  {# Cidade do PARTICIPANTE (não da paróquia) #}
+  <p>
+    <i class="fas fa-map-marker-alt me-1"></i>
+    <strong>Cidade:</strong>
+    {% if inscricao.participante.cidade %}
+      {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
+    {% else %}
+      —
+    {% endif %}
+  </p>
+
+  {# Paróquia (apenas o nome) #}
+  {% if inscricao.paroquia and inscricao.paroquia.nome %}
+    <p>
+      <i class="fas fa-church me-1"></i>
+      <strong>Paróquia:</strong> {{ inscricao.paroquia.nome }}
+    </p>
+  {% endif %}
+</article>

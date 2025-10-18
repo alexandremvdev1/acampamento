@@ -54,3 +54,4 @@ class UserActivityLoggingMiddleware(MiddlewareMixin):
             pass
 
         return response
+

@@ -43,7 +43,6 @@
         <a href="#comunidade" class="hover:text-slate-600">Comunidade</a>
         <a href="#abertos" class="hover:text-slate-600">Inscrições abertas</a>
         <a href="#como-funciona" class="hover:text-slate-600">Como funciona</a>
-        <a href="{% url 'inscricoes:contribuicao' %}" class="hover:text-slate-600">Contribuição solidária</a>
         <a href="#faq" class="hover:text-slate-600">FAQ</a>
       </nav>
       <div class="hidden md:flex items-center gap-2">
@@ -61,7 +60,6 @@
         <a href="#comunidade" class="py-2">Comunidade</a>
         <a href="#abertos" class="py-2">Inscrições abertas</a>
         <a href="#como-funciona" class="py-2">Como funciona</a>
-        <a href="{% url 'inscricoes:contribuicao' %}" class="py-2">Contribuição solidária</a>
         <a href="#faq" class="py-2">FAQ</a>
         <a href="{% url 'inscricoes:login' %}" target="_blank" rel="noopener noreferrer" data-newtab class="py-2">Entrar</a>
         <a href="#contato" class="py-2">Entre em contato</a>
@@ -80,7 +78,7 @@
   </div>
   {% endif %}
 
-  <!-- Carrossel de Banners dos Eventos (logo abaixo do header) -->
+  <!-- Carrossel de Banners dos Eventos -->
   {% if eventos_abertos %}
   <section id="carousel-banners" class="bg-transparent">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
@@ -163,7 +161,6 @@
         <div class="mt-6 flex flex-wrap items-center gap-3">
           <a href="#abertos" class="px-4 py-2 rounded-xl text-white grad shadow-card hover:shadow-lg transition">Ver eventos</a>
           <a href="#contato" class="px-4 py-2 rounded-xl border border-slate-300 bg-white shadow-card hover:shadow-lg transition">Falar com a equipe</a>
-          <a href="{% url 'inscricoes:contribuicao' %}" class="px-4 py-2 rounded-xl border border-slate-300 bg-white shadow-card hover:shadow-lg transition">Entenda a contribuição solidária</a>
           <span class="text-slate-500 text-sm">Organização e transparência</span>
         </div>
         <div class="mt-6 flex items-center gap-2 text-slate-500 text-sm">
@@ -183,7 +180,7 @@
           </div>
           <div class="frame card-hover">
             <div class="frame-head"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-            {% site_image "pagamentos" "w-full h-28 sm:h-36 md:h-40 object-cover" alt="Tela de pagamentos via Mercado Pago" %}
+            {% site_image "pagamentos" "w-full h-28 sm:h-36 md:h-40 object-cover" alt="Tela de gestão de inscrições" %}
           </div>
         </div>
       </div>
@@ -313,7 +310,6 @@
                     {% if evento.paroquia.cidade %}{{ evento.paroquia.cidade }} — {% endif %}{{ evento.paroquia.nome }}
                   </p>
                 {% endif %}
-                {% if evento.valor_inscricao %}<p class="text-sm text-slate-700 mt-2">Valor: R$ {{ evento.valor_inscricao }}</p>{% endif %}
 
                 <div class="mt-4 flex gap-2">
                   <a href="{% url 'inscricoes:inscricao_inicial' evento.slug %}" target="_blank" rel="noopener noreferrer" data-newtab
@@ -344,7 +340,7 @@
         <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card card-hover">
           <div class="text-sm text-slate-500">Passo 2</div>
           <h3 class="font-semibold mt-1">Divulgue e receba inscrições</h3>
-          <p class="mt-2 text-slate-600">Acompanhe inscritos, confirme pagamentos, envie e-mails e exporte listas para impressão.</p>
+          <p class="mt-2 text-slate-600">Acompanhe inscritos, envie comunicados, exporte listas para impressão e organize equipes.</p>
         </div>
         <div class="rounded-2xl border border-slate-200 p-6 bg-white shadow-card card-hover">
           <div class="text-sm text-slate-500">Passo 3</div>
@@ -402,7 +398,6 @@
         <div class="flex flex-wrap gap-3">
           <button type="submit" class="px-5 py-3 rounded-2xl text-white grad shadow-card hover:shadow-lg transition">Enviar</button>
           <a id="demo" href="#abertos" class="px-5 py-3 rounded-2xl border border-slate-300 bg-white shadow-card hover:shadow-lg transition">Ver eventos</a>
-          <a href="{% url 'inscricoes:contribuicao' %}" class="px-5 py-3 rounded-2xl border border-slate-300 bg-white shadow-card hover:shadow-lg transition">Entenda a contribuição solidária</a>
         </div>
         <p class="text-xs text-slate-500">Resposta em horário comercial.</p>
       </form>
@@ -419,8 +414,8 @@
           <p class="mt-2 text-slate-600">Sim. Eventos sênior, juvenil, mirim e servos contam com <strong>questionários prontos por tipo</strong>.</p>
         </details>
         <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card card-hover">
-          <summary class="font-semibold cursor-pointer">Como funcionam os pagamentos?</summary>
-          <p class="mt-2 text-slate-600">Cada paróquia integra sua conta do Mercado Pago; confirmações atualizam as inscrições automaticamente.</p>
+          <summary class="font-semibold cursor-pointer">Como funcionam as inscrições?</summary>
+          <p class="mt-2 text-slate-600">Você cria o evento, divulga o link público e acompanha os inscritos pelo painel, com listas e relatórios.</p>
         </details>
         <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card card-hover">
           <summary class="font-semibold cursor-pointer">Consigo imprimir crachás e relatórios?</summary>
@@ -428,7 +423,7 @@
         </details>
         <details class="rounded-xl border border-slate-200 p-5 bg-white shadow-card card-hover">
           <summary class="font-semibold cursor-pointer">Há envio automático de e-mails?</summary>
-          <p class="mt-2 text-slate-600">Confirmações de inscrição e pagamento com link para a inscrição.</p>
+          <p class="mt-2 text-slate-600">Confirmações de inscrição e lembretes podem ser enviados conforme a configuração da sua equipe.</p>
         </details>
       </div>
     </div>
@@ -439,11 +434,10 @@
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <h2 class="text-2xl font-bold">Quer usar o eismeaqui.app na sua paróquia?</h2>
       <p class="mt-2 text-slate-600">
-        Solução completa para gestão de inscrições, com formulários por tipo de evento, integração com Mercado Pago, relatórios, crachás e certificados.
+        Solução completa para gestão de inscrições, com formulários por tipo de evento, relatórios, crachás e certificados.
       </p>
       <div class="mt-5 flex items-center justify-center gap-3">
         <a href="#contato" class="px-5 py-3 rounded-2xl text-white grad shadow-card hover:shadow-lg transition">Fale conosco</a>
-        <a href="{% url 'inscricoes:contribuicao' %}" class="px-5 py-3 rounded-2xl border border-slate-300 bg-white shadow-card hover:shadow-lg transition">Entenda a contribuição solidária</a>
       </div>
     </div>
   </section>
@@ -460,8 +454,6 @@
         <ul class="mt-2 text-sm text-slate-600 space-y-1">
           <li><a href="#comunidade" class="hover:underline">Comunidade</a></li>
           <li><a href="#abertos" class="hover:underline">Inscrições abertas</a></li>
-          <a href="{% url 'inscricoes:contribuicao' %}">Entenda a contribuição solidária</a>
-
           <li><a href="#faq" class="hover:underline">FAQ</a></li>
         </ul>
       </div>
@@ -517,7 +509,7 @@
       const el = document.getElementById('newsTrack');
       if(!el) return;
       const card = el.querySelector('article');
-      const gap  = 16; // .gap-4 (4*4px)
+      const gap  = 16; // .gap-4
       const delta = (card?.offsetWidth || 320) + gap;
       el.scrollBy({ left: dir * delta, behavior: 'smooth' });
     }

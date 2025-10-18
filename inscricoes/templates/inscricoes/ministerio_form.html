@@ -10,14 +10,30 @@
 
   <style>
     :root{ --ink:#0f172a; --muted:#64748b; --g1:#0b1020; --g2:#111a3a; --line:#e5e7eb; --base-font:14px; }
-    html{ font-size:var(--base-font) } body{ background:#f6f8fb; color:var(--ink) }
+    html{ font-size:var(--base-font) }
+    body{ background:#f6f8fb; color:var(--ink) }
+
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)) }
-    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem } .navbar-brand{ font-size:1rem }
-    .sticky-topbar{ position:sticky; top:0; z-index:20; background:#ffffffd6; backdrop-filter:blur(6px); border:1px solid var(--line); border-radius:.9rem }
-    .text-muted-2{ color:var(--muted) } .btn-sm,.btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem }
+    .navbar-brand{ font-size:1rem }
+
+    .sticky-topbar{
+      position:sticky; top:0; z-index:20;
+      background:#ffffffd6; backdrop-filter:blur(6px);
+      border:1px solid var(--line); border-radius:.9rem
+    }
+
+    .text-muted-2{ color:var(--muted) }
+    .btn-sm,.btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem }
+
     .card-clean{ border:1px solid var(--line); border-radius:.95rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.08) }
     .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700 }
     .form-control, .form-select, textarea{ border:1px solid var(--line); border-radius:.6rem }
+
+    /* respiro leve em telas muito grandes */
+    @media (min-width:1600px){
+      .px-xxl-4-5{ padding-left:2rem!important; padding-right:2rem!important; }
+    }
   </style>
 </head>
 <body>
@@ -36,7 +52,8 @@
   </div>
 </nav>
 
-<main class="container py-3 py-lg-4">
+<!-- container-fluid para ocupar 100% -->
+<main class="container-fluid py-3 py-lg-4 px-3 px-md-4 px-xxl-4-5">
   <div class="sticky-topbar p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center">
       <div>

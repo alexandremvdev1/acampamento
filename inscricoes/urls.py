@@ -11,7 +11,7 @@ from .views import (
     LoginComImagemView,
     mp_config,
     buscar_participante_ajax,
-    iniciar_pagamento, relatorio_conferencia_pagamento, gerar_repasse, repasse_qr
+    iniciar_pagamento, todas_as_fichas_evento_casal, relatorio_conferencia_pagamento, gerar_repasse, repasse_qr, cn_leituras_hoje, cn_santo_hoje
 )
 
 # ========= Conversor que aceita int OU UUID =========
@@ -42,7 +42,7 @@ urlpatterns = [
     # AGORA o / vai pro redirect (painel p/ admins ou login)
     path("", views.home_redirect, name="home_redirect"),
 
-    # Landing “marketing” fica só aqui (não mais em "/")
+    # Landing â€œmarketingâ€ fica sÃ³ aqui (nÃ£o mais em "/")
     path("site/", views.landing, name="landing"),
     path("site/contato/enviar", views.contato_enviar, name="contato_enviar"),
     path("site/contato-enviar/", views.contato_enviar, name="contato_enviar"),
@@ -69,13 +69,13 @@ urlpatterns = [
     path("admin-geral/pastorais/", views.listar_pastorais_movimentos, name="listar_pastorais_movimentos"),
     path("admin-geral/pastorais/cadastrar/", views.cadastrar_pastoral_movimento, name="cadastrar_pastoral_movimento"),
 
-    # Admin Paróquia (painel)
+    # Admin ParÃ³quia (painel)
     path("admin-paroquia/", views.admin_paroquia_painel, name="admin_paroquia_painel"),
     path("admin-geral/paroquia/<int:paroquia_id>/painel/", views.admin_paroquia_painel, name="admin_paroquia_painel"),
     path("admin-paroquia/usuarios/novo/", views.admin_paroquia_create_admin, name="admin_paroquia_create_admin"),
     path("admin-paroquia/usuarios/<int:user_id>/excluir/", views.admin_paroquia_delete_admin, name="admin_paroquia_delete_admin"),
 
-    # Eventos - listagem por paróquia no admin geral
+    # Eventos - listagem por parÃ³quia no admin geral
     path("admin-geral/paroquia/<int:pk>/eventos/", views.admin_paroquia_eventos, name="admin_paroquia_eventos"),
 
     # Eventos (CRUD e ajustes)
@@ -90,7 +90,7 @@ urlpatterns = [
     path("admin-paroquia/evento/<uuid:evento_id>/participantes/", views.evento_participantes, name="evento_participantes"),
     path("evento/<uuid:evento_id>/alocar-massa/", views.alocar_em_massa, name="alocar_em_massa"),
 
-    # Relatórios do evento
+    # RelatÃ³rios do evento
     path("evento/<uuid:evento_id>/relatorios/", views.relatorios_evento, name="relatorios_evento"),
     path("evento/<uuid:evento_id>/relatorio-crachas/", views.relatorio_crachas, name="relatorio_crachas"),
     path("evento/<uuid:evento_id>/relatorio-fichas-sorteio/", views.relatorio_fichas_sorteio, name="relatorio_fichas_sorteio"),
@@ -98,12 +98,12 @@ urlpatterns = [
     path("evento/<uuid:evento_id>/relatorio-financeiro/", views.relatorio_financeiro, name="relatorio_financeiro"),
     path("evento/<uuid:evento_id>/relatorio_financeiro/", views.relatorio_financeiro, name="relatorio_financeiro_compat"),
 
-    # Financeiro / repasses (admin paróquia)
+    # Financeiro / repasses (admin parÃ³quia)
     path("admin-paroquia/financeiro/repasses/", views.repasse_lista_eventos, name="repasse_lista_eventos"),
     path("admin-paroquia/financeiro/repasse/<uuid:evento_id>/", views.repasse_evento_detalhe, name="repasse_evento_detalhe"),
     path("admin-paroquia/financeiro/repasse/<uuid:evento_id>/gerar-pix/", views.gerar_pix_repasse_evento, name="gerar_pix_repasse_evento"),
 
-    # Inscrição (público e administrativo)
+    # InscriÃ§Ã£o (pÃºblico e administrativo)
     path("evento/<slug:slug>/inscricao/", views.inscricao_inicial, name="inscricao_inicial"),
     path("inscricao/<int:pk>/", views.ver_inscricao, name="ver_inscricao"),
     path("inscricao/<slug:slug>/", views.inscricao_evento_publico, name="inscricao_evento_publico"),
@@ -114,7 +114,7 @@ urlpatterns = [
     path("inscricao/<int:pk>/ficha-geral/", views.inscricao_ficha_geral, name="inscricao_ficha_geral"),
     path("inscricao/<int:pk>/toggle-selecao/", views.toggle_selecao_inscricao, name="toggle_selecao_inscricao"),
 
-    # Alocações (individual)
+    # AlocaÃ§Ãµes (individual)
     path("inscricao/<int:inscricao_id>/alocar-ministerio/", views.alocar_ministerio, name="alocar_ministerio"),
     path("inscricao/<int:inscricao_id>/alocar-grupo/", views.alocar_grupo, name="alocar_grupo"),
 
@@ -132,7 +132,7 @@ urlpatterns = [
     
     path("ministerios/<int:pk>/alocacoes/",views.alocacoes_ministerio_short,name="alocacoes_ministerio_short"),
     
-    # Formulários complementares
+    # FormulÃ¡rios complementares
     path("formulario/casais/<uuid:evento_id>/", views.formulario_casais, name="formulario_casais"),
     path("formulario/<int:inscricao_id>/", views.formulario_personalizado, name="formulario_personalizado"),
     path("formulario-contato/<int:inscricao_id>/", views.formulario_contato, name="formulario_contato"),
@@ -154,13 +154,13 @@ urlpatterns = [
     # Portal do participante
     path("minhas-inscricoes/", views.minhas_inscricoes_por_cpf, name="minhas_inscricoes_por_cpf"),
 
-    # Vídeo do evento / Telão
+    # VÃ­deo do evento / TelÃ£o
     path("evento/<slug:slug>/video/", views.pagina_video_evento, name="pagina_video_evento"),
     path("eventos/<slug:slug>/video/", views.video_evento_form, name="video_evento_form"),
-    path("telão/<slug:slug>/", views.painel_sorteio, name="painel_sorteio"),
+    path("telÃ£o/<slug:slug>/", views.painel_sorteio, name="painel_sorteio"),
     path("api/evento/<slug:slug>/selecionados/", views.api_selecionados, name="api_selecionados"),
 
-    # Relatórios extras
+    # RelatÃ³rios extras
     path("evento/<uuid:evento_id>/imprimir-todas-fichas/", views.imprimir_todas_fichas, name="imprimir_todas_fichas"),
     path("evento/<uuid:evento_id>/relatorio/etiquetas-bagagem/", views.relatorio_etiquetas_bagagem, name="relatorio_etiquetas_bagagem"),
     path("evento/<uuid:evento_id>/relatorio/ficha-cozinha/", views.relatorio_ficha_cozinha, name="relatorio_ficha_cozinha"),
@@ -180,13 +180,13 @@ urlpatterns = [
     path("ver-logs/lista/", views.ver_logs_lista, name="ver_logs_lista"),
     path("download-logs/", views.download_logs, name="download_logs"),
 
-    # Publicações
+    # PublicaÃ§Ãµes
     path("painel/publicacoes/", views.publicacoes_list, name="publicacoes_list"),
     path("painel/publicacoes/nova/", views.publicacao_criar, name="publicacao_criar"),
     path("painel/publicacoes/<int:pk>/editar/", views.publicacao_editar, name="publicacao_editar"),
     path("painel/publicacoes/<int:pk>/excluir/", views.publicacao_excluir, name="publicacao_excluir"),
 
-    # Outras páginas
+    # Outras pÃ¡ginas
     path("contribuicao/", TemplateView.as_view(template_name="inscricoes/contribuicao.html"), name="contribuicao"),
     path("comunicado/<int:pk>/", views.comunicado_detalhe, name="comunicado_detalhe"),
     path("contato/", views.pagina_de_contato, name="pagina_de_contato"),
@@ -214,7 +214,7 @@ urlpatterns = [
     name="relatorio_conferencia_pagamento",
     ),
 
-# Conferência de Pagamento — por SLUG
+# ConferÃªncia de Pagamento â€” por SLUG
     path(
     "relatorios/<slug:slug>/conferencia-pagamento/",
     views.relatorio_conferencia_pagamento,
@@ -232,7 +232,7 @@ urlpatterns = [
         name="relatorios_ministerio_detail",
     ),
 
-    # GRUPOS / FAMÍLIAS
+    # GRUPOS / FAMÃLIAS
     path(
         "grupos/evento/<uuid:evento_id>/",
         v.grupos_evento_home,
@@ -263,7 +263,7 @@ urlpatterns = [
 
     path("grupos/novo/", views.grupo_create, name="grupo_create"),
 
-    # detalhe de um grupo *no contexto de um evento* (edição + membros)
+    # detalhe de um grupo *no contexto de um evento* (ediÃ§Ã£o + membros)
     path(
         "grupos/<int:grupo_id>/evento/<uuid:evento_id>/",
         views.grupo_detail,
@@ -291,9 +291,21 @@ urlpatterns = [
         name="grupo_mover_membro",
     ),
 
+    path("inscricao/<int:pk>/ficha-casal/", views.ficha_casal_paisagem, name="ficha_casal_paisagem"),
+
     path("evento/<uuid:evento_id>/gerar-repasse/", views.gerar_repasse, name="gerar_repasse"),
     path("evento/<uuid:evento_id>/gerar-repasse",  views.gerar_repasse),  # <- sem barra, evita 301 em POST
     path("repasse/<int:repasse_id>/qr/", views.repasse_qr, name="repasse_qr"),
+
+    path("api/cn/leituras-hoje/", cn_leituras_hoje, name="cn_leituras_hoje"),
+    path("api/cn/santo-hoje/", cn_santo_hoje, name="cn_santo_hoje"),
+
+    path('inscricao/<int:inscricao_id>/toggle-pagamento/', views.toggle_pagamento_inscricao, name='toggle_pagamento_inscricao'),
+
+    path("inscricao/<int:inscricao_id>/imprimir-cracha/", views.imprimir_cracha, name="imprimir_cracha"),
+
+    path("eventos/<slug:slug>/fichas/",todas_as_fichas_evento_casal,name="todas_as_fichas_evento_casal",),
+
 
 ]
 

@@ -23,6 +23,10 @@
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .navbar-brand{ font-size:1rem; }
+    /* logo pequena no navbar */
+    .navbar-brand-logo{
+      height:28px; max-height:34px; width:auto; display:block; object-fit:contain;
+    }
 
     .card-clean{
       border:1px solid #e5e7eb; border-radius:.9rem; background:#fff;
@@ -49,14 +53,29 @@
       width:42px; height:42px; border-radius:.6rem; object-fit:cover; border:1px solid #e5e7eb; background:#fff;
     }
     .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
+
+    /* respiro leve em telas muito grandes (igual aos outros) */
+    @media (min-width:1600px){
+      .px-xxl-4-5{ padding-left:2rem!important; padding-right:2rem!important; }
+    }
   </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
+<!-- NAVBAR com logo e fallback -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'inscricoes:admin_geral_dashboard' %}">
+      {% if politica and politica.logo_1 %}
+        <img src="{{ politica.logo_1.url }}" alt="Admin Geral" class="navbar-brand-logo">
+        <span class="visually-hidden">Admin Geral</span>
+      {% elif politica and politica.logo %}
+        <img src="{{ politica.logo.url }}" alt="Admin Geral" class="navbar-brand-logo">
+        <span class="visually-hidden">Admin Geral</span>
+      {% else %}
+        <span class="fw-bold">Admin Geral</span>
+      {% endif %}
+    </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <a class="btn btn-sm btn-light" href="{% url 'inscricoes:admin_paroquia_painel' %}">← Painel da Paróquia</a>
       <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
@@ -67,12 +86,13 @@
   </div>
 </nav>
 
-<main class="container py-3 py-lg-4">
+<!-- container-fluid para usar toda a largura -->
+<main class="container-fluid py-3 py-lg-4 px-3 px-md-4 px-xxl-4-5">
   <div class="row g-3">
 
     <!-- SIDEBAR -->
-    <aside class="col-lg-3">
-      <div class="sidebar-card p-2">
+    <aside class="col-12 col-lg-3 col-xl-2 col-xxl-2">
+      <div class="sidebar-card p-2 h-100">
         <div class="nav-title">Navegação</div>
         <ul class="nav-list">
           <li class="nav-item"><a href="{% url 'inscricoes:admin_paroquia_painel' %}">🏠 <span>Painel</span></a></li>
@@ -83,8 +103,8 @@
       </div>
     </aside>
 
-    <!-- CONTENT -->
-    <section class="col-lg-9">
+    <!-- CONTEÚDO -->
+    <section class="col-12 col-lg-9 col-xl-10 col-xxl-10">
 
       <!-- HEADER -->
       <div class="sticky-topbar p-3 mb-3 bg-white">
@@ -121,13 +141,9 @@
                 <span class="btn btn-sm btn-warning disabled"><i class="fa-solid fa-credit-card"></i></span>
                 <div class="fw-semibold">Pagamentos (Mercado Pago)</div>
               </div>
-              <div class="small text-muted-2 mb-3">
-                Configure credenciais, chaves e preferências de pagamento da paróquia.
-              </div>
+              <div class="small text-muted-2 mb-3">Configure credenciais, chaves e preferências de pagamento da paróquia.</div>
               <div class="mt-auto">
-                <a href="{% url 'inscricoes:mp_config' %}" class="btn btn-warning w-100">
-                  Abrir configurações de pagamento
-                </a>
+                <a href="{% url 'inscricoes:mp_config' %}" class="btn btn-warning w-100">Abrir configurações de pagamento</a>
               </div>
             </div>
           </div>
@@ -138,13 +154,9 @@
                 <span class="btn btn-sm btn-info disabled"><i class="fa-solid fa-user-gear"></i></span>
                 <div class="fw-semibold">Usuários da paróquia</div>
               </div>
-              <div class="small text-muted-2 mb-3">
-                Cadastre, edite ou remova administradores vinculados à paróquia.
-              </div>
+              <div class="small text-muted-2 mb-3">Cadastre, edite ou remova administradores vinculados à paróquia.</div>
               <div class="mt-auto">
-                <a href="{% url 'inscricoes:admin_paroquia_create_admin' %}" class="btn btn-info w-100">
-                  Gerenciar usuários
-                </a>
+                <a href="{% url 'inscricoes:admin_paroquia_create_admin' %}" class="btn btn-info w-100">Gerenciar usuários</a>
               </div>
             </div>
           </div>
@@ -155,13 +167,9 @@
                 <span class="btn btn-sm btn-success disabled"><i class="fa-solid fa-sack-dollar"></i></span>
                 <div class="fw-semibold">Repasses</div>
               </div>
-              <div class="small text-muted-2 mb-3">
-                Acompanhe os repasses por evento e gere PIX para transferência.
-              </div>
+              <div class="small text-muted-2 mb-3">Acompanhe os repasses por evento e gere PIX para transferência.</div>
               <div class="mt-auto">
-                <a href="{% url 'inscricoes:repasse_lista_eventos' %}" class="btn btn-success w-100">
-                  Ver repasses
-                </a>
+                <a href="{% url 'inscricoes:repasse_lista_eventos' %}" class="btn btn-success w-100">Ver repasses</a>
               </div>
             </div>
           </div>

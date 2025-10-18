@@ -21,14 +21,18 @@
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .navbar-brand{ font-size:1rem; }
+    /* logo no navbar */
+    .navbar-brand-logo{
+      height:28px; max-height:34px; width:auto; display:block; object-fit:contain;
+    }
 
     .card-clean{ border:none; box-shadow:0 10px 24px rgba(17,24,39,.08); transition:transform .12s ease, box-shadow .12s ease; border-radius:.9rem; background:#fff; border:1px solid #e5e7eb; }
     .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
     .text-muted-2{ color:var(--muted); }
     .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700; }
-    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
+    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); border:1px solid #e5e7eb; border-radius:.9rem; }
 
-    /* Sidebar (estilo GovDocs) */
+    /* Sidebar */
     .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
     .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
     .nav-list{ list-style:none; padding:6px; margin:0; }
@@ -53,14 +57,29 @@
     .file-preview{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.25rem }
     .file-preview__item{ width:120px; min-height:84px; border:1px solid #e5e7eb; border-radius:.5rem; background:#f7f9fc; display:grid; place-items:center; padding:.4rem; color:#64748b; font-size:.8rem; }
     .file-preview__item img{ width:100%; height:100%; object-fit:cover; border-radius:.4rem }
+
+    /* Afinar respiro lateral em telas muito grandes */
+    @media (min-width:1600px){
+      .px-xxl-4-5{ padding-left:2rem!important; padding-right:2rem!important; }
+    }
   </style>
 </head>
 <body>
 
-<!-- NAVBAR (padrão painel) -->
+<!-- NAVBAR (com logo e fallback) -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'inscricoes:admin_geral_dashboard' %}">
+      {% if politica and politica.logo_1 %}
+        <img src="{{ politica.logo_1.url }}" alt="Admin Geral" class="navbar-brand-logo">
+        <span class="visually-hidden">Admin Geral</span>
+      {% elif politica and politica.logo %}
+        <img src="{{ politica.logo.url }}" alt="Admin Geral" class="navbar-brand-logo">
+        <span class="visually-hidden">Admin Geral</span>
+      {% else %}
+        <span class="fw-bold">Admin Geral</span>
+      {% endif %}
+    </a>
 
     <div class="d-flex align-items-center gap-2 ms-auto">
       <a class="btn btn-sm btn-secondary" href="{% url 'inscricoes:admin_paroquia_painel' %}">Paróquia</a>
@@ -68,11 +87,12 @@
   </div>
 </nav>
 
-<main class="container py-3 py-lg-4">
+<!-- container-fluid para ocupar a tela toda -->
+<main class="container-fluid py-3 py-lg-4 px-3 px-md-4 px-xxl-4-5">
   <div class="row g-3">
 
     <!-- ===== SIDEBAR ===== -->
-    <aside class="col-lg-3">
+    <aside class="col-12 col-lg-3 col-xl-2 col-xxl-2">
       <div class="sidebar-card p-2">
         <div class="nav-title">Navegação</div>
         <ul class="nav-list">
@@ -83,10 +103,10 @@
     </aside>
 
     <!-- ===== CONTENT ===== -->
-    <section class="col-lg-9">
+    <section class="col-12 col-lg-9 col-xl-10 col-xxl-10">
 
       <!-- HEADER -->
-      <div class="sticky-topbar border rounded-3 p-3 mb-3 bg-white">
+      <div class="sticky-topbar rounded-3 p-3 mb-3 bg-white">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div>
             <h1 class="h6 m-0">Criar Novo Evento</h1>

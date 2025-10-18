@@ -24,6 +24,7 @@
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .navbar-brand{ font-size:1rem; }
+    .navbar-brand-logo{ height:28px; max-height:34px; width:auto; display:block; object-fit:contain; }
 
     /* Sidebar */
     .sidebar-card{ border:1px solid var(--line); border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
@@ -66,6 +67,7 @@
       width:60px; height:60px; border-radius:999px; object-fit:cover; border:1px solid var(--line);
       background:#f1f5f9;
     }
+    img[data-zoom]{ cursor: zoom-in; }
 
     .dl-mini dt{ font-size:.75rem; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
     .dl-mini dd{ margin-bottom:.6rem; }
@@ -93,14 +95,34 @@
       display:inline-block;
       vertical-align:middle;
     }
+
+    /* Respiro em telas muito largas */
+    @media (min-width:1600px){
+      .px-xxl-4-5{ padding-left:2rem!important; padding-right:2rem!important; }
+    }
   </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
+<!-- NAVBAR (logo com fallbacks) -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
+    <a class="navbar-brand d-flex align-items-center gap-2"
+       href="{% url 'inscricoes:admin_paroquia_painel' %}">
+      {% if politica and politica.logo_1 %}
+        <img src="{{ politica.logo_1.url }}" alt="Logo" class="navbar-brand-logo">
+        <span class="visually-hidden">Painel da Paróquia</span>
+      {% elif politica and politica.logo %}
+        <img src="{{ politica.logo.url }}" alt="Logo" class="navbar-brand-logo">
+        <span class="visually-hidden">Painel da Paróquia</span>
+      {% elif inscricao.evento.paroquia.logo %}
+        <img src="{{ inscricao.evento.paroquia.logo.url }}" alt="{{ inscricao.evento.paroquia.nome }}" class="navbar-brand-logo">
+        <span class="visually-hidden">{{ inscricao.evento.paroquia.nome }}</span>
+      {% else %}
+        <span class="fw-bold">Painel da Paróquia</span>
+      {% endif %}
+    </a>
+
     <div class="d-flex align-items-center gap-2 ms-auto">
       <a class="btn btn-sm btn-light" href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">← Participantes</a>
       <a class="btn btn-sm btn-info" href="{% url 'inscricoes:relatorios_evento' inscricao.evento.id %}">📊 Relatórios</a>
@@ -108,16 +130,17 @@
   </div>
 </nav>
 
-<main class="container py-3 py-lg-4">
+<!-- container-fluid para ocupar 100% -->
+<main class="container-fluid py-3 py-lg-4 px-3 px-md-4 px-xxl-4-5">
   <div class="row g-3">
 
-    <!-- SIDEBAR -->
-    <aside class="col-lg-3">
+    <!-- SIDEBAR (mais estreita em telas grandes) -->
+    <aside class="col-12 col-lg-3 col-xl-2 col-xxl-2">
       <div class="sidebar-card p-2">
         <div class="nav-title">Evento</div>
         <ul class="nav-list">
           <li class="nav-item">
-            <a href="{% url 'inscricoes:admin_paroquia_eventos' inscricao.evento.paroquia.id %}">🗂️ <span>Lista de eventos</span></a>
+            <a href="{% url 'inscricoes:admin_paroquia_eventos' inscricao.evento.paroquia.id %}">🏛️ <span>Lista de eventos</span></a>
           </li>
           <li class="nav-item">
             <a href="{% url 'inscricoes:evento_participantes' inscricao.evento.id %}">👥 <span>Participantes</span></a>
@@ -207,8 +230,8 @@
       </div>
     </aside>
 
-    <!-- CONTEÚDO -->
-    <section class="col-lg-9">
+    <!-- CONTEÚDO (mais largo) -->
+    <section class="col-12 col-lg-9 col-xl-10 col-xxl-10">
 
       {# Ribbon com cor do grupo #}
       {% with ag=inscricao.alocacao_grupo %}
@@ -222,25 +245,37 @@
       <!-- HEADER (foto + botões + badges) -->
       <div class="sticky-topbar p-3 mb-3 bg-white">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-<div class="d-flex align-items-center gap-3">
-  {% with casal=inscricao.inscricaocasais %}
-    {% if inscricao.participante.foto %}
-      <img src="{{ inscricao.participante.foto.url }}" class="avatar" alt="Foto de {{ inscricao.participante.nome }}">
-    {% elif casal and casal.foto_casal %}
-      <img src="{{ casal.foto_casal.url }}" class="avatar" alt="Foto do casal">
-    {% else %}
-      <img src="{% static 'img/user-placeholder.png' %}" class="avatar" alt="Foto">
-    {% endif %}
-  {% endwith %}
+          <div class="d-flex align-items-center gap-3">
+            {% with casal=inscricao.inscricaocasais %}
+              {% if inscricao.participante.foto %}
+                <img
+                  src="{{ inscricao.participante.foto.url }}"
+                  class="avatar"
+                  alt="Foto de {{ inscricao.participante.nome }}"
+                  data-zoom
+                  data-full="{{ inscricao.participante.foto.url }}">
+              {% elif casal and casal.foto_casal %}
+                <img
+                  src="{{ casal.foto_casal.url }}"
+                  class="avatar"
+                  alt="Foto do casal"
+                  data-zoom>
+              {% else %}
+                <img
+                  src="{% static 'img/user-placeholder.png' %}"
+                  class="avatar"
+                  alt="Foto"
+                  data-zoom>
+              {% endif %}
+            {% endwith %}
 
-  <div>
-    <h1 class="h6 m-0">{{ inscricao.participante.nome }}</h1>
-    <div class="small text-muted-2">
-      {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
-    </div>
-  </div>
-</div>
-
+            <div>
+              <h1 class="h6 m-0">{{ inscricao.participante.nome }}</h1>
+              <div class="small text-muted-2">
+                {{ inscricao.participante.cidade }}{% if inscricao.participante.estado %} — {{ inscricao.participante.estado }}{% endif %}
+              </div>
+            </div>
+          </div>
 
           <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
             <a href="{% url 'inscricoes:editar_inscricao' inscricao.id %}" class="btn btn-primary btn-sm">
@@ -249,13 +284,21 @@
             <a href="{% url 'inscricoes:ficha_inscricao' inscricao.id %}" class="btn btn-warning btn-sm" target="_blank" rel="noopener">
               <i class="fa-solid fa-file-lines"></i> Imprimir Ficha
             </a>
-            <a href="{% url 'inscricoes:imprimir_cracha' inscricao.id %}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+            <a href="{% url 'inscricoes:imprimir_cracha' inscricao_id=inscricao.id %}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
               <i class="fa-solid fa-id-card"></i> Crachá
             </a>
             <a href="{% url 'inscricoes:incluir_pagamento' inscricao.id %}" class="btn btn-success btn-sm">
               <i class="fa-solid fa-dollar-sign"></i> Pagamento
             </a>
-
+            {% with ev=inscricao.evento %}
+            {% if ev.tipo|lower == 'casais' or ev.evento_casal or ev.evento_casais or ev.evento_base_casais or ev.vinculo_casais or inscricao.par %}
+              <a href="{% url 'inscricoes:ficha_casal_paisagem' pk=inscricao.id %}"
+                 class="btn btn-outline-primary btn-sm"
+                 target="_blank" rel="noopener">
+                <i class="fa-solid fa-people-arrows me-1"></i> Ficha Casal
+              </a>
+            {% endif %}
+            {% endwith %}
             {% if inscricao.participante.qr_token %}
               <span class="d-inline-flex align-items-center gap-2 ms-1">
                 <img src="{% url 'inscricoes:qr_code_png' inscricao.participante.qr_token %}"
@@ -342,7 +385,17 @@
                 <dt>Estado civil</dt><dd>{{ base.get_estado_civil_display|default:"—" }}</dd>
                 {% if base.tempo_casado_uniao %}<dt>Tempo casado/união</dt><dd>{{ base.tempo_casado_uniao }}</dd>{% endif %}
                 {% if base.nome_conjuge %}<dt>Cônjuge</dt><dd>{{ base.nome_conjuge }} {% if base.conjuge_inscrito %}<span class="badge rounded-pill badge-soft ms-1">{{ base.get_conjuge_inscrito_display }}</span>{% endif %}</dd>{% endif %}
-                <dt>Paróquia</dt><dd>{{ base.paroquia|default:"—" }}</dd>
+                <dt>Paróquia</dt>
+                
+                <dd>
+                {% if base.paroquia %}
+                {{ base.paroquia }}
+                {% elif base.outra_paroquia %}
+                {{ base.outra_paroquia }}
+                {% else %}
+                  —
+                {% endif %}
+                </dd>
                 <dt>Pastoral/Mov.</dt><dd>{% if base.pastoral_movimento %}{{ base.pastoral_movimento.nome }}{% elif base.outra_pastoral_movimento %}{{ base.outra_pastoral_movimento }}{% else %}—{% endif %}</dd>
               </dl>
             </div>
@@ -558,6 +611,34 @@
   </div>
 </main>
 
+<!-- Modal de zoom de imagem -->
+<div class="modal fade" id="imgZoomModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content" style="background:#000;">
+      <div class="modal-header border-0">
+        <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body p-0 d-flex justify-content-center">
+        <img id="imgZoomTarget" src="" alt="" class="img-fluid" style="max-height:80vh; object-fit:contain;">
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Zoom da foto
+  document.addEventListener('click', function (e) {
+    const img = e.target.closest('img[data-zoom]');
+    if (!img) return;
+    const full = img.getAttribute('data-full') || img.getAttribute('src') || '';
+    const alt  = img.getAttribute('alt') || '';
+    const target = document.getElementById('imgZoomTarget');
+    target.src = full;
+    target.alt = alt;
+    const modal = new bootstrap.Modal(document.getElementById('imgZoomModal'));
+    modal.show();
+  });
+</script>
 </body>
 </html>

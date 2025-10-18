@@ -1,92 +1,71 @@
+{% load static %}
 <!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
   <title>Admin Geral • Painel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Bootstrap + Font Awesome -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
-
   <style>
     :root{
       --ink:#0f172a; --muted:#64748b; --ring:rgba(37,99,235,.18);
-      --g1:#0b1020; --g2:#111a3a;
-      --base-font:14px;
+      --g1:#0b1020; --g2:#111a3a; --base-font:14px; --line:#e5e7eb;
     }
-    html{ font-size: var(--base-font); }
-    body{ background:#f6f8fb; color:var(--ink); }
+    html{ font-size:var(--base-font) }
+    body{ background:#f6f8fb; color:var(--ink) }
 
-    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
-    .navbar-brand{ font-size:1rem; }
-    .navbar .btn{ font-size:.85rem; padding:.25rem .5rem; }
+    .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)) }
+    .navbar .btn{ font-size:.85rem; padding:.35rem .6rem }
+    .navbar-brand{ font-size:1rem }
+    .navbar-brand-logo{ height:28px; max-height:34px; width:auto; display:block; object-fit:contain }
 
-    .kpi{ background:#fff; border:1px solid #e5e7eb; border-radius:.8rem; padding:.75rem 1rem; }
-    .kpi .small{ color:var(--muted); font-size:.8rem; }
-    .kpi .fs-4{ font-size:1.15rem !important; }
-    .kpi .fw-bold{ font-weight:700 !important; }
+    .sidebar-card{ border:1px solid var(--line); border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04) }
+    .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em }
+    .nav-list{ list-style:none; padding:6px; margin:0 }
+    .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none }
+    .nav-list a:hover{ background:#eef2f7 }
+    .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff }
 
-    .card-clean{
-      border:none; box-shadow:0 10px 24px rgba(17,24,39,.08);
-      transition:transform .12s ease, box-shadow .12s ease; border-radius:.9rem;
-      background:#fff;
+    .sticky-topbar{ position:sticky; top:0; z-index:20; background:#ffffffd6; backdrop-filter:blur(6px); border:1px solid var(--line); border-radius:.9rem }
+
+    .kpi{ background:#fff; border:1px solid var(--line); border-radius:.8rem; padding:.75rem 1rem }
+    .kpi .small{ color:var(--muted); font-size:.8rem }
+    .kpi .fs-4{ font-size:1.15rem !important }
+    .kpi .fw-bold{ font-weight:700 !important }
+
+    .card-clean{ border:1px solid var(--line); border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.08); transition:transform .12s, box-shadow .12s, border-color .12s, filter .12s }
+    .card-clean:hover{ transform:translateY(-1px); box-shadow:0 12px 28px rgba(17,24,39,.12) }
+
+    .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700 }
+    .text-muted-2{ color:var(--muted) }
+    .list-ico{ width:32px; height:32px; border-radius:.6rem; display:flex; align-items:center; justify-content:center; background:#eef2f7; color:#334155 }
+
+    @media (min-width:1600px){
+      .px-xxl-4-5{ padding-left:2rem!important; padding-right:2rem!important }
     }
-    .card-clean:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(17,24,39,.12); }
-    .card-clean .card-header{ background:transparent; border-bottom:1px solid #eef2f7; }
-    .text-muted-2{ color:var(--muted); }
-
-    .table{ font-size:.875rem; }
-    .table thead th{
-      font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:#64748b;
-      background:#fff;
-    }
-
-    .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
-    .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
-    .nav-list{ list-style:none; padding:6px; margin:0; }
-    .nav-list a{ display:flex; gap:.5rem; align-items:center; padding:.55rem .6rem; border-radius:.6rem; color:var(--ink); text-decoration:none; }
-    .nav-list a:hover{ background:#eef2f7; }
-    .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
-
-    .pill{ display:inline-flex; align-items:center; gap:.35rem; padding:.15rem .55rem; font-size:.75rem;
-           border-radius:999px; border:1px solid #e5e7eb; background:#fff; color:var(--muted); }
-    .pill.success{ color:#065f46; border-color:#bbf7d0; background:#ecfdf5; }
-    .pill.warn{ color:#7c2d12; border-color:#fed7aa; background:#fff7ed; }
-    .pill.danger{ color:#7f1d1d; border-color:#fecaca; background:#fff1f2; }
-    .pill.info{ color:#1e3a8a; border-color:#bfdbfe; background:#eff6ff; }
-    .pill.pdf{ color:#1f2937; border-color:#e5e7eb; background:#f8fafc; }
-
-    .sr-only{ position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0 }
-
-    .sec-title{ font-size:.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .75rem; font-weight:700; }
-    .list-simple .item{ display:flex; align-items:center; gap:.6rem; padding:.65rem 0; border-bottom:1px solid #e5e7eb; }
-    .list-simple .item:last-child{ border-bottom:none }
-    .list-ico{ width:32px; height:32px; border-radius:.6rem; display:flex; align-items:center; justify-content:center; background:#eef2f7; color:#334155; }
-
-    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px); }
-    footer small{ color:var(--muted); }
   </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
+<!-- NAVBAR (logo com fallback + só botão Sair) -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral <span class="badge text-bg-light ms-1">Painel</span></a>
-
-    <form class="d-none d-md-flex" action="{% url 'inscricoes:admin_geral_list_paroquias' %}" method="get" role="search" aria-label="Buscar">
-      <div class="input-group input-group-sm">
-        <span class="input-group-text bg-white">🔎</span>
-        <label class="sr-only" for="q">Buscar</label>
-        <input id="q" name="q" type="search" class="form-control" placeholder="Buscar paróquias, usuários, eventos…" value="{{ request.GET.q|default:'' }}">
-      </div>
-    </form>
-
-    <div class="d-flex align-items-center gap-2 ms-auto">
-      <a class="btn btn-sm btn-success" href="{% url 'inscricoes:landing' %}" target="_blank" rel="noopener">🌐 Site</a>
-      <a class="btn btn-sm btn-warning" href="{% url 'inscricoes:financeiro_geral' %}">📊 Financeiro</a>
-      <a class="btn btn-sm btn-info" href="{% url 'inscricoes:ver_logs_lista' %}">🗂️ Logs</a>
-      <a class="btn btn-sm btn-light" href="https://eismeaqui.app.com.br/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
-      <form method="POST" action="{% url 'logout' %}" class="m-0">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'inscricoes:admin_geral_dashboard' %}">
+      {% if politica and politica.logo_1 %}
+        <img src="{{ politica.logo_1.url }}" alt="Admin Geral" class="navbar-brand-logo">
+        <span class="visually-hidden">Admin Geral</span>
+      {% elif politica and politica.logo %}
+        <img src="{{ politica.logo.url }}" alt="Admin Geral" class="navbar-brand-logo">
+        <span class="visually-hidden">Admin Geral</span>
+      {% else %}
+        <span class="fw-bold">Admin Geral</span>
+      {% endif %}
+      <span class="badge text-bg-light">Painel</span>
+    </a>
+    <div class="ms-auto d-flex align-items-center">
+      <form method="POST" action="{% url 'inscricoes:logout' %}" class="m-0">
         {% csrf_token %}
         <button type="submit" class="btn btn-sm btn-danger">Sair</button>
       </form>
@@ -94,11 +73,12 @@
   </div>
 </nav>
 
-<main class="container py-3 py-lg-4">
+<!-- container-fluid para ocupar 100% -->
+<main class="container-fluid py-3 py-lg-4 px-3 px-md-4 px-xxl-4-5">
   <div class="row g-3">
 
     <!-- SIDEBAR -->
-    <aside class="col-lg-3">
+    <aside class="col-12 col-lg-3 col-xl-2 col-xxl-2">
       <div class="sidebar-card p-2">
         <div class="nav-title">Navegação</div>
         <ul class="nav-list">
@@ -122,139 +102,70 @@
     </aside>
 
     <!-- CONTENT -->
-    <section class="col-lg-9">
-      <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-2">
-        <div>
-          <h1 class="h5 m-0">Painel do Administrador Geral</h1>
-          <p class="text-muted-2 m-0">Gerencie paróquias, usuários, políticas e relatórios do sistema.</p>
-        </div>
-        <div class="d-flex gap-2">
-          <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-primary btn-sm">Paróquias</a>
-          <a href="{% url 'inscricoes:admin_geral_list_usuarios' %}" class="btn btn-secondary btn-sm">Usuários</a>
-          <a href="{% url 'inscricoes:alterar_politica' %}" class="btn btn-outline-dark btn-sm">Política</a>
+    <section class="col-12 col-lg-9 col-xl-10 col-xxl-10">
+
+      <!-- HEADER sticky -->
+      <div class="sticky-topbar p-3 mb-3 bg-white">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <h1 class="h6 m-0">Painel do Administrador Geral</h1>
+            <div class="small text-muted-2">Gerencie paróquias, usuários, políticas e relatórios do sistema.</div>
+          </div>
+          <form class="d-none d-md-flex" action="{% url 'inscricoes:admin_geral_list_paroquias' %}" method="get" role="search" aria-label="Buscar">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white">🔎</span>
+              <label class="visually-hidden" for="q">Buscar</label>
+              <input id="q" name="q" type="search" class="form-control" placeholder="Buscar paróquias, usuários, eventos…" value="{{ request.GET.q|default:'' }}">
+            </div>
+          </form>
         </div>
       </div>
 
-      <!-- AÇÕES PRINCIPAIS (Cards) -->
+      <!-- AÇÕES PRINCIPAIS -->
       <div class="row g-3 mb-3">
         <div class="col-12 col-md-6 col-xl-4">
-          <div class="card card-clean h-100 p-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <div class="list-ico"><i class="fa-solid fa-church"></i></div>
-              <h3 class="h6 m-0">Paróquias</h3>
-            </div>
+          <div class="card-clean h-100 p-3">
+            <div class="d-flex align-items-center gap-2 mb-2"><div class="list-ico"><i class="fa-solid fa-church"></i></div><h3 class="h6 m-0">Paróquias</h3></div>
             <p class="text-muted-2 mb-3">Gerencie as paróquias cadastradas.</p>
             <a href="{% url 'inscricoes:admin_geral_list_paroquias' %}" class="btn btn-primary btn-sm">Abrir</a>
           </div>
         </div>
         <div class="col-12 col-md-6 col-xl-4">
-          <div class="card card-clean h-100 p-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <div class="list-ico"><i class="fa-solid fa-users"></i></div>
-              <h3 class="h6 m-0">Usuários</h3>
-            </div>
+          <div class="card-clean h-100 p-3">
+            <div class="d-flex align-items-center gap-2 mb-2"><div class="list-ico"><i class="fa-solid fa-users"></i></div><h3 class="h6 m-0">Usuários</h3></div>
             <p class="text-muted-2 mb-3">Controle acessos e perfis de usuários.</p>
             <a href="{% url 'inscricoes:admin_geral_list_usuarios' %}" class="btn btn-secondary btn-sm">Abrir</a>
           </div>
         </div>
         <div class="col-12 col-md-6 col-xl-4">
-          <div class="card card-clean h-100 p-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <div class="list-ico"><i class="fa-solid fa-file-lines"></i></div>
-              <h3 class="h6 m-0">Política</h3>
-            </div>
+          <div class="card-clean h-100 p-3">
+            <div class="d-flex align-items-center gap-2 mb-2"><div class="list-ico"><i class="fa-solid fa-file-lines"></i></div><h3 class="h6 m-0">Política</h3></div>
             <p class="text-muted-2 mb-3">Edite a política de privacidade/uso.</p>
             <a href="{% url 'inscricoes:alterar_politica' %}" class="btn btn-dark btn-sm">Alterar</a>
           </div>
         </div>
         <div class="col-12 col-md-6 col-xl-4">
-          <div class="card card-clean h-100 p-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <div class="list-ico"><i class="fa-solid fa-clipboard-list"></i></div>
-              <h3 class="h6 m-0">Logs de ações</h3>
-            </div>
+          <div class="card-clean h-100 p-3">
+            <div class="d-flex align-items-center gap-2 mb-2"><div class="list-ico"><i class="fa-solid fa-clipboard-list"></i></div><h3 class="h6 m-0">Logs de ações</h3></div>
             <p class="text-muted-2 mb-3">Auditoria dos eventos administrativos.</p>
             <a href="{% url 'inscricoes:ver_logs_lista' %}" class="btn btn-info btn-sm">Ver logs</a>
           </div>
         </div>
         <div class="col-12 col-md-6 col-xl-4">
-          <div class="card card-clean h-100 p-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <div class="list-ico"><i class="fa-solid fa-hand-holding-heart"></i></div>
-              <h3 class="h6 m-0">Pastorais e Movimentos</h3>
-            </div>
+          <div class="card-clean h-100 p-3">
+            <div class="d-flex align-items-center gap-2 mb-2"><div class="list-ico"><i class="fa-solid fa-hand-holding-heart"></i></div><h3 class="h6 m-0">Pastorais e Movimentos</h3></div>
             <p class="text-muted-2 mb-3">Mantenha a lista de pastorais e movimentos.</p>
             <a href="{% url 'inscricoes:listar_pastorais_movimentos' %}" class="btn btn-success btn-sm">Abrir</a>
           </div>
         </div>
         <div class="col-12 col-md-6 col-xl-4">
-          <div class="card card-clean h-100 p-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <div class="list-ico"><i class="fa-solid fa-chart-column"></i></div>
-              <h3 class="h6 m-0">Financeiro (geral)</h3>
-            </div>
+          <div class="card-clean h-100 p-3">
+            <div class="d-flex align-items-center gap-2 mb-2"><div class="list-ico"><i class="fa-solid fa-chart-column"></i></div><h3 class="h6 m-0">Financeiro (geral)</h3></div>
             <p class="text-muted-2 mb-3">Visão consolidada das receitas e pendências.</p>
             <a href="{% url 'inscricoes:financeiro_geral' %}" class="btn btn-primary btn-sm">Abrir</a>
           </div>
         </div>
       </div>
-
-      <!-- Últimas Paróquias -->
-      <section class="mb-3">
-        <h2 class="sec-title">Últimas paróquias</h2>
-        <div class="card-clean p-3">
-          {% if ultimas_paroquias %}
-            <div class="list-simple">
-              {% for paroquia in ultimas_paroquias %}
-              <div class="item">
-                <div class="list-ico"><i class="fa-solid fa-location-dot"></i></div>
-                <div><strong>{{ paroquia.nome }}</strong> — {{ paroquia.cidade }}/{{ paroquia.estado }}</div>
-              </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="text-muted-2">Nenhuma paróquia cadastrada.</div>
-          {% endif %}
-        </div>
-      </section>
-
-      <!-- Próximos Eventos -->
-      <section class="mb-3">
-        <h2 class="sec-title">Próximos eventos</h2>
-        <div class="card-clean p-3">
-          {% if proximos_eventos %}
-            <div class="list-simple">
-              {% for evento in proximos_eventos %}
-              <div class="item">
-                <div class="list-ico"><i class="fa-solid fa-calendar-day"></i></div>
-                <div><strong>{{ evento.nome }}</strong> ({{ evento.get_tipo_display }}) — {{ evento.data_inicio }}</div>
-              </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="text-muted-2">Sem eventos futuros.</div>
-          {% endif %}
-        </div>
-      </section>
-
-      <!-- Inscrições Recentes -->
-      <section class="mb-4">
-        <h2 class="sec-title">Inscrições recentes</h2>
-        <div class="card-clean p-3">
-          {% if inscricoes_recentes %}
-            <div class="list-simple">
-              {% for inscricao in inscricoes_recentes %}
-              <div class="item">
-                <div class="list-ico"><i class="fa-solid fa-user-check"></i></div>
-                <div>{{ inscricao.participante.nome }} — {{ inscricao.evento.nome }} em {{ inscricao.data_inscricao }}</div>
-              </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="text-muted-2">Sem inscrições recentes.</div>
-          {% endif %}
-        </div>
-      </section>
 
       <!-- Links Úteis -->
       <section class="mb-3">
@@ -262,37 +173,25 @@
         <div class="row g-3">
           <div class="col-12 col-md-6 col-xl-3">
             <div class="card-clean p-3 h-100 d-flex justify-content-between">
-              <div>
-                <div class="small text-muted-2 mb-1">Infra</div>
-                <div class="fw-semibold">Admin Django</div>
-              </div>
-              <a href="http://localhost:8000/admin/" target="_blank" rel="noopener" class="btn btn-outline-dark btn-sm align-self-end">Abrir</a>
+              <div><div class="small text-muted-2 mb-1">Infra</div><div class="fw-semibold">Admin Django</div></div>
+              <a href="/admin/" target="_blank" rel="noopener" class="btn btn-outline-dark btn-sm align-self-end">Abrir</a>
             </div>
           </div>
           <div class="col-12 col-md-6 col-xl-3">
             <div class="card-clean p-3 h-100 d-flex justify-content-between">
-              <div>
-                <div class="small text-muted-2 mb-1">DB</div>
-                <div class="fw-semibold">Neon Console</div>
-              </div>
+              <div><div class="small text-muted-2 mb-1">DB</div><div class="fw-semibold">Neon Console</div></div>
               <a href="https://console.neon.tech/app/org-green-math-42653053/projects" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm align-self-end">Abrir</a>
             </div>
           </div>
           <div class="col-12 col-md-6 col-xl-3">
             <div class="card-clean p-3 h-100 d-flex justify-content-between">
-              <div>
-                <div class="small text-muted-2 mb-1">Mídia</div>
-                <div class="fw-semibold">Cloudinary</div>
-              </div>
+              <div><div class="small text-muted-2 mb-1">Mídia</div><div class="fw-semibold">Cloudinary</div></div>
               <a href="https://console.cloudinary.com/app/c-1796ace1f92c1472bcb319a576f851/home/dashboard" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm align-self-end">Abrir</a>
             </div>
           </div>
           <div class="col-12 col-md-6 col-xl-3">
             <div class="card-clean p-3 h-100 d-flex justify-content-between">
-              <div>
-                <div class="small text-muted-2 mb-1">Código</div>
-                <div class="fw-semibold">GitHub</div>
-              </div>
+              <div><div class="small text-muted-2 mb-1">Código</div><div class="fw-semibold">GitHub</div></div>
               <a href="https://github.com/alexandremvdev1/acampamento" target="_blank" rel="noopener" class="btn btn-outline-dark btn-sm align-self-end">Abrir</a>
             </div>
           </div>

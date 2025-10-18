@@ -5,10 +5,7 @@
   <title>Editar Inscrição — {{ inscricao.participante.nome }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-
-  <!-- Font Awesome -->
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -23,12 +20,10 @@
     html{ font-size:var(--base-font) }
     body{ background:#f6f8fb; color:var(--ink); }
 
-    /* Navbar */
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .navbar-brand{ font-size:1rem; }
 
-    /* Sidebar */
     .sidebar-card{ border:1px solid var(--line); border-radius:.9rem; background:#fff; box-shadow:var(--shadow); }
     .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
     .nav-list{ list-style:none; padding:6px; margin:0; }
@@ -36,7 +31,6 @@
     .nav-list a:hover{ background:#eef2f7; }
     .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
 
-    /* Topbar fixa */
     .sticky-topbar{
       position: sticky; top: 0; z-index: 20;
       background:#ffffffd6; backdrop-filter: blur(6px);
@@ -45,7 +39,6 @@
     .text-muted-2{ color:var(--muted) }
     .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
 
-    /* Cards + títulos */
     .card-clean{
       border:1px solid var(--line); border-radius:.95rem; background:#fff;
       box-shadow:var(--shadow);
@@ -57,7 +50,6 @@
       margin:0 0 .75rem; font-weight:700; display:flex; align-items:center; gap:.5rem;
     }
 
-    /* Inputs */
     .form-group label{ font-weight:700; color:var(--muted); font-size:.95rem }
     .form-group input[type="text"],
     .form-group input[type="email"],
@@ -73,21 +65,18 @@
     }
     .form-text, .help{ color:var(--muted) }
 
-    /* Erros */
     .errorlist{ list-style:none; margin:.4rem 0 0; padding:0 }
     .errorlist li{
       background:rgba(239,68,68,.08); color:var(--danger);
       border:1px solid rgba(239,68,68,.35); padding:.5rem .6rem; border-radius:.5rem; font-size:.9rem;
     }
 
-    /* Chips */
     .chip{
       border:1px solid var(--line); border-radius:999px;
       padding:.35rem .7rem; background:#fff; box-shadow:var(--shadow);
       font-weight:700; color:#334155; display:inline-flex; align-items:center; gap:.4rem;
     }
 
-    /* Preview de arquivos */
     .file-preview{ display:flex; gap:.5rem; overflow:auto; margin-top:.25rem }
     .file-preview__item{
       border:1px solid var(--line); border-radius:.6rem; background:#f8fafc;
@@ -99,7 +88,6 @@
 </head>
 <body>
 
-<!-- NAVBAR -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
     <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
@@ -117,7 +105,6 @@
 <main class="container py-3 py-lg-4">
   <div class="row g-3">
 
-    <!-- SIDEBAR (foco no evento) -->
     <aside class="col-lg-3">
       <div class="sidebar-card p-2">
         <div class="nav-title">Evento</div>
@@ -161,10 +148,8 @@
       </div>
     </aside>
 
-    <!-- CONTEÚDO -->
     <section class="col-lg-9">
 
-      <!-- HEADER / “fixo” -->
       <div class="sticky-topbar p-3 mb-3 bg-white">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
           <div>
@@ -178,7 +163,6 @@
         </div>
       </div>
 
-      <!-- MENSAGENS DJANGO -->
       {% if messages %}
         <div class="mb-3">
           {% for message in messages %}
@@ -189,7 +173,6 @@
         </div>
       {% endif %}
 
-      <!-- NAVEGAÇÃO LOCAL -->
       <section class="card-clean p-3 p-md-4 mb-3">
         <h2 class="sec-title"><i class="fa-solid fa-sitemap"></i> Seções</h2>
         <div class="d-flex flex-wrap gap-2">
@@ -197,7 +180,7 @@
           <a href="#sec-inscricao" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-file-pen me-1"></i> Inscrição</a>
           {% if base_form %}<a href="#sec-especifico" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-sliders me-1"></i> Específico</a>{% endif %}
           {% if conjuge_form %}<a href="#sec-conjuge" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-ring me-1"></i> Cônjuge</a>{% endif %}
-          {% if contato_forms %}<a href="#sec-contatos" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-triangle-exclamation me-1"></i> Emergência</a>{% endif %}
+          {% if contato_formset or contato_forms %}<a href="#sec-contatos" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-triangle-exclamation me-1"></i> Emergência</a>{% endif %}
           {% if pagamento_form %}<a href="#sec-pagamento" class="btn btn-outline-dark btn-sm"><i class="fa-solid fa-credit-card me-1"></i> Pagamento</a>{% endif %}
         </div>
       </section>
@@ -216,9 +199,7 @@
                 </label>
                 {{ field }}
                 {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-                {% if field.errors %}
-                  <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-                {% endif %}
+                {% if field.errors %}<ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
                 {% if field.field.widget.input_type == 'file' %}
                   <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
                 {% endif %}
@@ -230,21 +211,37 @@
         <!-- INSCRIÇÃO -->
         <section class="card-clean p-3 p-md-4 mb-3" id="sec-inscricao">
           <h2 class="sec-title"><i class="fa-solid fa-file-pen"></i> Dados da Inscrição</h2>
+
+          {# mantém os HiddenInput que o form precisa #}
+          {{ inscricao_form.evento }}
+          {{ inscricao_form.paroquia }}
+
           <div class="row g-3">
+            <!-- Leitura de Evento e Paróquia -->
+            <div class="form-group col-12 col-md-6">
+              <label>Evento <span class="text-warning">*</span></label>
+              <input class="form-control" value="{{ inscricao.evento.nome }}" readonly />
+            </div>
+            <div class="form-group col-12 col-md-6">
+              <label>Paróquia <span class="text-warning">*</span></label>
+              <input class="form-control" value="{{ inscricao.paroquia.nome }}" readonly />
+            </div>
+
+            {# Demais campos do form de inscrição (exceto evento/paróquia) #}
             {% for field in inscricao_form %}
-              <div class="form-group {% if field.field.widget.input_type == 'file' %}col-12{% else %}col-12 col-md-6{% endif %}">
-                <label for="{{ field.id_for_label }}">
-                  {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
-                </label>
-                {{ field }}
-                {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-                {% if field.errors %}
-                  <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-                {% endif %}
-                {% if field.field.widget.input_type == 'file' %}
-                  <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
-                {% endif %}
-              </div>
+              {% if field.name != 'evento' and field.name != 'paroquia' %}
+                <div class="form-group {% if field.field.widget.input_type == 'file' %}col-12{% else %}col-12 col-md-6{% endif %}">
+                  <label for="{{ field.id_for_label }}">
+                    {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
+                  </label>
+                  {{ field }}
+                  {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+                  {% if field.errors %}<ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+                  {% if field.field.widget.input_type == 'file' %}
+                    <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
+                  {% endif %}
+                </div>
+              {% endif %}
             {% endfor %}
           </div>
         </section>
@@ -261,9 +258,7 @@
                 </label>
                 {{ field }}
                 {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-                {% if field.errors %}
-                  <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-                {% endif %}
+                {% if field.errors %}<ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
                 {% if field.field.widget.input_type == 'file' %}
                   <div class="file-preview" data-preview-for="{{ field.id_for_label }}"></div>
                 {% endif %}
@@ -285,37 +280,81 @@
                 </label>
                 {{ field }}
                 {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-                {% if field.errors %}
-                  <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-                {% endif %}
+                {% if field.errors %}<ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
               </div>
             {% endfor %}
           </div>
         </section>
         {% endif %}
 
-        {% if contato_forms %}
-        <!-- CONTATOS -->
+        <!-- CONTATOS (usa contato_formset se existir, senão contato_forms) -->
+        {% if contato_formset or contato_forms %}
         <section class="card-clean p-3 p-md-4 mb-3" id="sec-contatos">
           <h2 class="sec-title"><i class="fa-solid fa-triangle-exclamation"></i> Contatos de Emergência</h2>
-          {% for contato_form in contato_forms %}
-            <div class="card-clean p-3 mb-3">
-              <div class="row g-3">
-                {% for field in contato_form %}
-                  <div class="form-group col-12 col-md-6">
-                    <label for="{{ field.id_for_label }}">
-                      {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
-                    </label>
-                    {{ field }}
-                    {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-                    {% if field.errors %}
-                      <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-                    {% endif %}
-                  </div>
-                {% endfor %}
+
+          {% if contato_formset %}
+            {{ contato_formset.management_form }}
+            {% if contato_formset.non_form_errors %}
+              <ul class="errorlist mb-3">
+                {% for err in contato_formset.non_form_errors %}<li>{{ err }}</li>{% endfor %}
+              </ul>
+            {% endif %}
+            {% for contato_form in contato_formset.forms %}
+              <div class="card-clean p-3 mb-3">
+                {{ contato_form.id }}
+                <div class="row g-3">
+                  {% for field in contato_form.visible_fields %}
+                    <div class="form-group col-12 col-md-6">
+                      <label for="{{ field.id_for_label }}">
+                        {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
+                      </label>
+                      {{ field }}
+                      {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+                      {% if field.errors %}<ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+                    </div>
+                  {% endfor %}
+                  {% if contato_formset.can_delete and contato_form.DELETE %}
+                    <div class="col-12">
+                      <div class="form-check">
+                        {{ contato_form.DELETE }} <label class="form-check-label">Remover este contato</label>
+                      </div>
+                    </div>
+                  {% endif %}
+                </div>
               </div>
-            </div>
-          {% endfor %}
+            {% endfor %}
+          {% elif contato_forms %}
+            {{ contato_forms.management_form }}
+            {% if contato_forms.non_form_errors %}
+              <ul class="errorlist mb-3">
+                {% for err in contato_forms.non_form_errors %}<li>{{ err }}</li>{% endfor %}
+              </ul>
+            {% endif %}
+            {% for contato_form in contato_forms.forms %}
+              <div class="card-clean p-3 mb-3">
+                {{ contato_form.id }}
+                <div class="row g-3">
+                  {% for field in contato_form.visible_fields %}
+                    <div class="form-group col-12 col-md-6">
+                      <label for="{{ field.id_for_label }}">
+                        {{ field.label }}{% if field.field.required %} <span class="text-warning">*</span>{% endif %}
+                      </label>
+                      {{ field }}
+                      {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+                      {% if field.errors %}<ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+                    </div>
+                  {% endfor %}
+                  {% if contato_forms.can_delete and contato_form.DELETE %}
+                    <div class="col-12">
+                      <div class="form-check">
+                        {{ contato_form.DELETE }} <label class="form-check-label">Remover este contato</label>
+                      </div>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
         </section>
         {% endif %}
 
@@ -331,16 +370,13 @@
                 </label>
                 {{ field }}
                 {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
-                {% if field.errors %}
-                  <ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>
-                {% endif %}
+                {% if field.errors %}<ul class="errorlist">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
               </div>
             {% endfor %}
           </div>
         </section>
         {% endif %}
 
-        <!-- AÇÕES -->
         <div class="d-flex flex-wrap justify-content-end gap-2">
           <a href="#top" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-up me-1"></i> Topo</a>
           <a href="{% url 'inscricoes:evento_participantes' evento_id=inscricao.evento.pk %}" class="btn btn-outline-dark">
@@ -363,10 +399,8 @@
   </div>
 </main>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Pré-visualização de arquivos (imagens) -->
 <script>
   (function () {
     function isImg(type){ return /^image\//.test(type); }
@@ -397,7 +431,6 @@
     });
   })();
 
-  // Rolagem suave para os botões de seção
   document.querySelectorAll('a[href^="#sec-"]').forEach(a=>{
     a.addEventListener('click', e=>{
       e.preventDefault();

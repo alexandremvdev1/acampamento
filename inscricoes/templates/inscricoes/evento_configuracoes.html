@@ -22,6 +22,10 @@
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)); }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .navbar-brand{ font-size:1rem; }
+    /* logo pequena no navbar */
+    .navbar-brand-logo{
+      height:28px; max-height:34px; width:auto; display:block; object-fit:contain;
+    }
 
     .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04); }
     .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
@@ -30,8 +34,10 @@
     .nav-list a:hover{ background:#eef2f7; }
     .nav-item.is-active a{ background:#e7efff; border:1px solid #cfe0ff; }
 
-    .sticky-topbar{ position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px);
-                    border:1px solid #e5e7eb; border-radius:.9rem; }
+    .sticky-topbar{
+      position: sticky; top: 0; z-index: 20; background:#ffffffd6; backdrop-filter: blur(6px);
+      border:1px solid #e5e7eb; border-radius:.9rem;
+    }
 
     .card-clean{
       border:1px solid #e5e7eb; border-radius:.9rem; background:#fff;
@@ -47,16 +53,33 @@
     }
 
     .btn-sm, .btn.btn-sm{ font-size:.8rem; padding:.35rem .6rem; }
-    .list-ico{ width:32px; height:32px; border-radius:.6rem; display:flex; align-items:center; justify-content:center;
-               background:#eef2f7; color:#334155; }
+    .list-ico{
+      width:32px; height:32px; border-radius:.6rem; display:flex; align-items:center; justify-content:center;
+      background:#eef2f7; color:#334155;
+    }
+
+    /* respiro leve em telas muito grandes */
+    @media (min-width:1600px){
+      .px-xxl-4-5{ padding-left:2rem!important; padding-right:2rem!important; }
+    }
   </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
+<!-- NAVBAR (com logo e fallback) -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_geral_dashboard' %}">Admin Geral</a>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'inscricoes:admin_geral_dashboard' %}">
+      {% if politica and politica.logo_1 %}
+        <img src="{{ politica.logo_1.url }}" alt="Admin Geral" class="navbar-brand-logo">
+        <span class="visually-hidden">Admin Geral</span>
+      {% elif politica and politica.logo %}
+        <img src="{{ politica.logo.url }}" alt="Admin Geral" class="navbar-brand-logo">
+        <span class="visually-hidden">Admin Geral</span>
+      {% else %}
+        <span class="fw-bold">Admin Geral</span>
+      {% endif %}
+    </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <a class="btn btn-sm btn-secondary" href="{{ url_admin_paroquia }}">Paróquia</a>
       <a class="btn btn-sm btn-light" href="/admin/" target="_blank" rel="noopener">⚙️ Admin Django</a>
@@ -64,11 +87,12 @@
   </div>
 </nav>
 
-<main class="container py-3 py-lg-4">
+<!-- container-fluid para ocupar 100% -->
+<main class="container-fluid py-3 py-lg-4 px-3 px-md-4 px-xxl-4-5">
   <div class="row g-3">
 
     <!-- SIDEBAR -->
-    <aside class="col-lg-3">
+    <aside class="col-12 col-lg-3 col-xl-2 col-xxl-2">
       <div class="sidebar-card p-2">
         <div class="nav-title">Evento</div>
         <ul class="nav-list">
@@ -90,7 +114,7 @@
     </aside>
 
     <!-- CONTEÚDO -->
-    <section class="col-lg-9">
+    <section class="col-12 col-lg-9 col-xl-10 col-xxl-10">
 
       <!-- HEADER -->
       <div class="sticky-topbar p-3 mb-3 bg-white">

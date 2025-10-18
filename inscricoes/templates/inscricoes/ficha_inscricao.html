@@ -57,8 +57,12 @@
     .media{ display:flex; align-items:center; gap:10px }
     .photo{
       width:56px; height:56px; border-radius:10px; object-fit:cover;
-      border:1px solid var(--line); background:#f3f4f6;
-      display:block;
+      border:1px solid var(--line); background:#f3f4f6; display:block;
+    }
+    /* Foto do CASAL (prioritária quando existir) */
+    .photo-wide{
+      width:96px; height:64px; border-radius:10px; object-fit:cover;
+      border:1px solid var(--line); background:#f3f4f6; display:block;
     }
     .photo.-empty{ display:grid; place-items:center; color:#9ca3af; font-size:9px }
     .qr-wrap{ display:grid; grid-template-rows:auto auto; gap:4px; justify-items:center }
@@ -93,7 +97,7 @@
     .span-4{grid-column:span 4}.span-3{grid-column:span 3}
     .span-2{grid-column:span 2}.span-1{grid-column:span 1}
 
-    /* ===== Chips (opcional para destaques) ===== */
+    /* ===== Chips ===== */
     .chip{ display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; background:var(--chip); color:var(--chip-ink); font-weight:800; font-size:10px }
 
     /* ===== Rodapé ===== */
@@ -107,6 +111,7 @@
       .t-title{ font-size:13px }
       .t-sub{ font-size:9px; max-width:140mm }
       .photo{ width:48px; height:48px }
+      .photo-wide{ width:88px; height:60px }
       .qr{ width:64px; height:64px; border-radius:6px }
       .toolbar{ display:none !important }
       .sec{ margin:8px 0 10px }
@@ -119,9 +124,7 @@
 
   <!-- Barra (não imprime) -->
   <div class="toolbar">
-    <button class="btn btn-primary" onclick="window.print()">
-      Imprimir
-    </button>
+    <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
   </div>
 
   <div class="wrap">
@@ -131,19 +134,49 @@
         <div>
           <p class="eyebrow">Ficha de inscrição</p>
           <h1 class="t-title">{{ inscricao.evento.nome|default:"não informado" }}</h1>
+
+          {# Mostra os dois nomes quando existir par; caso contrário, nome individual #}
           <div class="t-sub">
-            Participante: {{ inscricao.participante.nome|default:"não informado" }}
+            {% if inscricao.par %}
+              Participantes: {{ inscricao.participante.nome|default:"—" }} &amp; {{ inscricao.par.participante.nome|default:"—" }}
+            {% else %}
+              Participante: {{ inscricao.participante.nome|default:"—" }}
+            {% endif %}
           </div>
         </div>
+
         <div class="media">
-          {% if inscricao.participante.foto %}
+          {# FOTO: prioridade para foto do casal quando evento é "casais" e houver foto_casal #}
+          {% if inscricao.evento.tipo|lower == "casais" and inscricao.inscricaocasais and inscricao.inscricaocasais.foto_casal %}
+            <img class="photo-wide" src="{{ inscricao.inscricaocasais.foto_casal.url }}" alt="Foto do casal">
+          {% elif inscricao.participante.foto %}
             <img class="photo" src="{{ inscricao.participante.foto.url }}" alt="Foto do participante">
           {% else %}
             <div class="photo -empty">sem foto</div>
           {% endif %}
+
           <div class="qr-wrap">
             <img class="qr" src="{% url 'inscricoes:qr_code_png' inscricao.participante.qr_token %}" alt="QR participante">
             <div class="qr-caption">Check-in</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inscrição -->
+      <div class="sec">
+        <h3>Inscrição</h3>
+        <div class="grid">
+          <div class="f span-3"><label>Nº</label><div class="v">#{{ inscricao.id }}</div></div>
+          <div class="f span-5"><label>Status pagamento</label>
+            <div class="v">
+              {% if inscricao.pagamento_confirmado %}Confirmado{% else %}Pendente{% endif %}
+            </div>
+          </div>
+          <div class="f span-5"><label>Data de inscrição</label>
+            <div class="v">{{ inscricao.created_at|date:"d/m/Y H:i"|default:"—" }}</div>
+          </div>
+          <div class="f span-5"><label>Selecionado?</label>
+            <div class="v">{% if inscricao.foi_selecionado %}Sim{% else %}Não{% endif %}</div>
           </div>
         </div>
       </div>

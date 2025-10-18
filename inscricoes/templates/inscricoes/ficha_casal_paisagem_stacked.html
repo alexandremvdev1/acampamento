@@ -1,0 +1,391 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ficha (Casal) • {{ evento.nome|default:"—" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Página / Tema ===== */
+    @page { size: A4 landscape; margin: 6mm; }
+    :root{
+      --ink:#0f172a; --muted:#6b7280; --line:#e5e7eb; --bg:#ffffff; --panel:#ffffff;
+      --chip:#eef2ff; --chip-ink:#3730a3; --accent:#2563eb;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{ --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2937; --bg:#0b1220; --panel:#0f1526; --chip:#0b1a4a; --chip-ink:#a5b4fc; }
+    }
+    *{ box-sizing:border-box }
+    html,body{ margin:0 }
+    body{
+      background:var(--bg); color:var(--ink);
+      font-family:'Nunito Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-size:10.9px; line-height:1.32;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+
+    /* Folha */
+    .wrap{ max-width:297mm; margin:0 auto; padding:5mm }
+    .sheet{
+      background:var(--panel); border:1px solid var(--line); border-radius:10px;
+      padding:6mm; page-break-inside:avoid; page-break-after:always;
+    }
+
+    /* Barra (não imprime) */
+    .toolbar{ display:flex; justify-content:center; gap:8px; padding:8px }
+    .btn{ appearance:none; border:1px solid var(--line); background:#fff; color:#111827;
+      padding:6px 10px; border-radius:10px; font-weight:800; cursor:pointer; text-decoration:none; font-size:10.5px }
+    .btn-primary{ background:var(--accent); color:#fff; border-color:transparent }
+
+    /* Topo */
+    .top{
+      display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
+      padding-bottom:6px; border-bottom:1px solid var(--line); margin-bottom:8px;
+    }
+    .brand{ display:flex; align-items:center; gap:8px }
+    .brand img{ height:20px; object-fit:contain }
+    .eyebrow{ color:var(--muted); font-size:9.5px; margin:0 0 2px }
+    .t-title{ margin:0; font-weight:800; font-size:14.2px; line-height:1.12; letter-spacing:.2px }
+    .t-sub{ margin:2px 0 0; color:var(--muted); font-size:9.6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180mm }
+
+    /* Hero (foto casal / fotos individuais + QRs) */
+    .hero{
+      display:grid; grid-template-columns: 1fr auto 1fr; gap:10px; align-items:center;
+      margin:6px 0 6px;
+    }
+    .qr-box{ display:grid; gap:3px; justify-items:center }
+    .qr{
+      width:50px; height:50px; border:1px solid var(--line); border-radius:7px; padding:2px; background:#fff;
+    }
+    .qr-cap{ font-size:9px; color:var(--muted); text-align:center; max-width:60mm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+    .hero-media{ display:flex; align-items:center; justify-content:center; gap:8px }
+    .photo-wide{
+      width:200px; height:110px; border-radius:10px; object-fit:cover;
+      border:1px solid var(--line); background:#f3f4f6; display:block;
+    }
+    .photo{
+      width:72px; height:72px; border-radius:10px; object-fit:cover;
+      border:1px solid var(--line); background:#f3f4f6; display:block;
+    }
+    .photo.-empty{ display:grid; place-items:center; color:#9ca3af; font-size:9px }
+
+    /* Blocos empilhados A e B (lado a lado para usar a largura) */
+    .stack{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+    .card{ border:1px solid var(--line); border-radius:9px; padding:6px; min-width:0 }
+    .who{ margin:0 0 4px; font-weight:800; font-size:12.4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+
+    /* Seções e campos */
+    .sec{ margin:5px 0 6px }
+    .sec h3{ margin:0 0 3px; font-size:9.8px; letter-spacing:.25px; text-transform:uppercase }
+    .grid{ display:grid; grid-template-columns:repeat(12,1fr); gap:4px }
+    .f{ display:flex; flex-direction:column; min-width:0 }
+    .f label{ font-size:8.8px; color:var(--muted); margin-bottom:1px; line-height:1; letter-spacing:.15px }
+    .v{
+      border:1px solid var(--line); border-radius:6px; padding:3px 5px; min-height:16px;
+      display:flex; align-items:center; background:#fff; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    }
+    .v-wrap{ white-space:normal; word-break:break-word; overflow:visible }
+    .s-12{grid-column:span 12}.s-10{grid-column:span 10}.s-8{grid-column:span 8}.s-7{grid-column:span 7}.s-6{grid-column:span 6}.s-5{grid-column:span 5}.s-4{grid-column:span 4}.s-3{grid-column:span 3}.s-2{grid-column:span 2}
+
+    /* Chips (saúde/destaques) */
+    .chips{ display:flex; flex-wrap:wrap; gap:5px; margin-top:3px }
+    .chip{ display:inline-flex; align-items:center; gap:6px; padding:1px 7px; border-radius:999px; background:var(--chip); color:var(--chip-ink); font-weight:800; font-size:9.6px }
+
+    /* Rodapé */
+    .footer{ margin-top:6px; text-align:center; font-size:9px; color:var(--muted) }
+
+    /* Print: ainda mais compacto ao imprimir */
+    @media print{
+      body{ font-size:10.4px }
+      .sheet{ border:none; border-radius:0; padding:5mm }
+      .t-title{ font-size:13.6px }
+      .photo-wide{ width:190px; height:104px } .photo{ width:66px; height:66px }
+      .qr{ width:46px; height:46px }
+      .v{ min-height:15px; padding:3px 4px }
+      .grid{ gap:3px }
+      .sec{ margin:4px 0 }
+      .toolbar{ display:none !important }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra (não imprime) -->
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+  </div>
+
+  <div class="wrap">
+    <div class="sheet">
+
+      <!-- Topo -->
+      <div class="top">
+        <div class="brand">
+          <img src="{% static 'img/logo.png' %}" alt="Logo 1">
+          {% if evento.banner %}<img src="{{ evento.banner.url }}" alt="Banner" style="height:18px">{% endif %}
+        </div>
+        <div>
+          <p class="eyebrow">Ficha de inscrição — casais</p>
+          <h1 class="t-title">{{ evento.nome }}</h1>
+          <div class="t-sub">
+            {{ a.participante.nome|default:"—" }}{% if b %} &amp; {{ b.participante.nome|default:"—" }}{% endif %}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="eyebrow">Inscrições</div>
+          <div style="font-weight:800">A #{{ a.id }}{% if b %} • B #{{ b.id }}{% endif %}</div>
+          <div class="eyebrow">
+            Pagto A: {% if a.pagamento_confirmado %}Confirmado{% else %}Pendente{% endif %}
+            {% if b %} • Pagto B: {% if b.pagamento_confirmado %}Confirmado{% else %}Pendente{% endif %}{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Foto casal (prioritária) + QRs -->
+      <div class="hero">
+        <div class="qr-box">
+          <img class="qr" src="{% url 'inscricoes:qr_code_png' a.participante.qr_token %}" alt="QR A">
+          <div class="qr-cap">{{ a.participante.nome|default:"—" }}</div>
+        </div>
+
+        <div class="hero-media">
+          {% if base_a and base_a.foto_casal %}
+            <img class="photo-wide" src="{{ base_a.foto_casal.url }}" alt="Foto do casal">
+          {% elif base_b and base_b.foto_casal %}
+            <img class="photo-wide" src="{{ base_b.foto_casal.url }}" alt="Foto do casal">
+          {% else %}
+            <div style="display:flex; align-items:center; gap:8px">
+              {% if a.participante.foto %}
+                <img class="photo" src="{{ a.participante.foto.url }}" alt="Foto A">
+              {% else %}<div class="photo -empty">sem foto</div>{% endif %}
+              {% if b and b.participante.foto %}
+                <img class="photo" src="{{ b.participante.foto.url }}" alt="Foto B">
+              {% elif b %}<div class="photo -empty">sem foto</div>{% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="qr-box">
+          {% if b %}
+            <img class="qr" src="{% url 'inscricoes:qr_code_png' b.participante.qr_token %}" alt="QR B">
+            <div class="qr-cap">{{ b.participante.nome|default:"—" }}</div>
+          {% else %}
+            <div class="qr" style="display:grid;place-items:center;color:#9ca3af">—</div>
+            <div class="qr-cap">Sem par vinculado</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Blocos empilhados: A (esquerda) e B (direita) -->
+      <div class="stack">
+
+        <!-- BLOCO A -->
+        <div class="card">
+          <h2 class="who">A) {{ a.participante.nome|default:"—" }}</h2>
+
+          <div class="sec">
+            <h3>Identificação</h3>
+            <div class="grid">
+              <div class="f s-8"><label>Nome</label><div class="v v-wrap">{{ a.participante.nome|default:"—" }}</div></div>
+              <div class="f s-2"><label>Nasc.</label><div class="v">{{ base_a.data_nascimento|date:"d/m/Y"|default:"—" }}</div></div>
+              <div class="f s-2"><label>CPF</label><div class="v">{{ a.participante.cpf|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Telefone</label><div class="v">{{ a.participante.telefone|default:"—" }}</div></div>
+              <div class="f s-8"><label>E-mail</label><div class="v v-wrap">{{ a.participante.email|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>CEP</label><div class="v">{{ a.participante.CEP|default:"—" }}</div></div>
+              <div class="f s-7"><label>Endereço</label><div class="v v-wrap">{{ a.participante.endereco|default:"—" }}</div></div>
+              <div class="f s-2"><label>Nº</label><div class="v">{{ a.participante.numero|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Bairro</label><div class="v">{{ a.participante.bairro|default:"—" }}</div></div>
+              <div class="f s-6"><label>Cidade</label><div class="v">{{ a.participante.cidade|default:"—" }}</div></div>
+              <div class="f s-2"><label>UF</label><div class="v">{{ a.participante.estado|default:"—" }}</div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Dados adicionais</h3>
+            <div class="grid">
+              <div class="f s-2"><label>Altura</label><div class="v">{{ base_a.altura|default:"—" }}</div></div>
+              <div class="f s-2"><label>Peso</label><div class="v">{{ base_a.peso|default:"—" }}</div></div>
+              <div class="f s-2"><label>Camisa</label><div class="v">{{ base_a.tamanho_camisa|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Batizado?</label><div class="v">{{ base_a.get_batizado_display|default:"—" }}</div></div>
+              <div class="f s-3"><label>Crismado?</label><div class="v">{{ base_a.get_crismado_display|default:"—" }}</div></div>
+
+              <div class="f s-6"><label>Estado civil</label><div class="v">{{ base_a.get_estado_civil_display|default:"—" }}</div></div>
+              <div class="f s-6"><label>Casado(a) na Igreja?</label><div class="v">{{ base_a.get_casado_na_igreja_display|default:"—" }}</div></div>
+
+              <div class="f s-6"><label>Paróquia</label><div class="v v-wrap">
+                {% if base_a.paroquia %}{{ base_a.paroquia }}{% elif base_a.outra_paroquia %}{{ base_a.outra_paroquia }}{% else %}—{% endif %}
+              </div></div>
+              <div class="f s-6"><label>Pastoral/Movimento</label><div class="v v-wrap">
+                {% if base_a.pastoral_movimento %}{{ base_a.pastoral_movimento }}{% elif base_a.outra_pastoral_movimento %}{{ base_a.outra_pastoral_movimento }}{% else %}—{% endif %}
+              </div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Saúde</h3>
+            <div class="grid">
+              <div class="f s-3"><label>Pressão alta?</label><div class="v">{{ base_a.get_pressao_alta_display|default:"—" }}</div></div>
+              <div class="f s-3"><label>Diabetes?</label><div class="v">{{ base_a.get_diabetes_display|default:"—" }}</div></div>
+              <div class="f s-2"><label>Tipo Sang.</label><div class="v">{{ base_a.tipo_sanguineo|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Prob. Saúde?</label><div class="v">{{ base_a.get_problema_saude_display|default:"—" }}</div></div>
+              <div class="f s-9"><label>Qual?</label><div class="v v-wrap">{{ base_a.qual_problema_saude|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Med. Ctrl.?</label><div class="v">{{ base_a.get_medicamento_controlado_display|default:"—" }}</div></div>
+              <div class="f s-9"><label>Qual(is)?</label><div class="v v-wrap">{{ base_a.qual_medicamento_controlado|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Protocolo</label><div class="v v-wrap">{{ base_a.protocolo_administracao|default:"—" }}</div></div>
+              <div class="f s-3"><label>Mob. Reduzida?</label><div class="v">{{ base_a.get_mobilidade_reduzida_display|default:"—" }}</div></div>
+              <div class="f s-5"><label>Detalhe</label><div class="v v-wrap">{{ base_a.qual_mobilidade_reduzida|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Alerg. Alimento?</label><div class="v">{{ base_a.get_alergia_alimento_display|default:"—" }}</div></div>
+              <div class="f s-9"><label>Qual(is)</label><div class="v v-wrap">{{ base_a.qual_alergia_alimento|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Alerg. Medicamento?</label><div class="v">{{ base_a.get_alergia_medicamento_display|default:"—" }}</div></div>
+              <div class="f s-9"><label>Qual(is)</label><div class="v v-wrap">{{ base_a.qual_alergia_medicamento|default:"—" }}</div></div>
+
+              <div class="f s-12"><label>Informações extras</label><div class="v v-wrap">{{ base_a.informacoes_extras|default:"—" }}</div></div>
+            </div>
+            <div class="chips">
+              {% if base_a.alergia_alimento == 'sim' %}<span class="chip">⚠ Alergia alimentar</span>{% endif %}
+              {% if base_a.medicamento_controlado == 'sim' %}<span class="chip">⚠ Medicamento controlado</span>{% endif %}
+            </div>
+          </div>
+
+          {% if is_servos_vinculado %}
+          <div class="sec">
+            <h3>Serviço (se aplicável)</h3>
+            <div class="grid">
+              <div class="f s-8"><label>Ministério</label><div class="v v-wrap">{{ a.alocacao_ministerio.ministerio.nome|default:"—" }}</div></div>
+              <div class="f s-4"><label>Coord.?</label><div class="v">{% if a.alocacao_ministerio.is_coordenador %}Sim{% else %}Não{% endif %}</div></div>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="sec">
+            <h3>Paróquia da inscrição</h3>
+            <div class="grid">
+              <div class="f s-8"><label>Paróquia</label><div class="v v-wrap">{{ a.paroquia.nome|default:"—" }}</div></div>
+              <div class="f s-3"><label>Cidade</label><div class="v">{{ a.paroquia.cidade|default:"—" }}</div></div>
+              <div class="f s-1"><label>UF</label><div class="v">{{ a.paroquia.estado|default:"—" }}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOCO B -->
+        <div class="card">
+          <h2 class="who">B) {% if b %}{{ b.participante.nome|default:"—" }}{% else %}—{% endif %}</h2>
+
+          {% if b %}
+          <div class="sec">
+            <h3>Identificação</h3>
+            <div class="grid">
+              <div class="f s-8"><label>Nome</label><div class="v v-wrap">{{ b.participante.nome|default:"—" }}</div></div>
+              <div class="f s-2"><label>Nasc.</label><div class="v">{{ base_b.data_nascimento|date:"d/m/Y"|default:"—" }}</div></div>
+              <div class="f s-2"><label>CPF</label><div class="v">{{ b.participante.cpf|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Telefone</label><div class="v">{{ b.participante.telefone|default:"—" }}</div></div>
+              <div class="f s-8"><label>E-mail</label><div class="v v-wrap">{{ b.participante.email|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>CEP</label><div class="v">{{ b.participante.CEP|default:"—" }}</div></div>
+              <div class="f s-7"><label>Endereço</label><div class="v v-wrap">{{ b.participante.endereco|default:"—" }}</div></div>
+              <div class="f s-2"><label>Nº</label><div class="v">{{ b.participante.numero|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Bairro</label><div class="v">{{ b.participante.bairro|default:"—" }}</div></div>
+              <div class="f s-6"><label>Cidade</label><div class="v">{{ b.participante.cidade|default:"—" }}</div></div>
+              <div class="f s-2"><label>UF</label><div class="v">{{ b.participante.estado|default:"—" }}</div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Dados adicionais</h3>
+            <div class="grid">
+              <div class="f s-2"><label>Altura</label><div class="v">{{ base_b.altura|default:"—" }}</div></div>
+              <div class="f s-2"><label>Peso</label><div class="v">{{ base_b.peso|default:"—" }}</div></div>
+              <div class="f s-2"><label>Camisa</label><div class="v">{{ base_b.tamanho_camisa|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Batizado?</label><div class="v">{{ base_b.get_batizado_display|default:"—" }}</div></div>
+              <div class="f s-3"><label>Crismado?</label><div class="v">{{ base_b.get_crismado_display|default:"—" }}</div></div>
+
+              <div class="f s-6"><label>Estado civil</label><div class="v">{{ base_b.get_estado_civil_display|default:"—" }}</div></div>
+              <div class="f s-6"><label>Casado(a) na Igreja?</label><div class="v">{{ base_b.get_casado_na_igreja_display|default:"—" }}</div></div>
+
+              <div class="f s-6"><label>Paróquia</label><div class="v v-wrap">
+                {% if base_b.paroquia %}{{ base_b.paroquia }}{% elif base_b.outra_paroquia %}{{ base_b.outra_paroquia }}{% else %}—{% endif %}
+              </div></div>
+              <div class="f s-6"><label>Pastoral/Movimento</label><div class="v v-wrap">
+                {% if base_b.pastoral_movimento %}{{ base_b.pastoral_movimento }}{% elif base_b.outra_pastoral_movimento %}{{ base_b.outra_pastoral_movimento }}{% else %}—{% endif %}
+              </div></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>Saúde</h3>
+            <div class="grid">
+              <div class="f s-3"><label>Pressão alta?</label><div class="v">{{ base_b.get_pressao_alta_display|default:"—" }}</div></div>
+              <div class="f s-3"><label>Diabetes?</label><div class="v">{{ base_b.get_diabetes_display|default:"—" }}</div></div>
+              <div class="f s-2"><label>Tipo Sang.</label><div class="v">{{ base_b.tipo_sanguineo|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Prob. Saúde?</label><div class="v">{{ base_b.get_problema_saude_display|default:"—" }}</div></div>
+              <div class="f s-9"><label>Qual?</label><div class="v v-wrap">{{ base_b.qual_problema_saude|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Med. Ctrl.?</label><div class="v">{{ base_b.get_medicamento_controlado_display|default:"—" }}</div></div>
+              <div class="f s-9"><label>Qual(is)?</label><div class="v v-wrap">{{ base_b.qual_medicamento_controlado|default:"—" }}</div></div>
+
+              <div class="f s-4"><label>Protocolo</label><div class="v v-wrap">{{ base_b.protocolo_administracao|default:"—" }}</div></div>
+              <div class="f s-3"><label>Mob. Reduzida?</label><div class="v">{{ base_b.get_mobilidade_reduzida_display|default:"—" }}</div></div>
+              <div class="f s-5"><label>Detalhe</label><div class="v v-wrap">{{ base_b.qual_mobilidade_reduzida|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Alerg. Alimento?</label><div class="v">{{ base_b.get_alergia_alimento_display|default:"—" }}</div></div>
+              <div class="f s-9"><label>Qual(is)</label><div class="v v-wrap">{{ base_b.qual_alergia_alimento|default:"—" }}</div></div>
+
+              <div class="f s-3"><label>Alerg. Medicamento?</label><div class="v">{{ base_b.get_alergia_medicamento_display|default:"—" }}</div></div>
+              <div class="f s-9"><label>Qual(is)</label><div class="v v-wrap">{{ base_b.qual_alergia_medicamento|default:"—" }}</div></div>
+
+              <div class="f s-12"><label>Informações extras</label><div class="v v-wrap">{{ base_b.informacoes_extras|default:"—" }}</div></div>
+            </div>
+            <div class="chips">
+              {% if base_b.alergia_alimento == 'sim' %}<span class="chip">⚠ Alergia alimentar</span>{% endif %}
+              {% if base_b.medicamento_controlado == 'sim' %}<span class="chip">⚠ Medicamento controlado</span>{% endif %}
+            </div>
+          </div>
+
+          {% if is_servos_vinculado %}
+          <div class="sec">
+            <h3>Serviço (se aplicável)</h3>
+            <div class="grid">
+              <div class="f s-8"><label>Ministério</label><div class="v v-wrap">{{ b.alocacao_ministerio.ministerio.nome|default:"—" }}</div></div>
+              <div class="f s-4"><label>Coord.?</label><div class="v">{% if b.alocacao_ministerio.is_coordenador %}Sim{% else %}Não{% endif %}</div></div>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="sec">
+            <h3>Paróquia da inscrição</h3>
+            <div class="grid">
+              <div class="f s-8"><label>Paróquia</label><div class="v v-wrap">{{ b.paroquia.nome|default:"—" }}</div></div>
+              <div class="f s-3"><label>Cidade</label><div class="v">{{ b.paroquia.cidade|default:"—" }}</div></div>
+              <div class="f s-1"><label>UF</label><div class="v">{{ b.paroquia.estado|default:"—" }}</div></div>
+            </div>
+          </div>
+          {% else %}
+            <div class="v v-wrap" style="border:1px dashed var(--line); padding:6px; color:var(--muted); text-align:center">
+              Sem par vinculado a esta inscrição.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="footer">
+        Desenvolvido por Alexandre Martins Vieira • {% now "d/m/Y H:i" %} • {{ paroquia.nome }}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

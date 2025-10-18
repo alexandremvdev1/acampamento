@@ -23,6 +23,7 @@
     .nav-pro{ background:linear-gradient(90deg,var(--g1),var(--g2)) }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem }
     .navbar-brand{ font-size:1rem }
+    .navbar-brand-logo{ height:28px; max-height:34px; width:auto; display:block; object-fit:contain; }
 
     .sidebar-card{ border:1px solid #e5e7eb; border-radius:.9rem; background:#fff; box-shadow:0 10px 24px rgba(17,24,39,.04) }
     .nav-title{ margin:6px 10px 8px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em }
@@ -52,6 +53,11 @@
     .btn-icon{ width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center }
 
     .input-group-text{ background:#fff }
+
+    /* respiro lateral em telas muito grandes */
+    @media (min-width:1600px){
+      .px-xxl-4-5{ padding-left:2rem!important; padding-right:2rem!important; }
+    }
   </style>
 </head>
 <body>
@@ -59,7 +65,17 @@
 <!-- NAVBAR -->
 <nav class="navbar nav-pro navbar-dark">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold" href="{% url 'inscricoes:admin_paroquia_painel' %}">Painel da Paróquia</a>
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'inscricoes:admin_paroquia_painel' %}">
+      {% if politica and politica.logo_1 %}
+        <img src="{{ politica.logo_1.url }}" alt="Painel da Paróquia" class="navbar-brand-logo">
+        <span class="visually-hidden">Painel da Paróquia</span>
+      {% elif politica and politica.logo %}
+        <img src="{{ politica.logo.url }}" alt="Painel da Paróquia" class="navbar-brand-logo">
+        <span class="visually-hidden">Painel da Paróquia</span>
+      {% else %}
+        <span class="fw-bold">Painel da Paróquia</span>
+      {% endif %}
+    </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <a class="btn btn-sm btn-light" href="{% url 'inscricoes:admin_paroquia_eventos' evento.paroquia.id %}">← Eventos</a>
       <a class="btn btn-sm btn-info" href="{% url 'inscricoes:relatorios_evento' evento.id %}">📊 Relatórios</a>
@@ -68,11 +84,12 @@
   </div>
 </nav>
 
-<main class="container py-3 py-lg-4">
+<!-- container-fluid para ocupar 100% -->
+<main class="container-fluid py-3 py-lg-4 px-3 px-md-4 px-xxl-4-5">
   <div class="row g-3">
 
     <!-- SIDEBAR -->
-    <aside class="col-lg-3">
+    <aside class="col-12 col-lg-3 col-xl-2 col-xxl-2">
       <div class="sidebar-card p-2">
         <div class="nav-title">Evento</div>
         <ul class="nav-list">
@@ -101,7 +118,7 @@
     </aside>
 
     <!-- CONTEÚDO -->
-    <section class="col-lg-9">
+    <section class="col-12 col-lg-9 col-xl-10 col-xxl-10">
 
       <!-- HEADER -->
       <div class="sticky-topbar p-3 mb-3 bg-white">
@@ -178,19 +195,12 @@
                       </td>
                       <td class="text-end">
                         <div class="btn-group" role="group" aria-label="Ações">
-
-                          <a href="{% url 'inscricoes:alocacoes_ministerio' pk=m.id evento_id=evento.id %}"
-                            class="btn btn-success btn-sm">
+                          <a href="{% url 'inscricoes:alocacoes_ministerio' pk=m.id evento_id=evento.id %}" class="btn btn-success btn-sm">
                             <i class="fa-solid fa-users"></i> Ver alocados
                           </a>
-
-                          <!-- Editar (com ?evento=... para retornar à página) -->
-                          <a href="{% url 'inscricoes:ministerio_editar' m.id %}?evento={{ evento.id }}"
-                             class="btn btn-primary btn-sm">
+                          <a href="{% url 'inscricoes:ministerio_editar' m.id %}?evento={{ evento.id }}" class="btn btn-primary btn-sm">
                             <i class="fa-solid fa-pen"></i> Editar
                           </a>
-
-                          <!-- Excluir (POST) -->
                           <form method="post" action="{% url 'inscricoes:ministerio_deletar' m.id %}" class="d-inline">
                             {% csrf_token %}
                             <input type="hidden" name="evento_id" value="{{ evento.id }}">
@@ -199,7 +209,6 @@
                               <i class="fa-solid fa-trash"></i> Excluir
                             </button>
                           </form>
-
                         </div>
                       </td>
                     </tr>
@@ -216,9 +225,27 @@
       </section>
 
       <footer class="py-3">
-        <div class="d-flex flex-wrap justify-content-between align-items-center">
-          <small>© {% now "Y" %} Admin Geral — Todos os direitos reservados</small>
-          <small class="text-muted-2">Desenvolvido por Alexandre Martins Vieira • Bootstrap 5</small>
+        <div class="d-flex flex-wrap justify-content-between align-items-center w-100">
+          <small>© {% now "Y" %} eismeaqui.app — Todos os direitos reservados</small>
+
+          {% if politica %}
+            {% if politica.email_contato or politica.telefone_contato %}
+              <div class="d-flex align-items-center gap-2">
+                <span class="small text-muted">Suporte</span>
+                {% if politica.email_contato %}
+                  <a href="mailto:{{ politica.email_contato }}" class="text-muted" aria-label="Suporte por e-mail" title="Suporte por e-mail">
+                    <i class="fa-solid fa-envelope fa-lg"></i>
+                  </a>
+                {% endif %}
+                {% if politica.telefone_contato %}
+                  <a href="https://wa.me/{{ politica.telefone_contato|cut:'+' }}" class="text-success" target="_blank" rel="noopener"
+                     aria-label="Suporte via WhatsApp" title="Suporte via WhatsApp">
+                    <i class="fa-brands fa-whatsapp fa-lg"></i>
+                  </a>
+                {% endif %}
+              </div>
+            {% endif %}
+          {% endif %}
         </div>
       </footer>
 

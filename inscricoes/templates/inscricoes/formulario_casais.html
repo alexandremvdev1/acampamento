@@ -9,10 +9,6 @@
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  <!-- Datepicker + FontAwesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
   <style>
     * { box-sizing: border-box; }
     body {
@@ -43,7 +39,7 @@
 
     label { font-weight: 600; margin-top: 8px; display: block; font-size: .92rem; }
 
-    input[type="text"], input[type="email"], input[type="number"], input[type="date"], select, textarea {
+    input[type="text"], input[type="email"], input[type="number"], select, textarea {
       padding: var(--inp-pad-y) var(--inp-pad-x);
       font-size: var(--inp-fs);
       border: 1.6px solid #d1d5db;
@@ -62,13 +58,6 @@
       font-size: var(--inp-fs);
       border-radius: var(--radius);
     }
-
-    .input-group-sm > .form-control, .input-group-sm > .form-select, .input-group-sm > .input-group-text {
-      padding: var(--inp-pad-y) var(--inp-pad-x);
-      font-size: var(--inp-fs);
-      border-radius: var(--radius);
-    }
-    .input-group-text{ background:#f8fafc; border:1.6px solid #d1d5db; }
 
     button {
       background: #0d6efd; color: white;
@@ -110,9 +99,7 @@
       border: 1px solid #e5e7eb; background: #f8fafc; display: none;
     }
 
-    .input-group-text i{ opacity:.8; }
-
-    .init-cap { text-transform: capitalize; }
+    .init-cap { text-transform: none; }
   </style>
 </head>
 <body>
@@ -124,16 +111,19 @@
     <p><strong>Data:</strong> {{ evento.data_inicio|date:"d/m/Y" }} - {{ evento.data_fim|date:"d/m/Y" }}</p>
   </header>
 
-  <!-- data-etapa para o script saber se é cônjuge 1 ou 2 -->
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   <form method="post" enctype="multipart/form-data" novalidate data-etapa="{{ etapa }}">
     {% csrf_token %}
 
-    {% if form.non_field_errors %}
-      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-    {% endif %}
-    {% if form_insc.non_field_errors %}
-      <div class="alert alert-danger">{{ form_insc.non_field_errors }}</div>
-    {% endif %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    {% if form_insc.non_field_errors %}<div class="alert alert-danger">{{ form_insc.non_field_errors }}</div>{% endif %}
 
     <fieldset>
       <legend>Cônjuge {{ etapa }}</legend>
@@ -150,8 +140,19 @@
         </div>
         <div class="col-md-4">
           {% if form.data_nascimento %}
-            <label for="{{ form.data_nascimento.id_for_label }}">Data de nascimento</label>
-            {{ form.data_nascimento }} <div class="text-danger">{{ form.data_nascimento.errors }}</div>
+            <label for="id_data_nascimento">Data de nascimento</label>
+            <input
+              type="text"
+              id="id_data_nascimento"
+              name="{{ form.data_nascimento.name }}"
+              class="form-control"
+              placeholder="DD/MM/AAAA"
+              inputmode="numeric"
+              autocomplete="bday"
+              required
+              value="{{ form.data_nascimento.value|default:'' }}"
+            >
+            <div class="text-danger">{{ form.data_nascimento.errors }}</div>
           {% endif %}
         </div>
       </div>
@@ -187,10 +188,7 @@
         <div class="row g-3">
           <div class="col-md-3">
             <label class="form-label" for="id_cep">CEP</label>
-            <div class="input-group input-group-sm">
-              <span class="input-group-text"><i class="fa-solid fa-mailbox"></i></span>
-              <input type="text" id="id_cep" name="cep" class="form-control" placeholder="00000-000" required>
-            </div>
+            <input type="text" id="id_cep" name="cep" class="form-control" placeholder="00000-000" required>
           </div>
           <div class="col-md-8">
             <label class="form-label" for="id_endereco">Logradouro</label>
@@ -206,11 +204,11 @@
           </div>
           <div class="col-md-6">
             <label class="form-label" for="id_cidade">Cidade</label>
-            <input type="text" id="id_cidade" name="cidade" class="form-control init-cap" required>
+            <input type="text" id="id_cidade" name="cidade" class="form-control init-cap" required readonly>
           </div>
           <div class="col-md-3">
             <label class="form-label" for="id_estado">Estado (UF)</label>
-            <input type="text" id="id_estado" name="estado" class="form-control" maxlength="2" placeholder="SP" required>
+            <input type="text" id="id_estado" name="estado" class="form-control" maxlength="2" placeholder="SP" required readonly>
           </div>
         </div>
         <div class="alert alert-info mt-3" role="alert">
@@ -232,7 +230,7 @@
       </div>
       <div id="filhos_campos"></div>
 
-      <!-- Compartilhados (view espera esses names) -->
+      <!-- Compartilhados -->
       <fieldset class="mt-3">
         <legend>Contato de emergência</legend>
         <label>Nome</label>
@@ -250,9 +248,9 @@
       </fieldset>
       {% endif %}
 
-      {# ===== Demais campos do form de casais (exclui foto_casal, tema_acampamento e "Outra pastoral ou movimento") ===== #}
+      {# ===== Campos do form de casais (exclui foto/tema/outros e “indicado por”) ===== #}
       {% for field in form_insc %}
-        {% if field.name != "foto_casal" and field.name != "tema_acampamento" and field.name != "outra_pastoral_ou_movimento" and field.name != "outra_pastoral" and field.name != "outro_movimento" and field.name != "pastoral_movimento_outro" %}
+        {% if field.name != "foto_casal" and field.name != "tema_acampamento" and field.name != "outra_pastoral_ou_movimento" and field.name != "outra_pastoral" and field.name != "outro_movimento" and field.name != "pastoral_movimento_outro" and field.name != "indicado_por" %}
           <div class="mb-2 form-insc-field" data-field-name="{{ field.name }}">
             {{ field.label_tag }}
             {{ field }}
@@ -263,14 +261,17 @@
       {% endfor %}
 
       {% if etapa == 2 %}
-      <!-- ============== FOTO DO CASAL — SOMENTE NA ETAPA 2 ============== -->
+      <!-- ============== FOTO DO CASAL — FINAL ============== -->
       <div id="foto-casal-final" class="mb-3">
         <label for="{{ form_insc.foto_casal.id_for_label }}">Foto do casal</label>
         <div class="d-flex align-items-center gap-3">
           <img id="preview-foto-casal" alt="Pré-visualização">
           {{ form_insc.foto_casal }}
         </div>
-        <div class="form-text">A foto será salva nas duas inscrições e nos dois participantes.</div>
+        <div class="form-text mt-2">
+          Agora caprichem na escolha! Escolham uma foto <strong>bem bonita do casal</strong> — de preferência nítida, com boa iluminação e os dois sorrindo 😊.
+          Ela aparecerá nos crachás e na lista do evento.
+        </div>
         <div class="text-danger">{{ form_insc.foto_casal.errors }}</div>
       </div>
       {% endif %}
@@ -315,12 +316,10 @@
 
   <!-- Scripts -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/locales/bootstrap-datepicker.pt-BR.min.js"></script>
+  <!-- (sem datepicker) -->
   <script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.9/dist/inputmask.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- =================== SCRIPT BASE =================== -->
 <script>
   $(function() {
     // Evita duplo envio
@@ -333,22 +332,56 @@
     $('input, select, textarea').addClass('form-control form-control-sm rounded-3');
     $('select').removeClass('form-control').addClass('form-select');
 
-    // Máscaras
-    if (window.Inputmask) {
-      if ($("#id_cpf").length)       Inputmask("999.999.999-99").mask("#id_cpf");
-      if ($("#id_telefone").length)  Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true }).mask("#id_telefone");
-      if ($("#id_data_nascimento").length)
-        Inputmask("99/99/9999", { placeholder: "DD/MM/AAAA", clearMaskOnLostFocus: false }).mask("#id_data_nascimento");
+    // TELEFONE OBRIGATÓRIO (independente do widget)
+    const telSel = "#id_telefone, [name='telefone']";
+    const $tel = $(telSel).first();
+    if ($tel.length) {
+      $tel.attr("required", true);
+      $tel.attr("aria-required", "true");
     }
 
-    // Datepicker
-    if ($.fn.datepicker) {
-      $('.date').datepicker({
-        format: 'dd/mm/yyyy',
-        language: 'pt-BR',
-        autoclose: true,
-        todayHighlight: true
-      });
+    // MÁSCARAS
+    if (window.Inputmask) {
+      // CPF
+      if ($("#id_cpf").length) Inputmask("999.999.999-99").mask("#id_cpf");
+
+      // Telefone (principal e contatos)
+      Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true })
+        .mask("#id_telefone, [name='telefone'], input[name='contato_emergencia_telefone'], input[name='responsavel_2_telefone']");
+
+      // CEP
+      if ($("#id_cep").length) Inputmask("99999-999").mask("#id_cep");
+
+      // Data de nascimento (texto) — SEM datepicker
+      if ($("#id_data_nascimento").length) {
+        Inputmask("99/99/9999", { placeholder: "DD/MM/AAAA", clearMaskOnLostFocus: false })
+          .mask("#id_data_nascimento");
+      }
+    }
+
+    // Validação simples da data (DD/MM/AAAA) no submit
+    $("form[data-etapa]").on("submit", function(e){
+      const $dn = $("#id_data_nascimento");
+      if ($dn.length) {
+        const v = ($dn.val() || "").trim();
+        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(v) || !ehDataValida(v)) {
+          e.preventDefault();
+          $dn.addClass("is-invalid").focus();
+          alert("Informe uma data de nascimento válida no formato DD/MM/AAAA.");
+          return false;
+        }
+      }
+    });
+
+    function ehDataValida(ddmmyyyy){
+      const [d,m,y] = ddmmyyyy.split("/").map(n=>parseInt(n,10));
+      if (!d || !m || !y) return false;
+      if (m < 1 || m > 12) return false;
+      const diaMax = new Date(y, m, 0).getDate();
+      if (d < 1 || d > diaMax) return false;
+      const hoje = new Date(); hoje.setHours(0,0,0,0);
+      const data = new Date(y, m-1, d);
+      return data <= hoje && y >= 1900;
     }
 
     // Modais
@@ -359,34 +392,15 @@
       if (e.key === 'Escape') $('.modal.show').each(function(){ closeModal(this.id); });
     });
 
-    // Ícones nos telefones
-    function decorateWithIcon($input, iconClass){
-      if(!$input.length || $input.closest('.input-group').length) return;
-      const $wrap = $('<div class="input-group input-group-sm"><span class="input-group-text"><i class="'+iconClass+'"></i></span></div>');
-      $input.addClass('form-control');
-      $input.after($wrap);
-      $wrap.append($input);
-    }
-    decorateWithIcon($('#id_telefone'), 'fa-solid fa-phone');
-
-    function maskTelefone($els){
-      if (window.Inputmask) {
-        Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true }).mask($els);
-      }
-    }
-
-    // ======= REMOVER (garantia) campos não desejados =======
+    // ======= Remover campos “outro/indicado por” por garantia =======
     const camposRemover = [
-      '#id_ja_e_campista',
-      '#id_nome_conjuge',
-      '#id_conjuge_inscrito',
-      // variações de "Outra pastoral ou movimento"
       '#id_outra_pastoral_ou_movimento',
       '#id_outra_pastoral',
       '#id_outro_movimento',
       '#id_pastoral_movimento_outro',
       '#id_pastoral_outro',
-      '#id_movimento_outro'
+      '#id_movimento_outro',
+      '#id_indicado_por'
     ];
     camposRemover.forEach(sel=>{
       const $el = $(sel);
@@ -395,11 +409,9 @@
         $blk.remove();
       }
     });
-
-    // Fallback: remover pelo texto do label (se vier com outro name)
     $('.form-insc-field').each(function(){
       const txt = $(this).text().toLowerCase();
-      if (txt.includes('outra pastoral') || txt.includes('outro movimento') || txt.includes('pastoral (outro)') || txt.includes('movimento (outro)')) {
+      if (txt.includes('indicado por') || txt.includes('outra pastoral') || txt.includes('outro movimento')) {
         $(this).remove();
       }
     });
@@ -454,32 +466,40 @@
         container.append(bloco);
       }
 
-      $(".telefone-filho").each(function(){ decorateWithIcon($(this), 'fa-solid fa-phone'); });
-      maskTelefone($("#filhos_campos .telefone-filho"));
-      aplicarTitleCase(); // reanexa listeners
-      aplicarInitCap();   // inicial maiúscula nos novos
+      if (window.Inputmask) {
+        Inputmask({ mask: ["(99) 9999-9999", "(99) 99999-9999"], keepStatic: true }).mask("#filhos_campos .telefone-filho");
+      }
+      aplicarTitleCase();
+      aplicarInitCap();
     });
 
     // ======= CEP / ViaCEP =======
-    if (window.Inputmask && $("#id_cep").length) Inputmask("99999-999").mask("#id_cep");
     async function preencherEnderecoPorCEP(cep) {
       const cepNum = (cep || "").replace(/\D/g, "");
-      if (cepNum.length !== 8) { limpaEndereco(); return; }
+      if (cepNum.length !== 8) { limpaEndereco(true); return; }
       try {
         const resp = await fetch(`https://viacep.com.br/ws/${cepNum}/json/`);
         if (!resp.ok) throw new Error("Falha ao consultar CEP");
         const data = await resp.json();
-        if (data.erro) { limpaEndereco(); return; }
+        if (data.erro) { limpaEndereco(true); return; }
 
         $("#id_endereco").val(data.logradouro || "");
         $("#id_bairro").val(data.bairro || "");
         $("#id_cidade").val(data.localidade || "");
         $("#id_estado").val((data.uf || "").toUpperCase());
       } catch (e) {
-        limpaEndereco();
+        limpaEndereco(true);
       }
     }
-    function limpaEndereco() { $("#id_endereco, #id_bairro, #id_cidade, #id_estado").val(""); }
+    function limpaEndereco(limpaCidadeEstado=false) {
+      $("#id_endereco").val("");
+      $("#id_bairro").val("");
+      if (limpaCidadeEstado){
+        $("#id_cidade").val("");
+        $("#id_estado").val("");
+      }
+    }
+
     let cepTimer = null;
     $("#id_cep")
       .on("blur", function () { preencherEnderecoPorCEP(this.value); })
@@ -492,18 +512,19 @@
         }, 300);
       });
 
-    // ======= TITLE CASE (nomes) + impedir tudo MAIÚSCULO =======
+    // Impede digitação manual em cidade/estado (reforço ao readonly)
+    $("#id_cidade, #id_estado").on("keydown paste input", function(e){
+      e.preventDefault();
+      return false;
+    });
+
+    // ======= Title Case (só no blur/paste para não comer espaços) =======
     const excecoes = new Set(["da","de","do","das","dos","e","a","o","as","os","di","du"]);
     function toTitleCasePTBR(s){
-      s = (s||"").toLowerCase().replace(/\s+/g," ").trim();
-      return s.split(" ").map((w,i)=> i>0 && excecoes.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    }
-    function normalizaNome(el){
-      const v = el.value || "";
-      if(!v) return;
-      const base = (v.length >= 3 && v === v.toUpperCase()) ? v.toLowerCase() : v;
-      const novo = toTitleCasePTBR(base);
-      if(novo !== v) el.value = novo;
+      const hasTrailingSpace = /\s$/.test(s || "");
+      let core = (s||"").toLowerCase().replace(/\s+/g," ").trim();
+      core = core.split(" ").map((w,i)=> i>0 && excecoes.has(w) ? w : (w.charAt(0).toUpperCase()+w.slice(1))).join(" ");
+      return core + (hasTrailingSpace ? " " : "");
     }
     function aplicarTitleCase(){
       const seletores = [
@@ -512,29 +533,25 @@
         "input[name='responsavel_2_nome']",
         "[name^='filho_'][name$='_nome']"
       ];
-      $(seletores.join(",")).off(".tc").on("input.tc blur.tc", function(){
-        normalizaNome(this);
-      });
+      $(seletores.join(","))
+        .off(".tc")
+        .on("blur.tc", function(){ this.value = toTitleCasePTBR(this.value || ""); })
+        .on("paste.tc", function(e){
+          e.preventDefault();
+          const text = (e.originalEvent || e).clipboardData.getData('text/plain') || "";
+          const norm = toTitleCasePTBR(text);
+          document.execCommand('insertText', false, norm);
+        });
     }
     aplicarTitleCase();
 
-    // Protege colagem TODO CAPS em nomes
-    $(document).on("paste", "#id_nome, input[name='contato_emergencia_nome'], input[name='responsavel_2_nome'], [name^='filho_'][name$='_nome']",
-      function(e){
-        e.preventDefault();
-        const text = (e.originalEvent || e).clipboardData.getData('text/plain') || "";
-        const norm = toTitleCasePTBR(text);
-        document.execCommand('insertText', false, norm);
-      }
-    );
-
-    // ======= Inicial Maiúscula (demais campos textuais) =======
+    // ======= Inicial Maiúscula leve (só no blur) =======
     function aplicarInitCap(){
       $('input[type="text"], textarea')
-        .not('#id_email, [name="email"], #id_cpf, [name="cpf"], #id_telefone, [name="telefone"], #id_estado, [name="estado"], #id_numero, [name="numero"]')
+        .not('#id_email, [name="email"], #id_cpf, [name="cpf"], #id_telefone, [name="telefone"], #id_estado, [name="estado"], #id_numero, [name="numero"], #id_cep, [name="cep"], #id_data_nascimento, [name="{{ form.data_nascimento.name }}"]')
         .addClass('init-cap')
         .off('.icap')
-        .on('input.icap blur.icap', function(){
+        .on('blur.icap', function(){
           const v = this.value || '';
           if (!v) return;
           const novo = v.charAt(0).toUpperCase() + v.slice(1);
@@ -562,10 +579,29 @@
         reader.readAsDataURL(f);
       });
     })();
+
+    // ====== Destacar erros e rolar ======
+    (function(){
+      $('.text-danger').each(function(){
+        const $err = $(this);
+        if (!$err.text().trim()) return;
+        const $input = $err.prevAll('input,select,textarea').first();
+        if ($input.length) $input.addClass('is-invalid');
+        if(!$input.length){
+          const $maybe = $err.closest('.mb-2, .form-group, .col-md-4, .col-md-6, .form-insc-field').find('input,select,textarea').first();
+          if ($maybe.length) $maybe.addClass('is-invalid');
+        }
+      });
+      const $firstErr = $('.is-invalid').first();
+      if ($firstErr.length) {
+        const y = $firstErr.offset().top - 90;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    })();
   });
 </script>
 
-<!-- =================== Organização do bloco de saúde (opcional) =================== -->
+<!-- Bloco “Dados de Saúde” opcional (reorganização) -->
 <script>
   $(function () {
     const $form = $("form[data-etapa]");

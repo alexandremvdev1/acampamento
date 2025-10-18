@@ -1,0 +1,263 @@
+{# inscricoes/_ficha_casal_sheet.html #}
+{# Espera no contexto: a, b, base_a, base_b, evento #}
+{% load static %}
+
+<div class="top">
+  <div>
+    <div class="brandline">
+      <img src="{% static 'img/logo.png' %}" alt="Logo 1">
+      {% if evento.banner %}<img src="{{ evento.banner.url }}" alt="Banner">{% endif %}
+    </div>
+
+    <div class="header-grid">
+      <div class="hero-media">
+        {% if a.inscricaocasais and a.inscricaocasais.foto_casal %}
+          <img class="photo-wide" src="{{ a.inscricaocasais.foto_casal.url }}" alt="Foto do casal">
+        {% elif b and b.inscricaocasais and b.inscricaocasais.foto_casal %}
+          <img class="photo-wide" src="{{ b.inscricaocasais.foto_casal.url }}" alt="Foto do casal">
+        {% else %}
+          <div style="display:flex; gap:10px">
+            {% if a.participante.foto %}
+              <img class="photo" src="{{ a.participante.foto.url }}" alt="Foto A">
+            {% else %}<div class="photo -empty">sem foto</div>{% endif %}
+            {% if b and b.participante.foto %}
+              <img class="photo" src="{{ b.participante.foto.url }}" alt="Foto B">
+            {% elif b %}<div class="photo -empty">sem foto</div>{% endif %}
+          </div>
+        {% endif %}
+      </div>
+
+      <div>
+        <p class="eyebrow">Ficha de inscrição — casais</p>
+        <h1 class="t-title">{{ evento.nome }}</h1>
+        <div class="t-sub">
+          {{ a.participante.nome|default:"—" }}{% if b %} &amp; {{ b.participante.nome|default:"—" }}{% endif %}
+        </div>
+
+        <div class="qr-box-row" style="margin-top:8px">
+          <div class="qr-box">
+            <img class="qr" src="{% url 'inscricoes:qr_code_png' a.participante.qr_token %}" alt="QR A">
+            <div class="qr-cap">{{ a.participante.nome|default:"—" }}</div>
+          </div>
+          <div class="qr-box">
+            {% if b %}
+              <img class="qr" src="{% url 'inscricoes:qr_code_png' b.participante.qr_token %}" alt="QR B">
+              <div class="qr-cap">{{ b.participante.nome|default:"—" }}</div>
+            {% else %}
+              <div class="qr" style="display:grid;place-items:center;color:#9ca3af">—</div>
+              <div class="qr-cap">Sem par vinculado</div>
+            {% endif %}
+          </div>
+
+          <div style="margin-left:auto; text-align:right">
+            <div class="eyebrow">Inscrições</div>
+            <div style="font-weight:800">A #{{ a.id }}{% if b %} • B #{{ b.id }}{% endif %}</div>
+            <div class="eyebrow">
+              Pagamento A: {% if a.pagamento_confirmado %}Confirmado{% else %}Pendente{% endif %}
+              {% if b %} • Pagamento B: {% if b.pagamento_confirmado %}Confirmado{% else %}Pendente{% endif %}{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Duas colunas espelhadas A e B #}
+<div class="cols">
+  <!-- BLOCO A -->
+  <div class="col">
+    <h2 class="who">A) {{ a.participante.nome|default:"—" }}</h2>
+
+    <div class="sec">
+      <h3>Identificação</h3>
+      <div class="grid">
+        <div class="f s-6"><label>Nome</label><div class="v">{{ a.participante.nome|default:"—" }}</div></div>
+        <div class="f s-2"><label>Nasc.</label><div class="v">{{ base_a.data_nascimento|date:"d/m/Y"|default:"—" }}</div></div>
+        <div class="f s-4"><label>CPF</label><div class="v">{{ a.participante.cpf|default:"—" }}</div></div>
+
+        <div class="f s-4"><label>Telefone</label><div class="v">{{ a.participante.telefone|default:"—" }}</div></div>
+        <div class="f s-8"><label>E-mail</label><div class="v">{{ a.participante.email|default:"—" }}</div></div>
+
+        <div class="f s-3"><label>CEP</label><div class="v">{{ a.participante.CEP|default:"—" }}</div></div>
+        <div class="f s-7"><label>Endereço</label><div class="v">{{ a.participante.endereco|default:"—" }}</div></div>
+        <div class="f s-2"><label>Nº</label><div class="v">{{ a.participante.numero|default:"—" }}</div></div>
+
+        <div class="f s-4"><label>Bairro</label><div class="v">{{ a.participante.bairro|default:"—" }}</div></div>
+        <div class="f s-6"><label>Cidade</label><div class="v">{{ a.participante.cidade|default:"—" }}</div></div>
+        <div class="f s-2"><label>UF</label><div class="v">{{ a.participante.estado|default:"—" }}</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>Dados adicionais</h3>
+      <div class="grid">
+        <div class="f s-2"><label>Altura</label><div class="v">{{ base_a.altura|default:"—" }}</div></div>
+        <div class="f s-2"><label>Peso</label><div class="v">{{ base_a.peso|default:"—" }}</div></div>
+        <div class="f s-2"><label>Camisa</label><div class="v">{{ base_a.tamanho_camisa|default:"—" }}</div></div>
+
+        <div class="f s-3"><label>Batizado?</label><div class="v">{{ base_a.get_batizado_display|default:"—" }}</div></div>
+        <div class="f s-3"><label>Crismado?</label><div class="v">{{ base_a.get_crismado_display|default:"—" }}</div></div>
+
+        <div class="f s-6"><label>Estado civil</label><div class="v">{{ base_a.get_estado_civil_display|default:"—" }}</div></div>
+        <div class="f s-6">
+          <label>Casado(a) na Igreja?</label>
+          <div class="v">{% if base_a.get_casado_na_igreja_display %}{{ base_a.get_casado_na_igreja_display }}{% else %}—{% endif %}</div>
+        </div>
+
+        <div class="f s-6">
+          <label>Pastoral/Movimento</label>
+          <div class="v">{% firstof base_a.pastoral_movimento.nome "—" %}</div>
+        </div>
+        <div class="f s-6"><label>Outra Pastoral/Movimento</label><div class="v">{{ base_a.outra_pastoral_movimento|default:"—" }}</div></div>
+
+        <div class="f s-6"><label>Tema do acampamento que participou</label><div class="v">{{ a.tema_acampamento|default:"—" }}</div></div>
+        <div class="f s-6">
+          <label>Tempo de união</label>
+          <div class="v">
+            {% if base_a.tempo_casado_uniao %}{{ base_a.tempo_casado_uniao }}
+            {% elif a.inscricaocasais and a.inscricaocasais.tempo_casado_uniao %}{{ a.inscricaocasais.tempo_casado_uniao }}
+            {% else %}—{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# A: Paróquia que participa (apenas nome) #}
+    <div class="sec">
+      <h3>Paróquia que participa</h3>
+      <div class="grid">
+        <div class="f s-12">
+          <label>Paróquia</label>
+          <div class="v">
+            {% firstof a.paroquia_participa.nome a.participante.paroquia.nome base_a.paroquia_participa.nome base_a.paroquia.nome "—" %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>Contato de emergência</h3>
+      <div class="grid">
+        <div class="f s-7"><label>Nome</label><div class="v">{{ a.contato_emergencia_nome|default:"—" }}</div></div>
+        <div class="f s-3"><label>Telefone</label><div class="v">{{ a.contato_emergencia_telefone|default:"—" }}</div></div>
+        <div class="f s-2"><label>Grau</label><div class="v">{{ a.contato_emergencia_grau_parentesco|default:"—" }}</div></div>
+      </div>
+    </div>
+
+    {# FILHOS A #}
+    <div class="sec">
+      <h3>Filhos</h3>
+      <div class="grid">
+        {% for filho in a.filhos.all %}
+          <div class="f s-6"><label>Nome</label><div class="v">{{ filho.nome|default:"—" }}</div></div>
+          <div class="f s-2"><label>Idade</label><div class="v">{{ filho.idade|default:"—" }}</div></div>
+          <div class="f s-4"><label>Telefone</label><div class="v">{{ filho.telefone|default:"—" }}</div></div>
+        {% empty %}
+          <div class="f s-12"><div class="v">—</div></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOCO B -->
+  <div class="col">
+    <h2 class="who">B) {% if b %}{{ b.participante.nome|default:"—" }}{% else %}—{% endif %}</h2>
+
+    {% if b and base_b %}
+      <div class="sec">
+        <h3>Identificação</h3>
+        <div class="grid">
+          <div class="f s-6"><label>Nome</label><div class="v">{{ b.participante.nome|default:"—" }}</div></div>
+          <div class="f s-2"><label>Nasc.</label><div class="v">{{ base_b.data_nascimento|date:"d/m/Y"|default:"—" }}</div></div>
+          <div class="f s-4"><label>CPF</label><div class="v">{{ b.participante.cpf|default:"—" }}</div></div>
+
+          <div class="f s-4"><label>Telefone</label><div class="v">{{ b.participante.telefone|default:"—" }}</div></div>
+          <div class="f s-8"><label>E-mail</label><div class="v">{{ b.participante.email|default:"—" }}</div></div>
+
+          <div class="f s-3"><label>CEP</label><div class="v">{{ b.participante.CEP|default:"—" }}</div></div>
+          <div class="f s-7"><label>Endereço</label><div class="v">{{ b.participante.endereco|default:"—" }}</div></div>
+          <div class="f s-2"><label>Nº</label><div class="v">{{ b.participante.numero|default:"—" }}</div></div>
+
+          <div class="f s-4"><label>Bairro</label><div class="v">{{ b.participante.bairro|default:"—" }}</div></div>
+          <div class="f s-6"><label>Cidade</label><div class="v">{{ b.participante.cidade|default:"—" }}</div></div>
+          <div class="f s-2"><label>UF</label><div class="v">{{ b.participante.estado|default:"—" }}</div></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>Dados adicionais</h3>
+        <div class="grid">
+          <div class="f s-2"><label>Altura</label><div class="v">{{ base_b.altura|default:"—" }}</div></div>
+          <div class="f s-2"><label>Peso</label><div class="v">{{ base_b.peso|default:"—" }}</div></div>
+          <div class="f s-2"><label>Camisa</label><div class="v">{{ base_b.tamanho_camisa|default:"—" }}</div></div>
+
+          <div class="f s-3"><label>Batizado?</label><div class="v">{{ base_b.get_batizado_display|default:"—" }}</div></div>
+          <div class="f s-3"><label>Crismado?</label><div class="v">{{ base_b.get_crismado_display|default:"—" }}</div></div>
+
+          <div class="f s-6"><label>Estado civil</label><div class="v">{{ base_b.get_estado_civil_display|default:"—" }}</div></div>
+          <div class="f s-6">
+            <label>Casado(a) na Igreja?</label>
+            <div class="v">{% if base_b.get_casado_na_igreja_display %}{{ base_b.get_casado_na_igreja_display }}{% else %}—{% endif %}</div>
+          </div>
+
+          <div class="f s-6">
+            <label>Pastoral/Movimento</label>
+            <div class="v">{% firstof base_b.pastoral_movimento.nome "—" %}</div>
+          </div>
+          <div class="f s-6"><label>Outra Pastoral/Movimento</label><div class="v">{{ base_b.outra_pastoral_movimento|default:"—" }}</div></div>
+
+          <div class="f s-6"><label>Tema do acampamento que participou</label><div class="v">{{ b.tema_acampamento|default:"—" }}</div></div>
+          <div class="f s-6">
+            <label>Tempo de união</label>
+            <div class="v">
+              {% if base_b.tempo_casado_uniao %}{{ base_b.tempo_casado_uniao }}
+              {% elif b.inscricaocasais and b.inscricaocasais.tempo_casado_uniao %}{{ b.inscricaocasais.tempo_casado_uniao }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# B: Paróquia que participa (apenas nome) #}
+      <div class="sec">
+        <h3>Paróquia que participa</h3>
+        <div class="grid">
+          <div class="f s-12">
+            <label>Paróquia</label>
+            <div class="v">
+              {% firstof b.paroquia_participa.nome b.participante.paroquia.nome base_b.paroquia_participa.nome base_b.paroquia.nome "—" %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>Contato de emergência</h3>
+        <div class="grid">
+          <div class="f s-7"><label>Nome</label><div class="v">{{ b.contato_emergencia_nome|default:"—" }}</div></div>
+          <div class="f s-3"><label>Telefone</label><div class="v">{{ b.contato_emergencia_telefone|default:"—" }}</div></div>
+          <div class="f s-2"><label>Grau</label><div class="v">{{ b.contato_emergencia_grau_parentesco|default:"—" }}</div></div>
+        </div>
+      </div>
+
+      {# FILHOS B #}
+      <div class="sec">
+        <h3>Filhos</h3>
+        <div class="grid">
+          {% for filho in b.filhos.all %}
+            <div class="f s-6"><label>Nome</label><div class="v">{{ filho.nome|default:"—" }}</div></div>
+            <div class="f s-2"><label>Idade</label><div class="v">{{ filho.idade|default:"—" }}</div></div>
+            <div class="f s-4"><label>Telefone</label><div class="v">{{ filho.telefone|default:"—" }}</div></div>
+          {% empty %}
+            <div class="f s-12"><div class="v">—</div></div>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <div class="v" style="border:1px dashed var(--line); padding:8px; color:var(--muted); text-align:center">
+        Sem par vinculado a esta inscrição.
+      </div>
+    {% endif %}
+  </div>
+</div>

@@ -9,39 +9,26 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfSLzLQvWQ2zYlH3xZkS2VJKJQGXrCM1/MrZ8Dq03+4T6pG8Y2LRp5kw=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
   <style>
-    /* ===== IMPRESSÃO: A4 centralizado, 4 crachás + linhas de corte ===== */
     @page { size: A4 portrait; margin: 10mm; }
-
     @media print{
       *{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       html, body { margin:0; background:#fff; width:210mm; height:297mm; }
-
-      /* Esconde elementos de navegação */
       .no-print, .navbar, .sticky-topbar, .card-clean { display:none !important; }
+      .container, main.container{ width:auto !important; max-width:none !important; padding:0 !important; margin:0 !important; }
 
-      /* Zera efeitos do Bootstrap container que empurram o conteúdo */
-      .container, main.container{
-        width: auto !important;
-        max-width: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-
-      /* Área útil: 190×277 mm (depois das margens) */
       .cracha-container{
         display: grid !important;
         grid-template-columns: repeat(2, 90mm);
         grid-auto-rows: 130mm;
-        column-gap: 10mm;       /* 190 - (90+90) = 10mm */
-        row-gap: 17mm;          /* 277 - (130+130) = 17mm */
-        width: 190mm;           /* centralização horizontal */
-        min-height: 277mm;      /* permite centralização vertical */
-        margin: 0 auto;         /* centro na página */
-        place-content: center;  /* centro H e V quando sobrar espaço */
+        column-gap: 10mm;
+        row-gap: 17mm;
+        width: 190mm;
+        min-height: 277mm;
+        margin: 0 auto;
+        place-content: center;
         padding: 0 !important;
         box-sizing: border-box;
       }
@@ -56,39 +43,33 @@
         box-sizing: border-box;
         break-inside: avoid-page;
         page-break-inside: avoid;
-        overflow: visible;      /* necessário para marcas fora do retângulo */
-
-        /* ===== MARCAS DE CORTE (fora do crachá) =====
-           Pseudo-elemento maior 3mm em cada lado; traço 0.3mm, 4mm de comprimento */
+        overflow: visible;
       }
       .cracha-wrapper::before{
         content:"";
-        position:absolute;
-        inset:-3mm;                  /* expande 3mm para fora em todos os lados */
+        position:absolute; inset:-3mm;
         pointer-events:none;
         background-repeat:no-repeat;
         background-image:
-          /* topo-esquerda */     linear-gradient(#000,#000), linear-gradient(#000,#000),
-          /* topo-direita */      linear-gradient(#000,#000), linear-gradient(#000,#000),
-          /* base-esquerda */     linear-gradient(#000,#000), linear-gradient(#000,#000),
-          /* base-direita */      linear-gradient(#000,#000), linear-gradient(#000,#000);
+          linear-gradient(#000,#000), linear-gradient(#000,#000),
+          linear-gradient(#000,#000), linear-gradient(#000,#000),
+          linear-gradient(#000,#000), linear-gradient(#000,#000),
+          linear-gradient(#000,#000), linear-gradient(#000,#000);
         background-size:
-          4mm .3mm,  .3mm 4mm,   /* TL: horiz, vert */
-          4mm .3mm,  .3mm 4mm,   /* TR: horiz, vert */
-          4mm .3mm,  .3mm 4mm,   /* BL: horiz, vert */
-          4mm .3mm,  .3mm 4mm;   /* BR: horiz, vert */
-        /* Posiciona as linhas encostadas na borda externa do crachá */
+          4mm .3mm,  .3mm 4mm,
+          4mm .3mm,  .3mm 4mm,
+          4mm .3mm,  .3mm 4mm,
+          4mm .3mm,  .3mm 4mm;
         background-position:
-          left 3mm  top 0,      left 0    top 3mm,     /* TL */
-          right 3mm top 0,      right 0   top 3mm,     /* TR */
-          left 3mm  bottom 0,   left 0    bottom 3mm,  /* BL */
-          right 3mm bottom 0,   right 0   bottom 3mm;  /* BR */
+          left 3mm  top 0,      left 0    top 3mm,
+          right 3mm top 0,      right 0   top 3mm,
+          left 3mm  bottom 0,   left 0    bottom 3mm,
+          right 3mm bottom 0,   right 0   bottom 3mm;
         opacity:.95;
       }
 
       .cracha{ position:absolute; inset:0; padding:0; border:0; box-shadow:none !important; }
 
-      /* Quebra após cada 4 crachás */
       .page-break{
         grid-column: 1 / -1;
         height: 0; margin: 0; border: 0; padding: 0;
@@ -96,15 +77,13 @@
       }
     }
 
-    /* ===== TELA (visualização normal) ===== */
     :root{
       --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --panel:#fff;
       --shadow:0 10px 24px rgba(17,24,39,.08);
-      --brand1:#1e3a8a;
+      --brandFallback:#1e3a8a;
     }
     html{ font-size:14px; }
     body{ background:#f6f8fb; color:var(--ink); overflow-x:hidden; }
-
     .nav-pro{ background:linear-gradient(90deg,#0b1020,#111a3a); }
     .navbar .btn{ font-size:.85rem; padding:.35rem .6rem; }
     .navbar-brand{ font-size:1rem; }
@@ -120,7 +99,6 @@
       margin:0 0 .75rem; font-weight:700; display:flex; align-items:center; gap:.5rem;
     }
 
-    /* GRID tela (preview) */
     .cracha-container{ display:flex; flex-wrap:wrap; gap:12px; padding:12px; }
     .cracha-wrapper{
       width: calc(25% - 9px);
@@ -133,9 +111,8 @@
       overflow:hidden;
     }
 
-    /* CRAchá (visual) */
     .cracha{
-      --grp: var(--brand1);
+      --grp: var(--brandFallback);
       position:absolute; inset:0; border-radius:12px; overflow:hidden; display:flex; flex-direction:column;
       background:
         radial-gradient(120% 80% at 50% -20%, rgba(255,255,255,.15), transparent 50%),
@@ -265,73 +242,145 @@
     </form>
   </section>
 
+  {% with tipo_evento=evento.tipo|lower %}
   <div class="cracha-container">
     {% for inscricao in inscricoes %}
-      {% with grp=inscricao.alocacao_grupo.grupo min=inscricao.alocacao_ministerio part=inscricao.participante %}
-      <div class="cracha-wrapper">
-        <div class="cracha" style="--grp: {{ grp.cor_hex|default:'#1e3a8a' }};">
+      {% with a=inscricao %}
+      {% with b=a.inscricao_pareada|default:a.conjuge %}
+      {% with grp_a=a.alocacao_grupo.grupo min_a=a.alocacao_ministerio part_a=a.participante %}
 
-          {% if min and min.is_coordenador %}
-            <div class="ribbon">COORDENADOR</div>
+        {% if b %}
+          {% if tipo_evento == 'casais' or tipo_evento == 'servos' %}
+            {% with grp_b=b.alocacao_grupo.grupo min_b=b.alocacao_ministerio part_b=b.participante %}
+
+              <!-- Crachá 1: A — B (cor do A) -->
+              <div class="cracha-wrapper">
+                <div class="cracha" style="--grp: {{ grp_a.cor_hex|default:'#1e3a8a' }};">
+                  {% if min_a and min_a.is_coordenador %}<div class="ribbon">COORDENADOR</div>{% endif %}
+                  <div class="topo">{% if evento.banner %}<img src="{{ evento.banner.url }}" alt="Banner {{ evento.nome }}">{% endif %}</div>
+                  <div class="miolo">
+                    {% if a.inscricaocasais and a.inscricaocasais.foto_casal %}
+                      <img class="avatar" src="{{ a.inscricaocasais.foto_casal.url }}" alt="Foto do casal">
+                    {% elif b.inscricaocasais and b.inscricaocasais.foto_casal %}
+                      <img class="avatar" src="{{ b.inscricaocasais.foto_casal.url }}" alt="Foto do casal">
+                    {% elif part_a.foto %}
+                      <img class="avatar" src="{{ part_a.foto.url }}" alt="Foto de {{ part_a.nome }}">
+                    {% else %}
+                      <img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">
+                    {% endif %}
+                    <div class="nome">{{ part_a.nome }} — {{ part_b.nome }}</div>
+                    <div class="linha-info">
+                      {% if grp_a %}
+                        <div class="gline"><span class="gdot" style="background: {{ grp_a.cor_hex|default:'#1e3a8a' }}"></span><span class="gname">{{ grp_a.nome }}</span></div>
+                      {% endif %}
+                      {% if tipo_evento == 'servos' and min_a and min_a.ministerio %}
+                        <div class="tag"><i class="fa-solid fa-hands-praying"></i>{{ min_a.ministerio.nome }}{% if min_a.is_coordenador %}<span class="coord">Coord.</span>{% endif %}</div>
+                      {% endif %}
+                      {% if part_a.cidade %}
+                        <div class="cidade"><i class="fa-solid fa-location-dot"></i> {{ part_a.cidade }}{% if part_a.estado %} — {{ part_a.estado }}{% endif %}</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="rodape"><div class="qr-wrap"><img class="qr" src="{% url 'inscricoes:qr_code_png' part_a.qr_token %}" alt="QR de {{ part_a.nome }}"></div></div>
+                </div>
+              </div>
+
+              <!-- Crachá 2: B — A (cor do B) -->
+              <div class="cracha-wrapper">
+                <div class="cracha" style="--grp: {{ grp_b.cor_hex|default:'#1e3a8a' }};">
+                  {% if min_b and min_b.is_coordenador %}<div class="ribbon">COORDENADOR</div>{% endif %}
+                  <div class="topo">{% if evento.banner %}<img src="{{ evento.banner.url }}" alt="Banner {{ evento.nome }}">{% endif %}</div>
+                  <div class="miolo">
+                    {% if a.inscricaocasais and a.inscricaocasais.foto_casal %}
+                      <img class="avatar" src="{{ a.inscricaocasais.foto_casal.url }}" alt="Foto do casal">
+                    {% elif b.inscricaocasais and b.inscricaocasais.foto_casal %}
+                      <img class="avatar" src="{{ b.inscricaocasais.foto_casal.url }}" alt="Foto do casal">
+                    {% elif part_b.foto %}
+                      <img class="avatar" src="{{ part_b.foto.url }}" alt="Foto de {{ part_b.nome }}">
+                    {% else %}
+                      <img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">
+                    {% endif %}
+                    <div class="nome">{{ part_b.nome }} — {{ part_a.nome }}</div>
+                    <div class="linha-info">
+                      {% if grp_b %}
+                        <div class="gline"><span class="gdot" style="background: {{ grp_b.cor_hex|default:'#1e3a8a' }}"></span><span class="gname">{{ grp_b.nome }}</span></div>
+                      {% endif %}
+                      {% if tipo_evento == 'servos' and min_b and min_b.ministerio %}
+                        <div class="tag"><i class="fa-solid fa-hands-praying"></i>{{ min_b.ministerio.nome }}{% if min_b.is_coordenador %}<span class="coord">Coord.</span>{% endif %}</div>
+                      {% endif %}
+                      {% if part_b.cidade %}
+                        <div class="cidade"><i class="fa-solid fa-location-dot"></i> {{ part_b.cidade }}{% if part_b.estado %} — {{ part_b.estado }}{% endif %}</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="rodape"><div class="qr-wrap"><img class="qr" src="{% url 'inscricoes:qr_code_png' part_b.qr_token %}" alt="QR de {{ part_b.nome }}"></div></div>
+                </div>
+              </div>
+
+            {% endwith %} {# grp_b/min_b/part_b #}
+
+          {% else %}
+            <!-- Não é casais/servos: crachá individual de A -->
+            <div class="cracha-wrapper">
+              <div class="cracha" style="--grp: {{ grp_a.cor_hex|default:'#1e3a8a' }};">
+                {% if min_a and min_a.is_coordenador %}<div class="ribbon">COORDENADOR</div>{% endif %}
+                <div class="topo">{% if evento.banner %}<img src="{{ evento.banner.url }}" alt="Banner {{ evento.nome }}">{% endif %}</div>
+                <div class="miolo">
+                  {% if part_a.foto %}<img class="avatar" src="{{ part_a.foto.url }}" alt="Foto de {{ part_a.nome }}">
+                  {% else %}<img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">{% endif %}
+                  <div class="nome">{{ part_a.nome }}</div>
+                  <div class="linha-info">
+                    {% if grp_a %}<div class="gline"><span class="gdot" style="background: {{ grp_a.cor_hex|default:'#1e3a8a' }}"></span><span class="gname">{{ grp_a.nome }}</span></div>{% endif %}
+                    {% if tipo_evento == 'servos' and min_a and min_a.ministerio %}
+                      <div class="tag"><i class="fa-solid fa-hands-praying"></i>{{ min_a.ministerio.nome }}{% if min_a.is_coordenador %}<span class="coord">Coord.</span>{% endif %}</div>
+                    {% endif %}
+                    {% if part_a.cidade %}
+                      <div class="cidade"><i class="fa-solid fa-location-dot"></i> {{ part_a.cidade }}{% if part_a.estado %} — {{ part_a.estado }}{% endif %}</div>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="rodape"><div class="qr-wrap"><img class="qr" src="{% url 'inscricoes:qr_code_png' part_a.qr_token %}" alt="QR de {{ part_a.nome }}"></div></div>
+              </div>
+            </div>
           {% endif %}
 
-          <div class="topo">
-            {% if evento.banner %}
-              <img src="{{ evento.banner.url }}" alt="Banner do evento {{ evento.nome }}">
-            {% endif %}
-          </div>
-
-          <div class="miolo">
-            {% if part.foto %}
-              <img class="avatar" src="{{ part.foto.url }}" alt="Foto de {{ part.nome }}">
-            {% else %}
-              <img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">
-            {% endif %}
-
-            <div class="nome">{{ part.nome }}</div>
-
-            <div class="linha-info">
-              {% if grp %}
-                <div class="gline" title="Grupo Família">
-                  <span class="gdot" style="background: {{ grp.cor_hex }}"></span>
-                  <span class="gname">{{ grp.nome }}</span>
+        {% else %}
+          <!-- Sem par: crachá individual de A -->
+          <div class="cracha-wrapper">
+            <div class="cracha" style="--grp: {{ grp_a.cor_hex|default:'#1e3a8a' }};">
+              {% if min_a and min_a.is_coordenador %}<div class="ribbon">COORDENADOR</div>{% endif %}
+              <div class="topo">{% if evento.banner %}<img src="{{ evento.banner.url }}" alt="Banner {{ evento.nome }}">{% endif %}</div>
+              <div class="miolo">
+                {% if part_a.foto %}<img class="avatar" src="{{ part_a.foto.url }}" alt="Foto de {{ part_a.nome }}">
+                {% else %}<img class="avatar" src="{% static 'default-user.png' %}" alt="Foto não informada">{% endif %}
+                <div class="nome">{{ part_a.nome }}</div>
+                <div class="linha-info">
+                  {% if grp_a %}<div class="gline"><span class="gdot" style="background: {{ grp_a.cor_hex|default:'#1e3a8a' }}"></span><span class="gname">{{ grp_a.nome }}</span></div>{% endif %}
+                  {% if tipo_evento == 'servos' and min_a and min_a.ministerio %}
+                    <div class="tag"><i class="fa-solid fa-hands-praying"></i>{{ min_a.ministerio.nome }}{% if min_a.is_coordenador %}<span class="coord">Coord.</span>{% endif %}</div>
+                  {% endif %}
+                  {% if part_a.cidade %}
+                    <div class="cidade"><i class="fa-solid fa-location-dot"></i> {{ part_a.cidade }}{% if part_a.estado %} — {{ part_a.estado }}{% endif %}</div>
+                  {% endif %}
                 </div>
-              {% endif %}
-
-              {% if evento.tipo == 'servos' and min and min.ministerio %}
-                <div class="tag" title="Ministério">
-                  <i class="fa-solid fa-hands-praying"></i>
-                  {{ min.ministerio.nome }}
-                  {% if min.is_coordenador %}<span class="coord">Coord.</span>{% endif %}
-                </div>
-              {% endif %}
-
-              {% if part.cidade %}
-                <div class="cidade">
-                  <i class="fa-solid fa-location-dot"></i>
-                  {{ part.cidade }}{% if part.estado %} — {{ part.estado }}{% endif %}
-                </div>
-              {% endif %}
+              </div>
+              <div class="rodape"><div class="qr-wrap"><img class="qr" src="{% url 'inscricoes:qr_code_png' part_a.qr_token %}" alt="QR de {{ part_a.nome }}"></div></div>
             </div>
           </div>
+        {% endif %}
 
-          <div class="rodape">
-            <div class="qr-wrap">
-              <img class="qr" src="{% url 'inscricoes:qr_code_png' part.qr_token %}" alt="QR do participante {{ part.nome }}">
-            </div>
-          </div>
-
-        </div>
-      </div>
+      {% endwith %} {# grp_a/min_a/part_a #}
+      {% endwith %} {# b #}
+      {% endwith %} {# a #}
 
       {% if forloop.counter|divisibleby:4 and not forloop.last %}
         <div class="page-break"></div>
       {% endif %}
-      {% endwith %}
     {% empty %}
       <p class="text-center w-100 text-muted">Nenhuma inscrição concluída encontrada.</p>
     {% endfor %}
   </div>
+  {% endwith %} {# tipo_evento #}
 
   <div class="text-center my-3 no-print">
     <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
